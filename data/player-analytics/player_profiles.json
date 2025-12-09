@@ -1,0 +1,1066 @@
+[
+  {
+    "churn_risk_score": 0.153,
+    "engagement_intensity_score": 79.13,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000188"
+  },
+  {
+    "churn_risk_score": 0.051,
+    "engagement_intensity_score": 100,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000570"
+  },
+  {
+    "churn_risk_score": 0.502,
+    "engagement_intensity_score": 53.2,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000534"
+  },
+  {
+    "churn_risk_score": 0.394,
+    "engagement_intensity_score": 40.04,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000333"
+  },
+  {
+    "churn_risk_score": 0.607,
+    "engagement_intensity_score": 36.5,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000702"
+  },
+  {
+    "churn_risk_score": 0.595,
+    "engagement_intensity_score": 53.49,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000695"
+  },
+  {
+    "churn_risk_score": 0.652,
+    "engagement_intensity_score": 49.76,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "Android",
+    "player_id": "player_000192"
+  },
+  {
+    "churn_risk_score": 0.539,
+    "engagement_intensity_score": 43.84,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000092"
+  },
+  {
+    "churn_risk_score": 0.693,
+    "engagement_intensity_score": 27.32,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000090"
+  },
+  {
+    "churn_risk_score": 0.165,
+    "engagement_intensity_score": 76.11,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000917"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 10.83,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000831"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 2.3,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000556"
+  },
+  {
+    "churn_risk_score": 0.058,
+    "engagement_intensity_score": 90.72,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000508"
+  },
+  {
+    "churn_risk_score": 0.322,
+    "engagement_intensity_score": 54.92,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000612"
+  },
+  {
+    "churn_risk_score": 0.231,
+    "engagement_intensity_score": 58.47,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "PC",
+    "player_id": "player_000798"
+  },
+  {
+    "churn_risk_score": 0.493,
+    "engagement_intensity_score": 65.59,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000025"
+  },
+  {
+    "churn_risk_score": 0.502,
+    "engagement_intensity_score": 58.5,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000290"
+  },
+  {
+    "churn_risk_score": 0.921,
+    "engagement_intensity_score": 2.07,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000704"
+  },
+  {
+    "churn_risk_score": 0.07,
+    "engagement_intensity_score": 86.7,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000086"
+  },
+  {
+    "churn_risk_score": 0.243,
+    "engagement_intensity_score": 68.32,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000910"
+  },
+  {
+    "churn_risk_score": 0.06,
+    "engagement_intensity_score": 94.14,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000394"
+  },
+  {
+    "churn_risk_score": 0.526,
+    "engagement_intensity_score": 48.55,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000569"
+  },
+  {
+    "churn_risk_score": 0.357,
+    "engagement_intensity_score": 63.29,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "PC",
+    "player_id": "player_000048"
+  },
+  {
+    "churn_risk_score": 0.16,
+    "engagement_intensity_score": 86.62,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000459"
+  },
+  {
+    "churn_risk_score": 0.394,
+    "engagement_intensity_score": 64.59,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000574"
+  },
+  {
+    "churn_risk_score": 0.415,
+    "engagement_intensity_score": 62.72,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000671"
+  },
+  {
+    "churn_risk_score": 0.57,
+    "engagement_intensity_score": 50.97,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000899"
+  },
+  {
+    "churn_risk_score": 0,
+    "engagement_intensity_score": 100,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000868"
+  },
+  {
+    "churn_risk_score": 0.946,
+    "engagement_intensity_score": 4.72,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000710"
+  },
+  {
+    "churn_risk_score": 0.356,
+    "engagement_intensity_score": 69.46,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000923"
+  },
+  {
+    "churn_risk_score": 0.111,
+    "engagement_intensity_score": 78.28,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000840"
+  },
+  {
+    "churn_risk_score": 0.531,
+    "engagement_intensity_score": 55.12,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000141"
+  },
+  {
+    "churn_risk_score": 0.122,
+    "engagement_intensity_score": 97.07,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000070"
+  },
+  {
+    "churn_risk_score": 0.309,
+    "engagement_intensity_score": 57.75,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000727"
+  },
+  {
+    "churn_risk_score": 0.567,
+    "engagement_intensity_score": 44.48,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000646"
+  },
+  {
+    "churn_risk_score": 0.258,
+    "engagement_intensity_score": 70.52,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000549"
+  },
+  {
+    "churn_risk_score": 0.159,
+    "engagement_intensity_score": 70.79,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000461"
+  },
+  {
+    "churn_risk_score": 0.7,
+    "engagement_intensity_score": 39.78,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000633"
+  },
+  {
+    "churn_risk_score": 0.052,
+    "engagement_intensity_score": 89.11,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000856"
+  },
+  {
+    "churn_risk_score": 0.421,
+    "engagement_intensity_score": 61.32,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000916"
+  },
+  {
+    "churn_risk_score": 0.22,
+    "engagement_intensity_score": 67.66,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000468"
+  },
+  {
+    "churn_risk_score": 0.42,
+    "engagement_intensity_score": 75.12,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000476"
+  },
+  {
+    "churn_risk_score": 0.639,
+    "engagement_intensity_score": 25.89,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000912"
+  },
+  {
+    "churn_risk_score": 0.43,
+    "engagement_intensity_score": 66.75,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "Android",
+    "player_id": "player_000801"
+  },
+  {
+    "churn_risk_score": 0.7,
+    "engagement_intensity_score": 38.47,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000080"
+  },
+  {
+    "churn_risk_score": 0.289,
+    "engagement_intensity_score": 69.94,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000050"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 5.82,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000718"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 1.56,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000971"
+  },
+  {
+    "churn_risk_score": 0.48,
+    "engagement_intensity_score": 31.25,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000206"
+  },
+  {
+    "churn_risk_score": 0.719,
+    "engagement_intensity_score": 33.25,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000021"
+  },
+  {
+    "churn_risk_score": 0.406,
+    "engagement_intensity_score": 36.3,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "PC",
+    "player_id": "player_000125"
+  },
+  {
+    "churn_risk_score": 0.301,
+    "engagement_intensity_score": 52.27,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000378"
+  },
+  {
+    "churn_risk_score": 0.116,
+    "engagement_intensity_score": 81.51,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000921"
+  },
+  {
+    "churn_risk_score": 0.097,
+    "engagement_intensity_score": 77.72,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000136"
+  },
+  {
+    "churn_risk_score": 0.853,
+    "engagement_intensity_score": 2.39,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000501"
+  },
+  {
+    "churn_risk_score": 0.342,
+    "engagement_intensity_score": 53.72,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000535"
+  },
+  {
+    "churn_risk_score": 0.582,
+    "engagement_intensity_score": 30.31,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000390"
+  },
+  {
+    "churn_risk_score": 0.607,
+    "engagement_intensity_score": 42.42,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000958"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 5.84,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000949"
+  },
+  {
+    "churn_risk_score": 0.977,
+    "engagement_intensity_score": 15.15,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000846"
+  },
+  {
+    "churn_risk_score": 0.199,
+    "engagement_intensity_score": 76.37,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000753"
+  },
+  {
+    "churn_risk_score": 0.008,
+    "engagement_intensity_score": 98.42,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000511"
+  },
+  {
+    "churn_risk_score": 0.246,
+    "engagement_intensity_score": 71.2,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000354"
+  },
+  {
+    "churn_risk_score": 0.404,
+    "engagement_intensity_score": 67.85,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000462"
+  },
+  {
+    "churn_risk_score": 0.532,
+    "engagement_intensity_score": 38.27,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000942"
+  },
+  {
+    "churn_risk_score": 0.535,
+    "engagement_intensity_score": 53.54,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000142"
+  },
+  {
+    "churn_risk_score": 0.387,
+    "engagement_intensity_score": 77.36,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000169"
+  },
+  {
+    "churn_risk_score": 0.248,
+    "engagement_intensity_score": 78.88,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000576"
+  },
+  {
+    "churn_risk_score": 0.471,
+    "engagement_intensity_score": 46.77,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000041"
+  },
+  {
+    "churn_risk_score": 0.241,
+    "engagement_intensity_score": 69.02,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000204"
+  },
+  {
+    "churn_risk_score": 0.495,
+    "engagement_intensity_score": 48.67,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000398"
+  },
+  {
+    "churn_risk_score": 0.481,
+    "engagement_intensity_score": 44.54,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000330"
+  },
+  {
+    "churn_risk_score": 0.304,
+    "engagement_intensity_score": 71.72,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000989"
+  },
+  {
+    "churn_risk_score": 0.755,
+    "engagement_intensity_score": 20.06,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000260"
+  },
+  {
+    "churn_risk_score": 0.595,
+    "engagement_intensity_score": 29.86,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "PC",
+    "player_id": "player_000524"
+  },
+  {
+    "churn_risk_score": 0.929,
+    "engagement_intensity_score": 2.29,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000714"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 3.82,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000659"
+  },
+  {
+    "churn_risk_score": 0.263,
+    "engagement_intensity_score": 71.4,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000651"
+  },
+  {
+    "churn_risk_score": 0.323,
+    "engagement_intensity_score": 45.34,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000196"
+  },
+  {
+    "churn_risk_score": 0.417,
+    "engagement_intensity_score": 39.65,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Latin America",
+    "platform": "PC",
+    "player_id": "player_000507"
+  },
+  {
+    "churn_risk_score": 0.491,
+    "engagement_intensity_score": 45.93,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000995"
+  },
+  {
+    "churn_risk_score": 0.588,
+    "engagement_intensity_score": 32.56,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000615"
+  },
+  {
+    "churn_risk_score": 0.525,
+    "engagement_intensity_score": 51.69,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "Android",
+    "player_id": "player_000555"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 2.7,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000805"
+  },
+  {
+    "churn_risk_score": 0.467,
+    "engagement_intensity_score": 67.23,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000558"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 9.02,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000502"
+  },
+  {
+    "churn_risk_score": 0.052,
+    "engagement_intensity_score": 94.02,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000720"
+  },
+  {
+    "churn_risk_score": 0.333,
+    "engagement_intensity_score": 67.99,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000663"
+  },
+  {
+    "churn_risk_score": 0.443,
+    "engagement_intensity_score": 72.49,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000322"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 6.11,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000679"
+  },
+  {
+    "churn_risk_score": 0.245,
+    "engagement_intensity_score": 59.41,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000301"
+  },
+  {
+    "churn_risk_score": 0.912,
+    "engagement_intensity_score": 12.57,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000848"
+  },
+  {
+    "churn_risk_score": 0.375,
+    "engagement_intensity_score": 56.08,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000499"
+  },
+  {
+    "churn_risk_score": 0.58,
+    "engagement_intensity_score": 63.7,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "Android",
+    "player_id": "player_000411"
+  },
+  {
+    "churn_risk_score": 0.317,
+    "engagement_intensity_score": 71.14,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000061"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 1.51,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000205"
+  },
+  {
+    "churn_risk_score": 0.522,
+    "engagement_intensity_score": 49.56,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "Android",
+    "player_id": "player_000914"
+  },
+  {
+    "churn_risk_score": 0.201,
+    "engagement_intensity_score": 74.64,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000181"
+  },
+  {
+    "churn_risk_score": 0.562,
+    "engagement_intensity_score": 48.92,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000144"
+  },
+  {
+    "churn_risk_score": 0.126,
+    "engagement_intensity_score": 85.61,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000782"
+  },
+  {
+    "churn_risk_score": 0.661,
+    "engagement_intensity_score": 26.86,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Latin America",
+    "platform": "iOS",
+    "player_id": "player_000946"
+  },
+  {
+    "churn_risk_score": 0.848,
+    "engagement_intensity_score": 7.56,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000157"
+  },
+  {
+    "churn_risk_score": 0.257,
+    "engagement_intensity_score": 62.59,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000105"
+  },
+  {
+    "churn_risk_score": 0.6,
+    "engagement_intensity_score": 57.17,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000117"
+  },
+  {
+    "churn_risk_score": 0.353,
+    "engagement_intensity_score": 76.01,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000732"
+  },
+  {
+    "churn_risk_score": 0.556,
+    "engagement_intensity_score": 63.3,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000591"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 3.09,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000799"
+  },
+  {
+    "churn_risk_score": 0.397,
+    "engagement_intensity_score": 44.02,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000927"
+  },
+  {
+    "churn_risk_score": 0.452,
+    "engagement_intensity_score": 29.3,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000847"
+  },
+  {
+    "churn_risk_score": 0.29,
+    "engagement_intensity_score": 51.6,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000367"
+  },
+  {
+    "churn_risk_score": 0.461,
+    "engagement_intensity_score": 58.29,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000642"
+  },
+  {
+    "churn_risk_score": 0.298,
+    "engagement_intensity_score": 63.86,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000347"
+  },
+  {
+    "churn_risk_score": 0.23,
+    "engagement_intensity_score": 75.04,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000981"
+  },
+  {
+    "churn_risk_score": 0.298,
+    "engagement_intensity_score": 67.65,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000641"
+  },
+  {
+    "churn_risk_score": 0.443,
+    "engagement_intensity_score": 44.05,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000873"
+  },
+  {
+    "churn_risk_score": 0.22,
+    "engagement_intensity_score": 63.11,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000485"
+  },
+  {
+    "churn_risk_score": 0.418,
+    "engagement_intensity_score": 29.16,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000898"
+  },
+  {
+    "churn_risk_score": 0.18,
+    "engagement_intensity_score": 82.27,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000884"
+  },
+  {
+    "churn_risk_score": 1,
+    "engagement_intensity_score": 15.19,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000875"
+  },
+  {
+    "churn_risk_score": 0.592,
+    "engagement_intensity_score": 58.06,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000503"
+  },
+  {
+    "churn_risk_score": 0.25,
+    "engagement_intensity_score": 65.91,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000170"
+  },
+  {
+    "churn_risk_score": 0.541,
+    "engagement_intensity_score": 54.2,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Asia Pacific",
+    "platform": "iOS",
+    "player_id": "player_000471"
+  },
+  {
+    "churn_risk_score": 0.546,
+    "engagement_intensity_score": 43.28,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000297"
+  },
+  {
+    "churn_risk_score": 0.723,
+    "engagement_intensity_score": 48.97,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "Android",
+    "player_id": "player_000010"
+  },
+  {
+    "churn_risk_score": 0.552,
+    "engagement_intensity_score": 37.27,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000288"
+  },
+  {
+    "churn_risk_score": 0.927,
+    "engagement_intensity_score": 13.07,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000788"
+  },
+  {
+    "churn_risk_score": 0.347,
+    "engagement_intensity_score": 55.23,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Europe",
+    "platform": "PC",
+    "player_id": "player_000304"
+  },
+  {
+    "churn_risk_score": 0.72,
+    "engagement_intensity_score": 31.81,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000329"
+  },
+  {
+    "churn_risk_score": 0.205,
+    "engagement_intensity_score": 63.21,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Asia Pacific",
+    "platform": "PC",
+    "player_id": "player_000303"
+  },
+  {
+    "churn_risk_score": 0.163,
+    "engagement_intensity_score": 87.06,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "Asia Pacific",
+    "platform": "Android",
+    "player_id": "player_000134"
+  },
+  {
+    "churn_risk_score": 0.568,
+    "engagement_intensity_score": 29.18,
+    "faction_allegiance": "Neon Rebels",
+    "geographic_region": "North America",
+    "platform": "iOS",
+    "player_id": "player_000091"
+  },
+  {
+    "churn_risk_score": 0.527,
+    "engagement_intensity_score": 49.2,
+    "faction_allegiance": "Corporate Alliance",
+    "geographic_region": "Europe",
+    "platform": "iOS",
+    "player_id": "player_000364"
+  },
+  {
+    "churn_risk_score": 0.134,
+    "engagement_intensity_score": 79.14,
+    "faction_allegiance": "Void Hunters",
+    "geographic_region": "North America",
+    "platform": "PC",
+    "player_id": "player_000609"
+  }
+]

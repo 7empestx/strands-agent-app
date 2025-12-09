@@ -1,0 +1,13 @@
+# Core dependencies
+numpy>=1.21.0
+pandas>=1.3.0
+matplotlib>=3.4.0
+plotly>=5.0.0
+streamlit>=1.28.0
+
+# Strands Agent SDK
+strands-agents>=1.0.0
+
+# AWS SDK
+boto3>=1.26.0
+botocore>=1.29.0

@@ -1,0 +1,15 @@
+[
+  {
+    "merchant_id": "merch_100",
+    "business_name": "Coastal Coffee Roasters",
+    "business_type": "retail",
+    "industry": "food_and_beverage",
+    "created_at": "2024-01-15",
+    "status": "active",
+    "processing_rate": 2.9,
+    "per_transaction_fee": 0.30,
+    "monthly_volume_avg": 45000,
+    "contact_email": "orders@coastalcoffee.com",
+    "timezone": "America/Los_Angeles"
+  }
+]
