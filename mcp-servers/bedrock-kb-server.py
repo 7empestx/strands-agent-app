@@ -228,6 +228,36 @@ def get_tools_list():
                 "required": ["repo", "file_path"],
             },
         },
+        {
+            "name": "list_repos",
+            "description": "List all MrRobot repositories in the knowledge base. Use to discover available repos or find repos by name pattern.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "type": "string",
+                        "description": "Optional filter pattern (e.g., 'cast', 'emvio', 'lambda')",
+                    },
+                },
+                "required": [],
+            },
+        },
+        {
+            "name": "search_by_file_type",
+            "description": "Search for code patterns in specific file types only. Useful for finding configs, terraform, serverless files, etc.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "file_type": {
+                        "type": "string",
+                        "description": "File extension or type (e.g., 'serverless.yml', '.tf', '.js', 'package.json')",
+                    },
+                    "num_results": {"type": "integer", "description": "Number of results (default: 5)", "default": 5},
+                },
+                "required": ["query", "file_type"],
+            },
+        },
     ]
 
 
@@ -320,6 +350,58 @@ def handle_request(request: dict) -> dict:
             branch = args.get("branch", "master")
 
             result = get_file_from_bitbucket(repo, file_path, branch)
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
+            }
+
+        elif tool_name == "list_repos":
+            filter_pattern = args.get("filter", "").lower()
+            # Hardcoded list of known repos (could be fetched from S3 or Bitbucket API)
+            all_repos = [
+                "cast-core", "cast-quickbooks", "cast-housecallpro", "cast-jobber",
+                "cast-service-titan", "cast-xero", "cast-databases", "cast-support-portal-service",
+                "mrrobot-auth-rest", "mrrobot-rest-utils-npm", "mrrobot-common-js-utils",
+                "mrrobot-sdk", "mrrobot-connector-hub", "mrrobot-key-rotation", "mrrobot-risk-rest",
+                "mrrobot-merchant-onboarding-app", "mrrobot-confluence-sgupdater", "mrrobot-logging-lambda",
+                "mrrobot-crowdstrike-logs-sync-lambda", "mrrobot-media-cdn", "mrrobot-azuread-last-login",
+                "emvio-gateway", "emvio-dashboard-app", "emvio-payment-service", "emvio-auth-service",
+                "emvio-user-mgt-service", "emvio-transactions-service", "emvio-webhook-service",
+                "emvio-scripts", "emvio-ui", "emvio-developer-tools", "emvio-tutorials",
+                "devops-scripts", "bitbucket-terraform", "bastion-ec2-ami", "pci-file-scanner",
+                "freshdesk", "AWS-utility", "payment-testing-service-deployment",
+            ]
+            if filter_pattern:
+                repos = [r for r in all_repos if filter_pattern in r.lower()]
+            else:
+                repos = all_repos
+
+            result = {
+                "total_indexed": 254,
+                "sample_repos": repos[:50],
+                "filter": filter_pattern if filter_pattern else "none",
+                "note": "This is a sample list. Use search_mrrobot_repos to find code in any of the 254 repos.",
+            }
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
+            }
+
+        elif tool_name == "search_by_file_type":
+            query = args.get("query", "")
+            file_type = args.get("file_type", "")
+            # Include file type in the search query
+            enhanced_query = f"file:{file_type} {query}"
+            result = search_knowledge_base(query=enhanced_query, num_results=args.get("num_results", 5))
+            # Filter results to only include matching file types
+            if "results" in result:
+                result["results"] = [
+                    r for r in result["results"]
+                    if file_type.lower() in r.get("file", "").lower()
+                ]
+            result["file_type_filter"] = file_type
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
