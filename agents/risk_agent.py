@@ -3,7 +3,7 @@ Risk Agent - Underwriting and risk assessment
 Connects to: mrrobot-risk-rest, emvio-underwriting-service
 """
 import os
-import requests
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 

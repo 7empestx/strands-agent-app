@@ -12,7 +12,7 @@ import os
 import argparse
 import boto3
 import requests
-from typing import Any
+
 
 # Configuration
 KB_ID = os.environ.get("CODE_KB_ID", "SAJJWYFTNG")

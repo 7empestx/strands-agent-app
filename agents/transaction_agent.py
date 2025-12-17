@@ -2,11 +2,11 @@
 Transaction Insights Agent for Merchants
 Uses Strands SDK with Claude Sonnet on Amazon Bedrock
 """
-import boto3
+
 import json
 import pandas as pd
 import os
-from datetime import datetime, timedelta
+
 from strands import Agent, tool
 
 # Configuration

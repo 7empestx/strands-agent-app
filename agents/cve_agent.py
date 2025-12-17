@@ -2,12 +2,12 @@
 CVE Security Agent
 Lookup and analyze security vulnerabilities using Strands SDK + Claude Sonnet on Bedrock
 """
-import boto3
+
 import json
 import pandas as pd
 import os
-import re
-from datetime import datetime
+
+
 from strands import Agent, tool
 
 # Configuration

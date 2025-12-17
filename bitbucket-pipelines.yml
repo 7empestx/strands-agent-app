@@ -33,7 +33,7 @@ definitions:
         script:
           - pip install -r requirements.txt
           - pip install flake8 pytest
-          - flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
+          - flake8 .
           # - pytest  # Uncomment when tests are added
 
     - step: &deploy-ec2

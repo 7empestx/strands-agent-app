@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 150
+exclude = 
+    venv,
+    __pycache__,
+    infra/node_modules,
+    .git
+ignore = 
+    E501,  # line too long - handled by max-line-length
+    W293,  # blank line contains whitespace
+    W292,  # no newline at end of file
+    E302,  # expected 2 blank lines
+    E305,  # expected 2 blank lines after class/function
+    F541,  # f-string missing placeholders (often intentional)
+    F401,  # imported but unused (sometimes needed for re-exports)
+    F841,  # local variable assigned but never used
+
