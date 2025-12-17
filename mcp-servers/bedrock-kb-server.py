@@ -25,24 +25,46 @@ BITBUCKET_EMAIL = os.environ.get("BITBUCKET_EMAIL", "gstarkman@nex.io")
 BITBUCKET_WORKSPACE = "mrrobot-labs"
 SECRETS_NAME = "mrrobot-ai-core/secrets"
 
-# Try to get secrets from AWS Secrets Manager
+
 def get_secrets():
-    """Fetch secrets from AWS Secrets Manager."""
+    """Fetch secrets from AWS Secrets Manager with timeout."""
+    from botocore.config import Config
     try:
+        config = Config(connect_timeout=5, read_timeout=5, retries={'max_attempts': 1})
         if AWS_PROFILE:
             session = boto3.Session(profile_name=AWS_PROFILE, region_name=REGION)
         else:
             session = boto3.Session(region_name=REGION)
-        client = session.client('secretsmanager')
+        client = session.client('secretsmanager', config=config)
         response = client.get_secret_value(SecretId=SECRETS_NAME)
+        print(f"Successfully loaded secrets from {SECRETS_NAME}")
         return json.loads(response['SecretString'])
     except Exception as e:
         print(f"Warning: Could not fetch secrets from Secrets Manager: {e}")
         return {}
 
-# Load secrets at startup
-_secrets = get_secrets()
-BITBUCKET_TOKEN = os.environ.get("CVE_BB_TOKEN", "") or _secrets.get("BITBUCKET_TOKEN", "")
+
+# Lazy load secrets (only when needed)
+_secrets = None
+_bitbucket_token = None
+
+
+def get_bitbucket_token():
+    """Get Bitbucket token, loading from Secrets Manager if needed."""
+    global _secrets, _bitbucket_token
+    if _bitbucket_token is not None:
+        return _bitbucket_token
+    
+    # Check env var first
+    _bitbucket_token = os.environ.get("CVE_BB_TOKEN", "")
+    if _bitbucket_token:
+        return _bitbucket_token
+    
+    # Try Secrets Manager
+    if _secrets is None:
+        _secrets = get_secrets()
+    _bitbucket_token = _secrets.get("BITBUCKET_TOKEN", "")
+    return _bitbucket_token
 
 
 def search_knowledge_base(query: str, num_results: int = 5) -> dict:
@@ -76,13 +98,13 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             # Extract repo name from path
             repo_name = path.split("/")[0] if "/" in path else path
             file_path = "/".join(path.split("/")[1:]) if "/" in path else path
-            
+
             results.append({
                 "repo": repo_name,
                 "file": file_path,
                 "full_path": path,
                 "score": round(item.get("score", 0), 3),
-                "content": item.get("content", {}).get("text", "")[:1000],  # More context
+                "content": item.get("content", {}).get("text", "")[:1000],
                 "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}"
             })
 
@@ -93,30 +115,30 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
 
 def get_file_from_bitbucket(repo: str, file_path: str, branch: str = "master") -> dict:
     """Fetch full file content from Bitbucket API."""
-    if not BITBUCKET_TOKEN:
+    token = get_bitbucket_token()
+    if not token:
         return {"error": "BITBUCKET_TOKEN not configured on server"}
-    
+
     try:
-        # Bitbucket API for raw file content
         url = f"https://api.bitbucket.org/2.0/repositories/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}"
-        
+
         response = requests.get(
             url,
-            auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN),
+            auth=(BITBUCKET_EMAIL, token),
             timeout=30
         )
-        
+
         if response.status_code == 404:
             return {"error": f"File not found: {repo}/{file_path}"}
         elif response.status_code != 200:
             return {"error": f"Bitbucket API error: {response.status_code}"}
-        
+
         content = response.text
-        
+
         # Limit content size for very large files
         if len(content) > 50000:
             content = content[:50000] + f"\n\n... [truncated - file is {len(response.text)} bytes]"
-        
+
         return {
             "repo": repo,
             "file": file_path,
@@ -282,7 +304,7 @@ def handle_request(request: dict) -> dict:
             if "results" in result:
                 result["results"] = [
                     r for r in result["results"]
-                    if repo_name.lower() in r.get("file", "").lower()
+                    if repo_name.lower() in r.get("repo", "").lower()
                 ]
             result["repo_filter"] = repo_name
             return {
@@ -310,7 +332,6 @@ def handle_request(request: dict) -> dict:
             }
 
         elif tool_name == "get_kb_info":
-            # Return info about the knowledge base
             result = {
                 "knowledge_base_id": KB_ID,
                 "region": REGION,
@@ -337,11 +358,10 @@ def handle_request(request: dict) -> dict:
             }
 
         elif tool_name == "get_file_content":
-            # Fetch full file content from Bitbucket
             repo = args.get("repo", "")
             file_path = args.get("file_path", "")
             branch = args.get("branch", "master")
-            
+
             result = get_file_from_bitbucket(repo, file_path, branch)
             return {
                 "jsonrpc": "2.0",
