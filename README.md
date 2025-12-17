@@ -1,19 +1,27 @@
-# Strands Agent App
+# MrRobot AI Core
 
-AI-powered platform for merchant insights and code search using **Strands SDK** + **Claude Sonnet on Amazon Bedrock**.
+AI-powered platform for DevOps, log analysis, and code search using **Strands SDK** + **Claude Sonnet on Amazon Bedrock**.
 
 ## Features
 
-### 1. Merchant Insights Agent (Streamlit)
-Natural language interface for merchants to understand their payment data:
-- "Give me an overview of my transactions"
-- "Why are cards being declined?"
-- "When will I get my next deposit?"
+### AI Agents (Streamlit Dashboard)
+Specialized agents for different operational needs:
 
-### 2. Code Knowledge Base (MCP Server)
+| Agent | Description |
+|-------|-------------|
+| **Coralogix** | Log analysis with AI-powered search, PCI compliance checks (CVV/PAN detection) |
+| **Bitbucket** | Repository management, PR reviews, pipeline status |
+| **CloudWatch** | AWS log and metrics analysis |
+| **CVE/Vulnerability** | Security vulnerability scanning and CVE tracking |
+| **Database** | Database query assistance |
+| **DevOps** | Infrastructure and deployment help |
+| **Risk** | Risk assessment and analysis |
+
+### Code Knowledge Base (MCP Server)
 Search 254 MrRobot repositories (17,169 documents) via AI-powered semantic search:
 - Integrated with Cursor, Claude Code, and other MCP-compatible IDEs
 - Natural language queries: "How does authentication work in the API?"
+- 4 tools: `search_mrrobot_repos`, `get_file_content`, `list_repos`, `get_kb_info`
 - Backed by Amazon Bedrock Knowledge Base + OpenSearch Serverless
 
 ## Quick Start
@@ -93,11 +101,19 @@ AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
 
 ```
 mrrobot-ai-core/
-├── app.py                  # Streamlit frontend
-├── agent.py                # Merchant insights agent
+├── app.py                    # Streamlit frontend
+├── agents/                   # AI agents
+│   ├── coralogix_agent.py    # Log analysis + PCI compliance
+│   ├── bitbucket_agent.py    # Repository management
+│   ├── cloudwatch_agent.py   # AWS logs/metrics
+│   ├── cve_agent.py          # CVE tracking
+│   ├── vulnerability_agent.py # Security scanning
+│   ├── database_agent.py     # Database queries
+│   ├── devops_agent.py       # DevOps assistance
+│   └── risk_agent.py         # Risk analysis
 ├── mcp-servers/
 │   └── bedrock-kb-server.py  # MCP server for KB search
-├── infra/                  # AWS CDK (JavaScript)
+├── infra/                    # AWS CDK (JavaScript)
 │   ├── bin/app.js
 │   └── lib/
 │       ├── strands-agent-stack.js    # EC2 infrastructure
@@ -105,10 +121,10 @@ mrrobot-ai-core/
 │       └── constants/
 │           └── aws-accounts.js       # Shared AWS config
 ├── scripts/
-│   ├── deploy-to-ec2.sh    # Deploy app to EC2
-│   ├── sync-repos-to-s3.py # Sync code to KB bucket
+│   ├── deploy-to-ec2.sh      # Deploy app to EC2
+│   ├── sync-repos-to-s3.py   # Sync code to KB bucket
 │   └── create-opensearch-index.py
-└── data/                   # Sample merchant data
+└── data/                     # Sample data
 ```
 
 ## Tech Stack
