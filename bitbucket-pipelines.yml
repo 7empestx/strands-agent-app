@@ -15,24 +15,24 @@ definitions:
     - step: &pre-commit
         oidc: true
         name: "Pre-commit Checks"
+        image: python:3.11-slim
         caches:
           - pre-commit
           - pip
         script:
-          - python3 -m pip install --upgrade pip
-          - python3 -m pip install pre-commit
+          - pip install pre-commit
           - pre-commit run --all-files
 
     - step: &python-lint
         oidc: true
         name: "Python Lint & Test"
+        image: python:3.11-slim
         caches:
           - pip
         script:
-          - python3 -m pip install --upgrade pip
-          - python3 -m pip install -r requirements.txt
-          - python3 -m pip install flake8 pytest
-          - python3 -m flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
+          - pip install -r requirements.txt
+          - pip install flake8 pytest
+          - flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
           # - pytest  # Uncomment when tests are added
 
     - step: &deploy-ec2
