@@ -12,26 +12,78 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
-AWS_PROFILE = os.environ.get("AWS_PROFILE", "dev")
-KNOWLEDGE_BASE_ID = os.environ.get("CODE_KB_ID", "")  # Set after terraform apply
-S3_BUCKET = os.environ.get("CODE_KB_BUCKET", "")  # Set after terraform apply
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+AWS_PROFILE = os.environ.get("AWS_PROFILE", "")
+KNOWLEDGE_BASE_ID = os.environ.get("CODE_KB_ID", "SAJJWYFTNG")
+S3_BUCKET = os.environ.get("CODE_KB_BUCKET", "mrrobot-code-kb-dev-720154970215")
 
 # Bitbucket config (for non-KB operations)
-BITBUCKET_TOKEN = os.environ.get("CVE_BB_TOKEN", "")
 BITBUCKET_WORKSPACE = os.environ.get("BITBUCKET_WORKSPACE", "mrrobot-labs")
 BITBUCKET_EMAIL = os.environ.get("BITBUCKET_EMAIL", "gstarkman@nex.io")
+SECRETS_NAME = "mrrobot-ai-core/secrets"
+
+# Lazy-loaded secrets
+_secrets_cache = None
+_bitbucket_token_cache = None
+
+
+def _get_secrets():
+    """Fetch secrets from AWS Secrets Manager."""
+    global _secrets_cache
+    if _secrets_cache is not None:
+        return _secrets_cache
+
+    try:
+        from botocore.config import Config
+        config = Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1})
+
+        if AWS_PROFILE:
+            session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+        else:
+            session = boto3.Session(region_name=AWS_REGION)
+
+        client = session.client("secretsmanager", config=config)
+        response = client.get_secret_value(SecretId=SECRETS_NAME)
+        import json
+        _secrets_cache = json.loads(response["SecretString"])
+        return _secrets_cache
+    except Exception as e:
+        print(f"Warning: Could not fetch secrets: {e}")
+        return {}
+
+
+def _get_bitbucket_token():
+    """Get Bitbucket token from env var or Secrets Manager."""
+    global _bitbucket_token_cache
+    if _bitbucket_token_cache is not None:
+        return _bitbucket_token_cache
+
+    # Check env var first
+    _bitbucket_token_cache = os.environ.get("CVE_BB_TOKEN", "")
+    if _bitbucket_token_cache:
+        return _bitbucket_token_cache
+
+    # Try Secrets Manager
+    secrets = _get_secrets()
+    _bitbucket_token_cache = secrets.get("BITBUCKET_TOKEN", "")
+    return _bitbucket_token_cache
 
 
 def _get_bedrock_agent_runtime():
     """Get Bedrock Agent Runtime client."""
-    session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+    if AWS_PROFILE:
+        session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+    else:
+        session = boto3.Session(region_name=AWS_REGION)
     return session.client("bedrock-agent-runtime")
 
 
 def _get_s3_client():
     """Get S3 client."""
-    session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+    if AWS_PROFILE:
+        session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+    else:
+        session = boto3.Session(region_name=AWS_REGION)
     return session.client("s3")
 
 
@@ -326,7 +378,10 @@ def get_knowledge_base_status() -> str:
 
     # Try to get KB info
     try:
-        session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+        if AWS_PROFILE:
+            session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+        else:
+            session = boto3.Session(region_name=AWS_REGION)
         client = session.client("bedrock-agent")
 
         kb_response = client.get_knowledge_base(knowledgeBaseId=KNOWLEDGE_BASE_ID)
@@ -367,8 +422,9 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
         state: PR state - OPEN, MERGED, DECLINED, or ALL
         limit: Maximum number of PRs to return
     """
-    if not BITBUCKET_TOKEN:
-        return "Error: CVE_BB_TOKEN environment variable not set."
+    token = _get_bitbucket_token()
+    if not token:
+        return "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
 
     import requests
 
@@ -380,7 +436,7 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
             url = f"https://api.bitbucket.org/2.0/pullrequests/{BITBUCKET_WORKSPACE}"
 
         params = {"state": state, "pagelen": limit}
-        response = requests.get(url, auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN), params=params)
+        response = requests.get(url, auth=(BITBUCKET_EMAIL, token), params=params)
 
         if response.status_code != 200:
             return f"Error fetching PRs: {response.status_code}"
@@ -416,8 +472,9 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> str:
         repo_slug: Repository slug (e.g., 'emvio-payment-service')
         limit: Number of recent pipelines to return
     """
-    if not BITBUCKET_TOKEN:
-        return "Error: CVE_BB_TOKEN environment variable not set."
+    token = _get_bitbucket_token()
+    if not token:
+        return "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
 
     import requests
 
@@ -425,7 +482,7 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> str:
         url = f"https://api.bitbucket.org/2.0/repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pipelines/"
         params = {"pagelen": limit, "sort": "-created_on"}
 
-        response = requests.get(url, auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN), params=params)
+        response = requests.get(url, auth=(BITBUCKET_EMAIL, token), params=params)
 
         if response.status_code != 200:
             return f"Error fetching pipelines: {response.status_code}"
