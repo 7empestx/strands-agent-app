@@ -43,6 +43,8 @@ definitions:
           - pip
         script:
           - echo "Deploying to EC2..."
+          # Install rsync if not available
+          - which rsync || (yum install -y rsync 2>/dev/null || apt-get update && apt-get install -y rsync)
           # Configure SSH
           - mkdir -p ~/.ssh
           - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
