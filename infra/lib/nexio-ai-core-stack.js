@@ -8,7 +8,7 @@ const { addOfficeIngressRules } = require('./constants/office-ips');
 const DNS_DOMAIN = 'mrrobot.dev';
 const DNS_HOSTED_ZONE_ID = 'Z00099541PMCE1WUL76PK';
 
-class StrandsAgentStack extends cdk.Stack {
+class MrRobotAiCoreStack extends cdk.Stack {
   constructor(scope, id, props) {
     super(scope, id, props);
 
@@ -76,6 +76,17 @@ class StrandsAgentStack extends cdk.Stack {
       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
     );
 
+    // Add Secrets Manager access for API tokens (Bitbucket, etc.)
+    ec2Role.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'secretsmanager:GetSecretValue'
+      ],
+      resources: [
+        `arn:aws:secretsmanager:${this.region}:${this.account}:secret:mrrobot-ai-core/*`
+      ]
+    }));
+
     // User data script - install system dependencies only
     // App code is deployed separately via: ./scripts/deploy-to-ec2.sh
     const userData = ec2.UserData.forLinux();
@@ -88,8 +99,8 @@ class StrandsAgentStack extends cdk.Stack {
       'yum install -y python3.11 python3.11-pip git',
       '',
       '# Create app directory with correct ownership',
-      'mkdir -p /opt/strands-agent-app',
-      'chown -R ec2-user:ec2-user /opt/strands-agent-app',
+      'mkdir -p /opt/mrrobot-ai-core',
+      'chown -R ec2-user:ec2-user /opt/mrrobot-ai-core',
       '',
       '# Create systemd service for Streamlit',
       'cat > /etc/systemd/system/streamlit.service << \'EOF\'',
@@ -100,7 +111,7 @@ class StrandsAgentStack extends cdk.Stack {
       '[Service]',
       'Type=simple',
       'User=ec2-user',
-      'WorkingDirectory=/opt/strands-agent-app',
+      'WorkingDirectory=/opt/mrrobot-ai-core',
       'Environment=AWS_DEFAULT_REGION=us-east-1',
       'ExecStart=/usr/bin/python3.11 -m streamlit run app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true',
       'Restart=always',
@@ -119,10 +130,10 @@ class StrandsAgentStack extends cdk.Stack {
       '[Service]',
       'Type=simple',
       'User=ec2-user',
-      'WorkingDirectory=/opt/strands-agent-app/mcp-servers',
+      'WorkingDirectory=/opt/mrrobot-ai-core/mcp-servers',
       'Environment=AWS_DEFAULT_REGION=us-east-1',
       'Environment=CODE_KB_ID=SAJJWYFTNG',
-      'ExecStart=/usr/bin/python3.11 /opt/strands-agent-app/mcp-servers/bedrock-kb-server.py --sse --port 8080',
+      'ExecStart=/usr/bin/python3.11 /opt/mrrobot-ai-core/mcp-servers/bedrock-kb-server.py --sse --port 8080',
       'Restart=always',
       'RestartSec=3',
       '',
@@ -229,4 +240,4 @@ class StrandsAgentStack extends cdk.Stack {
   }
 }
 
-module.exports = { StrandsAgentStack };
+module.exports = { MrRobotAiCoreStack };

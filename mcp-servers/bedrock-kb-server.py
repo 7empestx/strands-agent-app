@@ -11,6 +11,7 @@ import sys
 import os
 import argparse
 import boto3
+import requests
 from typing import Any
 
 # Configuration
@@ -18,6 +19,30 @@ KB_ID = os.environ.get("CODE_KB_ID", "SAJJWYFTNG")
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 # Only use profile if explicitly set; otherwise use default credential chain (IAM roles on EC2)
 AWS_PROFILE = os.environ.get("AWS_PROFILE", "")
+
+# Bitbucket configuration
+BITBUCKET_EMAIL = os.environ.get("BITBUCKET_EMAIL", "gstarkman@nex.io")
+BITBUCKET_WORKSPACE = "mrrobot-labs"
+SECRETS_NAME = "mrrobot-ai-core/secrets"
+
+# Try to get secrets from AWS Secrets Manager
+def get_secrets():
+    """Fetch secrets from AWS Secrets Manager."""
+    try:
+        if AWS_PROFILE:
+            session = boto3.Session(profile_name=AWS_PROFILE, region_name=REGION)
+        else:
+            session = boto3.Session(region_name=REGION)
+        client = session.client('secretsmanager')
+        response = client.get_secret_value(SecretId=SECRETS_NAME)
+        return json.loads(response['SecretString'])
+    except Exception as e:
+        print(f"Warning: Could not fetch secrets from Secrets Manager: {e}")
+        return {}
+
+# Load secrets at startup
+_secrets = get_secrets()
+BITBUCKET_TOKEN = os.environ.get("CVE_BB_TOKEN", "") or _secrets.get("BITBUCKET_TOKEN", "")
 
 
 def search_knowledge_base(query: str, num_results: int = 5) -> dict:
@@ -48,13 +73,58 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             else:
                 path = location
 
+            # Extract repo name from path
+            repo_name = path.split("/")[0] if "/" in path else path
+            file_path = "/".join(path.split("/")[1:]) if "/" in path else path
+            
             results.append({
-                "file": path,
+                "repo": repo_name,
+                "file": file_path,
+                "full_path": path,
                 "score": round(item.get("score", 0), 3),
-                "content": item.get("content", {}).get("text", "")[:500]
+                "content": item.get("content", {}).get("text", "")[:1000],  # More context
+                "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}"
             })
 
         return {"results": results, "query": query}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_file_from_bitbucket(repo: str, file_path: str, branch: str = "master") -> dict:
+    """Fetch full file content from Bitbucket API."""
+    if not BITBUCKET_TOKEN:
+        return {"error": "BITBUCKET_TOKEN not configured on server"}
+    
+    try:
+        # Bitbucket API for raw file content
+        url = f"https://api.bitbucket.org/2.0/repositories/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}"
+        
+        response = requests.get(
+            url,
+            auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN),
+            timeout=30
+        )
+        
+        if response.status_code == 404:
+            return {"error": f"File not found: {repo}/{file_path}"}
+        elif response.status_code != 200:
+            return {"error": f"Bitbucket API error: {response.status_code}"}
+        
+        content = response.text
+        
+        # Limit content size for very large files
+        if len(content) > 50000:
+            content = content[:50000] + f"\n\n... [truncated - file is {len(response.text)} bytes]"
+        
+        return {
+            "repo": repo,
+            "file": file_path,
+            "branch": branch,
+            "content": content,
+            "size_bytes": len(response.text),
+            "bitbucket_url": f"https://bitbucket.org/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}"
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -121,6 +191,38 @@ def get_tools_list():
                     }
                 },
                 "required": ["code_snippet"]
+            }
+        },
+        {
+            "name": "get_kb_info",
+            "description": "Get information about the MrRobot code knowledge base - how many repos, what's indexed, when last updated.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        },
+        {
+            "name": "get_file_content",
+            "description": "Fetch the FULL content of a file from Bitbucket. Use after search_mrrobot_repos to get complete file contents. Requires repo name and file path.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "Repository name (e.g., 'mrrobot-rest-utils-npm', 'cast-core')"
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to file within the repo (e.g., 'src/index.js', 'serverless.yml')"
+                    },
+                    "branch": {
+                        "type": "string",
+                        "description": "Branch name (default: 'master')",
+                        "default": "master"
+                    }
+                },
+                "required": ["repo", "file_path"]
             }
         }
     ]
@@ -199,6 +301,48 @@ def handle_request(request: dict) -> dict:
                 num_results=args.get("num_results", 5)
             )
             result["search_type"] = "similar_code"
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+                }
+            }
+
+        elif tool_name == "get_kb_info":
+            # Return info about the knowledge base
+            result = {
+                "knowledge_base_id": KB_ID,
+                "region": REGION,
+                "stats": {
+                    "repositories": 254,
+                    "documents_indexed": 17169,
+                    "embedding_model": "amazon.titan-embed-text-v2:0",
+                    "vector_store": "OpenSearch Serverless"
+                },
+                "available_tools": [t["name"] for t in get_tools_list()],
+                "tips": [
+                    "Use natural language queries - semantic search understands intent",
+                    "Be specific: 'JWT validation in gateway' beats 'authentication'",
+                    "Use find_similar_code to find patterns matching your code",
+                    "Use search_in_repo when you know which repo to search"
+                ]
+            }
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+                }
+            }
+
+        elif tool_name == "get_file_content":
+            # Fetch full file content from Bitbucket
+            repo = args.get("repo", "")
+            file_path = args.get("file_path", "")
+            branch = args.get("branch", "master")
+            
+            result = get_file_from_bitbucket(repo, file_path, branch)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,

@@ -1,4 +1,4 @@
-# Bitbucket Pipelines for Strands Agent App
+# Bitbucket Pipelines for MrRobot AI Core
 # Deploys to EC2 and manages CDK infrastructure
 
 image:
@@ -19,7 +19,8 @@ definitions:
           - pre-commit
           - pip
         script:
-          - pip install pre-commit
+          - python3 -m pip install --upgrade pip
+          - python3 -m pip install pre-commit
           - pre-commit run --all-files
 
     - step: &python-lint
@@ -28,9 +29,10 @@ definitions:
         caches:
           - pip
         script:
-          - pip install -r requirements.txt
-          - pip install flake8 pytest
-          - flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
+          - python3 -m pip install --upgrade pip
+          - python3 -m pip install -r requirements.txt
+          - python3 -m pip install flake8 pytest
+          - python3 -m flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
           # - pytest  # Uncomment when tests are added
 
     - step: &deploy-ec2
@@ -55,11 +57,11 @@ definitions:
               --exclude='node_modules' \
               --exclude='infra' \
               -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
-              ./ ec2-user@$EC2_IP:/opt/strands-agent-app/
+              ./ ec2-user@$EC2_IP:/opt/mrrobot-ai-core/
           # Install dependencies and restart services
           - |
             ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
-              cd /opt/strands-agent-app
+              cd /opt/mrrobot-ai-core
               python3.11 -m pip install -r requirements.txt --quiet
               sudo systemctl restart mcp-server
               sudo systemctl restart streamlit

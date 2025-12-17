@@ -20,7 +20,7 @@ Search 254 MrRobot repositories (17,169 documents) via AI-powered semantic searc
 
 ### Local Development
 ```bash
-cd ~/Mine/strands-agent-app
+cd ~/Mine/mrrobot-ai-core
 source venv/bin/activate
 AWS_PROFILE=dev streamlit run app.py
 ```
@@ -92,7 +92,7 @@ AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
 ## Project Structure
 
 ```
-strands-agent-app/
+mrrobot-ai-core/
 ├── app.py                  # Streamlit frontend
 ├── agent.py                # Merchant insights agent
 ├── mcp-servers/

@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 const cdk = require('aws-cdk-lib');
-const { StrandsAgentStack } = require('../lib/strands-agent-stack');
+const { MrRobotAiCoreStack } = require('../lib/mrrobot-ai-core-stack');
 const { KnowledgeBaseStack } = require('../lib/knowledge-base-stack');
 const { getKbEnv, getEc2Env } = require('../lib/constants/aws-accounts');
 
 const app = new cdk.App();
 
 // EC2 + CloudFront stack for Streamlit app
-new StrandsAgentStack(app, 'StrandsAgentStack', {
+new MrRobotAiCoreStack(app, 'MrRobotAiCoreStack', {
   env: getEc2Env('dev'),
-  description: 'Strands Agent with Streamlit on EC2 behind CloudFront'
+  description: 'MrRobot AI Core - DevOps agents and MCP server on EC2'
 });
 
 // Knowledge Base stack for code search (us-east-1)

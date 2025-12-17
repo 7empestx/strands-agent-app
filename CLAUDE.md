@@ -77,7 +77,7 @@ Example queries:
 ## Project Structure
 
 ```
-strands-agent-app/
+mrrobot-ai-core/
 ├── app.py                  # Streamlit frontend
 ├── agent.py                # Merchant insights agent
 ├── mcp-servers/

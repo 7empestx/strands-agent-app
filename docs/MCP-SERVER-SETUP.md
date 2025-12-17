@@ -145,7 +145,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 ## Support
 
 - **Slack:** #devops-ai-tools
-- **Documentation:** See CLAUDE.md in the strands-agent-app repo
+- **Documentation:** See CLAUDE.md in the mrrobot-ai-core repo
 - **Issues:** Contact DevOps team
 
 ## Changelog

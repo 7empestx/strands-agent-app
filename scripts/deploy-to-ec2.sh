@@ -6,7 +6,7 @@ set -e
 
 EC2_IP="34.202.219.55"
 SSH_KEY="~/.ssh/streamlit-key.pem"
-REMOTE_DIR="/opt/strands-agent-app"
+REMOTE_DIR="/opt/mrrobot-ai-core"
 LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Files/dirs to exclude from sync (infra/ is CDK, not needed on server)

@@ -195,7 +195,7 @@ response = agent("Why are my cards getting declined?")
 ### Local Setup
 ```bash
 # Navigate to project
-cd ~/Mine/strands-agent-app
+cd ~/Mine/mrrobot-ai-core
 
 # Activate environment
 source venv/bin/activate
@@ -221,6 +221,6 @@ Open http://localhost:8501
 
 ## Questions?
 
-- **Code Location:** `~/Mine/strands-agent-app/`
+- **Code Location:** `~/Mine/mrrobot-ai-core/`
 - **Main Files:** `agent.py` (AI logic), `app.py` (UI)
 - **Data:** `data/merchant-insights/` (sample transactions)
