@@ -360,17 +360,45 @@ def handle_request(request: dict) -> dict:
             filter_pattern = args.get("filter", "").lower()
             # Hardcoded list of known repos (could be fetched from S3 or Bitbucket API)
             all_repos = [
-                "cast-core", "cast-quickbooks", "cast-housecallpro", "cast-jobber",
-                "cast-service-titan", "cast-xero", "cast-databases", "cast-support-portal-service",
-                "mrrobot-auth-rest", "mrrobot-rest-utils-npm", "mrrobot-common-js-utils",
-                "mrrobot-sdk", "mrrobot-connector-hub", "mrrobot-key-rotation", "mrrobot-risk-rest",
-                "mrrobot-merchant-onboarding-app", "mrrobot-confluence-sgupdater", "mrrobot-logging-lambda",
-                "mrrobot-crowdstrike-logs-sync-lambda", "mrrobot-media-cdn", "mrrobot-azuread-last-login",
-                "emvio-gateway", "emvio-dashboard-app", "emvio-payment-service", "emvio-auth-service",
-                "emvio-user-mgt-service", "emvio-transactions-service", "emvio-webhook-service",
-                "emvio-scripts", "emvio-ui", "emvio-developer-tools", "emvio-tutorials",
-                "devops-scripts", "bitbucket-terraform", "bastion-ec2-ami", "pci-file-scanner",
-                "freshdesk", "AWS-utility", "payment-testing-service-deployment",
+                "cast-core",
+                "cast-quickbooks",
+                "cast-housecallpro",
+                "cast-jobber",
+                "cast-service-titan",
+                "cast-xero",
+                "cast-databases",
+                "cast-support-portal-service",
+                "mrrobot-auth-rest",
+                "mrrobot-rest-utils-npm",
+                "mrrobot-common-js-utils",
+                "mrrobot-sdk",
+                "mrrobot-connector-hub",
+                "mrrobot-key-rotation",
+                "mrrobot-risk-rest",
+                "mrrobot-merchant-onboarding-app",
+                "mrrobot-confluence-sgupdater",
+                "mrrobot-logging-lambda",
+                "mrrobot-crowdstrike-logs-sync-lambda",
+                "mrrobot-media-cdn",
+                "mrrobot-azuread-last-login",
+                "emvio-gateway",
+                "emvio-dashboard-app",
+                "emvio-payment-service",
+                "emvio-auth-service",
+                "emvio-user-mgt-service",
+                "emvio-transactions-service",
+                "emvio-webhook-service",
+                "emvio-scripts",
+                "emvio-ui",
+                "emvio-developer-tools",
+                "emvio-tutorials",
+                "devops-scripts",
+                "bitbucket-terraform",
+                "bastion-ec2-ami",
+                "pci-file-scanner",
+                "freshdesk",
+                "AWS-utility",
+                "payment-testing-service-deployment",
             ]
             if filter_pattern:
                 repos = [r for r in all_repos if filter_pattern in r.lower()]
@@ -397,10 +425,7 @@ def handle_request(request: dict) -> dict:
             result = search_knowledge_base(query=enhanced_query, num_results=args.get("num_results", 5))
             # Filter results to only include matching file types
             if "results" in result:
-                result["results"] = [
-                    r for r in result["results"]
-                    if file_type.lower() in r.get("file", "").lower()
-                ]
+                result["results"] = [r for r in result["results"] if file_type.lower() in r.get("file", "").lower()]
             result["file_type_filter"] = file_type
             return {
                 "jsonrpc": "2.0",

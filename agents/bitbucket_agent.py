@@ -35,6 +35,7 @@ def _get_secrets():
 
     try:
         from botocore.config import Config
+
         config = Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1})
 
         if AWS_PROFILE:
@@ -45,6 +46,7 @@ def _get_secrets():
         client = session.client("secretsmanager", config=config)
         response = client.get_secret_value(SecretId=SECRETS_NAME)
         import json
+
         _secrets_cache = json.loads(response["SecretString"])
         return _secrets_cache
     except Exception as e:
@@ -424,7 +426,9 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
     """
     token = _get_bitbucket_token()
     if not token:
-        return "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
+        return (
+            "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
+        )
 
     import requests
 
@@ -474,7 +478,9 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> str:
     """
     token = _get_bitbucket_token()
     if not token:
-        return "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
+        return (
+            "Error: Bitbucket token not configured. Set CVE_BB_TOKEN env var or add BITBUCKET_TOKEN to Secrets Manager."
+        )
 
     import requests
 
