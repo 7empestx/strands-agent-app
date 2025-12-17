@@ -2,10 +2,12 @@
 Coralogix Log Analysis Agent
 Uses Strands SDK with Claude Sonnet on Amazon Bedrock
 """
+
 import json
 import os
-import requests
 from datetime import datetime, timedelta
+
+import requests
 from strands import Agent, tool
 
 # Configuration
@@ -65,8 +67,8 @@ def make_coralogix_request(query: str, start_time: datetime, end_time: datetime,
             "startDate": start_time.isoformat() + "Z",
             "endDate": end_time.isoformat() + "Z",
             "tier": "TIER_FREQUENT_SEARCH",
-            "limit": limit
-        }
+            "limit": limit,
+        },
     }
 
     try:
@@ -74,7 +76,7 @@ def make_coralogix_request(query: str, start_time: datetime, end_time: datetime,
         response.raise_for_status()
         # Handle NDJSON response (newline-delimited JSON)
         results = []
-        for line in response.text.strip().split('\n'):
+        for line in response.text.strip().split("\n"):
             if line.strip():
                 try:
                     results.append(json.loads(line))
@@ -122,6 +124,7 @@ def parse_coralogix_response(response: dict) -> list:
 # TOOLS
 # =============================================================================
 
+
 @tool
 def discover_services(hours_back: int = 1, limit: int = 50) -> str:
     """Discover available log groups/services in Coralogix.
@@ -154,17 +157,13 @@ def discover_services(hours_back: int = 1, limit: int = 50) -> str:
     for lg in sorted(log_groups):
         parts = lg.split("/")
         service_name = parts[-1] if parts else lg
-        services.append({
-            "log_group": lg,
-            "service_name": service_name,
-            "is_cast": "cast" in lg.lower()
-        })
+        services.append({"log_group": lg, "service_name": service_name, "is_cast": "cast" in lg.lower()})
 
     result = {
         "time_range": f"Last {hours_back} hour(s)",
         "total_services": len(services),
         "cast_services": [s for s in services if s["is_cast"]],
-        "other_services": [s for s in services if not s["is_cast"]]
+        "other_services": [s for s in services if not s["is_cast"]],
     }
 
     print(f"[Tool] Found {len(services)} log groups/services")
@@ -172,7 +171,9 @@ def discover_services(hours_back: int = 1, limit: int = 50) -> str:
 
 
 @tool
-def get_recent_errors(service_name: str = "all", hours_back: int = 4, limit: int = 100, scope: str = "all", environment: str = "all") -> str:
+def get_recent_errors(
+    service_name: str = "all", hours_back: int = 4, limit: int = 100, scope: str = "all", environment: str = "all"
+) -> str:
     """Get recent errors from logs by searching message content.
 
     Args:
@@ -185,9 +186,13 @@ def get_recent_errors(service_name: str = "all", hours_back: int = 4, limit: int
     Returns:
         str: JSON with error logs grouped by service
     """
-    print(f"[Tool] get_recent_errors: service={service_name}, hours_back={hours_back}, scope={scope}, environment={environment}")
+    print(
+        f"[Tool] get_recent_errors: service={service_name}, hours_back={hours_back}, scope={scope}, environment={environment}"
+    )
 
-    error_patterns = "message ~ 'ERROR' || message ~ 'Error' || message ~ 'error' || message ~ 'Exception' || message ~ 'FATAL'"
+    error_patterns = (
+        "message ~ 'ERROR' || message ~ 'Error' || message ~ 'error' || message ~ 'Exception' || message ~ 'FATAL'"
+    )
 
     # Environment filter
     env_filter = ""
@@ -220,12 +225,14 @@ def get_recent_errors(service_name: str = "all", hours_back: int = 4, limit: int
 
         if service not in errors_by_service:
             errors_by_service[service] = []
-        errors_by_service[service].append({
-            "message": log.get("message", ""),
-            "timestamp": log.get("timestamp"),
-            "logGroup": log_group,
-            "requestID": log.get("requestID", "")
-        })
+        errors_by_service[service].append(
+            {
+                "message": log.get("message", ""),
+                "timestamp": log.get("timestamp"),
+                "logGroup": log_group,
+                "requestID": log.get("requestID", ""),
+            }
+        )
 
     result = {
         "scope": scope,
@@ -235,12 +242,9 @@ def get_recent_errors(service_name: str = "all", hours_back: int = 4, limit: int
         "total_errors": len(logs),
         "services_with_errors": len(errors_by_service),
         "errors_by_service": {
-            svc: {
-                "count": len(errs),
-                "recent_errors": errs[:10]
-            }
+            svc: {"count": len(errs), "recent_errors": errs[:10]}
             for svc, errs in sorted(errors_by_service.items(), key=lambda x: -len(x[1]))
-        }
+        },
     }
 
     print(f"[Tool] Found {len(logs)} errors across {len(errors_by_service)} services")
@@ -248,7 +252,9 @@ def get_recent_errors(service_name: str = "all", hours_back: int = 4, limit: int
 
 
 @tool
-def get_service_logs(service_name: str, hours_back: int = 1, error_only: bool = False, limit: int = 50, environment: str = "all") -> str:
+def get_service_logs(
+    service_name: str, hours_back: int = 1, error_only: bool = False, limit: int = 50, environment: str = "all"
+) -> str:
     """Get logs for a specific service by filtering on logGroup.
 
     Args:
@@ -261,7 +267,9 @@ def get_service_logs(service_name: str, hours_back: int = 1, error_only: bool = 
     Returns:
         str: JSON with log entries for the service
     """
-    print(f"[Tool] get_service_logs: service={service_name}, hours_back={hours_back}, error_only={error_only}, environment={environment}")
+    print(
+        f"[Tool] get_service_logs: service={service_name}, hours_back={hours_back}, error_only={error_only}, environment={environment}"
+    )
 
     # Build filter
     filters = [f"logGroup ~ '{service_name}'"]
@@ -288,7 +296,7 @@ def get_service_logs(service_name: str, hours_back: int = 1, error_only: bool = 
         "error_only": error_only,
         "time_range": f"Last {hours_back} hour(s)",
         "total_results": len(logs),
-        "logs": logs
+        "logs": logs,
     }
 
     print(f"[Tool] Found {len(logs)} log entries for {service_name}")
@@ -296,7 +304,13 @@ def get_service_logs(service_name: str, hours_back: int = 1, error_only: bool = 
 
 
 @tool
-def get_log_count(service_name: str = "all", hours_back: int = 1, scope: str = "all", environment: str = "all", count_errors_only: bool = False) -> str:
+def get_log_count(
+    service_name: str = "all",
+    hours_back: int = 1,
+    scope: str = "all",
+    environment: str = "all",
+    count_errors_only: bool = False,
+) -> str:
     """Get log counts for services - useful for volume analysis and trends.
 
     Args:
@@ -309,7 +323,9 @@ def get_log_count(service_name: str = "all", hours_back: int = 1, scope: str = "
     Returns:
         str: JSON with log counts grouped by service
     """
-    print(f"[Tool] get_log_count: service={service_name}, hours_back={hours_back}, scope={scope}, environment={environment}, errors_only={count_errors_only}")
+    print(
+        f"[Tool] get_log_count: service={service_name}, hours_back={hours_back}, scope={scope}, environment={environment}, errors_only={count_errors_only}"
+    )
 
     # Build filter
     filters = []
@@ -344,11 +360,7 @@ def get_log_count(service_name: str = "all", hours_back: int = 1, scope: str = "
         service = parts[-1] if parts else lg
         count = log.get("_count", 0)
         total += count
-        counts.append({
-            "service": service,
-            "log_group": lg,
-            "count": count
-        })
+        counts.append({"service": service, "log_group": lg, "count": count})
 
     result = {
         "scope": scope,
@@ -357,7 +369,7 @@ def get_log_count(service_name: str = "all", hours_back: int = 1, scope: str = "
         "time_range": f"Last {hours_back} hour(s)",
         "total_count": total,
         "services": len(counts),
-        "counts_by_service": counts
+        "counts_by_service": counts,
     }
 
     print(f"[Tool] Found {total} logs across {len(counts)} services")
@@ -388,7 +400,7 @@ def search_logs(query: str, hours_back: int = 1, limit: int = 50) -> str:
         "query": query,
         "time_range": f"Last {hours_back} hour(s)",
         "total_results": len(logs),
-        "logs": logs[:limit]
+        "logs": logs[:limit],
     }
 
     print(f"[Tool] Found {len(logs)} log entries")
@@ -463,13 +475,15 @@ def get_service_health(service_name: str = "all", environment: str = "prod") -> 
         else:
             status = "HEALTHY"
 
-        health_results.append({
-            "service": service,
-            "status": status,
-            "log_count": total,
-            "error_count": errors,
-            "error_rate_percent": round(error_rate, 2)
-        })
+        health_results.append(
+            {
+                "service": service,
+                "status": status,
+                "log_count": total,
+                "error_count": errors,
+                "error_rate_percent": round(error_rate, 2),
+            }
+        )
 
     result = {
         "environment": environment,
@@ -480,8 +494,8 @@ def get_service_health(service_name: str = "all", environment: str = "prod") -> 
             "HEALTHY": "Error rate < 5%",
             "WARNING": "Error rate 5-10%",
             "CRITICAL": "Error rate > 10%",
-            "NO_LOGS": "No logs in time window"
-        }
+            "NO_LOGS": "No logs in time window",
+        },
     }
 
     print(f"[Tool] Health check complete for {len(health_results)} services")
@@ -491,6 +505,7 @@ def get_service_health(service_name: str = "all", environment: str = "prod") -> 
 # =============================================================================
 # AGENT
 # =============================================================================
+
 
 def create_coralogix_agent():
     """Create the Coralogix log analysis agent."""
@@ -551,7 +566,7 @@ RESPONSE STYLE:
             search_logs,
             get_service_health,
         ],
-        system_prompt=system_prompt
+        system_prompt=system_prompt,
     )
 
 

@@ -14,8 +14,9 @@ The script will retry multiple times until the data access policy propagates.
 import argparse
 import json
 import time
-import urllib3
+
 import boto3
+import urllib3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
@@ -24,17 +25,12 @@ def create_index(endpoint: str, index_name: str, region: str, max_retries: int =
     """Create the OpenSearch index for Bedrock Knowledge Base."""
 
     # Remove https:// if present
-    endpoint = endpoint.replace('https://', '')
+    endpoint = endpoint.replace("https://", "")
 
     # Index mapping for Bedrock Knowledge Base (Titan v2 = 1024 dimensions)
     index_body = {
         "settings": {
-            "index": {
-                "number_of_shards": 2,
-                "number_of_replicas": 0,
-                "knn": True,
-                "knn.algo_param.ef_search": 512
-            }
+            "index": {"number_of_shards": 2, "number_of_replicas": 0, "knn": True, "knn.algo_param.ef_search": 512}
         },
         "mappings": {
             "properties": {
@@ -45,20 +41,13 @@ def create_index(endpoint: str, index_name: str, region: str, max_retries: int =
                         "engine": "faiss",
                         "space_type": "l2",
                         "name": "hnsw",
-                        "parameters": {
-                            "ef_construction": 512,
-                            "m": 16
-                        }
-                    }
+                        "parameters": {"ef_construction": 512, "m": 16},
+                    },
                 },
-                "AMAZON_BEDROCK_TEXT_CHUNK": {
-                    "type": "text"
-                },
-                "AMAZON_BEDROCK_METADATA": {
-                    "type": "text"
-                }
+                "AMAZON_BEDROCK_TEXT_CHUNK": {"type": "text"},
+                "AMAZON_BEDROCK_METADATA": {"type": "text"},
             }
-        }
+        },
     }
 
     http = urllib3.PoolManager()
@@ -74,29 +63,23 @@ def create_index(endpoint: str, index_name: str, region: str, max_retries: int =
         session = boto3.Session()
         credentials = session.get_credentials()
 
-        request = AWSRequest(method='PUT', url=url, data=body, headers={
-            'Content-Type': 'application/json',
-            'Host': endpoint
-        })
-        SigV4Auth(credentials, 'aoss', region).add_auth(request)
+        request = AWSRequest(
+            method="PUT", url=url, data=body, headers={"Content-Type": "application/json", "Host": endpoint}
+        )
+        SigV4Auth(credentials, "aoss", region).add_auth(request)
 
         try:
             print(f"Attempt {attempt + 1}/{max_retries}...")
-            response = http.request(
-                'PUT',
-                url,
-                body=body.encode('utf-8'),
-                headers=dict(request.headers)
-            )
+            response = http.request("PUT", url, body=body.encode("utf-8"), headers=dict(request.headers))
 
-            response_body = response.data.decode('utf-8')
+            response_body = response.data.decode("utf-8")
 
             if response.status in [200, 201]:
                 print(f"SUCCESS! Index '{index_name}' created.")
                 print(f"Response: {response_body}")
                 return True
 
-            elif response.status == 400 and 'resource_already_exists_exception' in response_body:
+            elif response.status == 400 and "resource_already_exists_exception" in response_body:
                 print(f"Index '{index_name}' already exists. Continuing...")
                 return True
 
@@ -127,22 +110,19 @@ def create_index(endpoint: str, index_name: str, region: str, max_retries: int =
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Create OpenSearch index for Bedrock Knowledge Base')
-    parser.add_argument('--endpoint', required=True, help='OpenSearch Serverless endpoint')
-    parser.add_argument('--index-name', default='bedrock-knowledge-base-index', help='Index name')
-    parser.add_argument('--region', default='us-east-1', help='AWS region')
-    parser.add_argument('--max-retries', type=int, default=20, help='Max retry attempts')
+    parser = argparse.ArgumentParser(description="Create OpenSearch index for Bedrock Knowledge Base")
+    parser.add_argument("--endpoint", required=True, help="OpenSearch Serverless endpoint")
+    parser.add_argument("--index-name", default="bedrock-knowledge-base-index", help="Index name")
+    parser.add_argument("--region", default="us-east-1", help="AWS region")
+    parser.add_argument("--max-retries", type=int, default=20, help="Max retry attempts")
     args = parser.parse_args()
 
     success = create_index(
-        endpoint=args.endpoint,
-        index_name=args.index_name,
-        region=args.region,
-        max_retries=args.max_retries
+        endpoint=args.endpoint, index_name=args.index_name, region=args.region, max_retries=args.max_retries
     )
 
     exit(0 if success else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -4,38 +4,41 @@ Uses AWS Bedrock Knowledge Base for semantic code search.
 
 The Knowledge Base indexes all Bitbucket repos synced to S3.
 """
+
 import os
+
 import boto3
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-AWS_REGION = os.environ.get('AWS_REGION', 'us-west-2')
-AWS_PROFILE = os.environ.get('AWS_PROFILE', 'dev')
-KNOWLEDGE_BASE_ID = os.environ.get('CODE_KB_ID', '')  # Set after terraform apply
-S3_BUCKET = os.environ.get('CODE_KB_BUCKET', '')  # Set after terraform apply
+AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
+AWS_PROFILE = os.environ.get("AWS_PROFILE", "dev")
+KNOWLEDGE_BASE_ID = os.environ.get("CODE_KB_ID", "")  # Set after terraform apply
+S3_BUCKET = os.environ.get("CODE_KB_BUCKET", "")  # Set after terraform apply
 
 # Bitbucket config (for non-KB operations)
-BITBUCKET_TOKEN = os.environ.get('CVE_BB_TOKEN', '')
-BITBUCKET_WORKSPACE = os.environ.get('BITBUCKET_WORKSPACE', 'mrrobot-labs')
-BITBUCKET_EMAIL = os.environ.get('BITBUCKET_EMAIL', 'gstarkman@nex.io')
+BITBUCKET_TOKEN = os.environ.get("CVE_BB_TOKEN", "")
+BITBUCKET_WORKSPACE = os.environ.get("BITBUCKET_WORKSPACE", "mrrobot-labs")
+BITBUCKET_EMAIL = os.environ.get("BITBUCKET_EMAIL", "gstarkman@nex.io")
 
 
 def _get_bedrock_agent_runtime():
     """Get Bedrock Agent Runtime client."""
     session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
-    return session.client('bedrock-agent-runtime')
+    return session.client("bedrock-agent-runtime")
 
 
 def _get_s3_client():
     """Get S3 client."""
     session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
-    return session.client('s3')
+    return session.client("s3")
 
 
 # ============================================================================
 # KNOWLEDGE BASE TOOLS - Semantic Code Search
 # ============================================================================
+
 
 @tool
 def search_code(query: str, num_results: int = 10) -> str:
@@ -62,39 +65,37 @@ def search_code(query: str, num_results: int = 10) -> str:
 
         response = client.retrieve(
             knowledgeBaseId=KNOWLEDGE_BASE_ID,
-            retrievalQuery={'text': query},
-            retrievalConfiguration={
-                'vectorSearchConfiguration': {
-                    'numberOfResults': num_results
-                }
-            }
+            retrievalQuery={"text": query},
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": num_results}},
         )
 
         results = []
-        for i, result in enumerate(response.get('retrievalResults', []), 1):
-            content = result.get('content', {}).get('text', '')
-            location = result.get('location', {})
-            s3_uri = location.get('s3Location', {}).get('uri', '')
-            score = result.get('score', 0)
+        for i, result in enumerate(response.get("retrievalResults", []), 1):
+            content = result.get("content", {}).get("text", "")
+            location = result.get("location", {})
+            s3_uri = location.get("s3Location", {}).get("uri", "")
+            score = result.get("score", 0)
 
             # Extract repo/file from S3 URI: s3://bucket/repos/repo-name/path/to/file
             file_info = "Unknown"
             if s3_uri:
-                parts = s3_uri.replace('s3://', '').split('/')
+                parts = s3_uri.replace("s3://", "").split("/")
                 if len(parts) > 2:
-                    repo = parts[2] if len(parts) > 2 else ''
-                    file_path = '/'.join(parts[3:]) if len(parts) > 3 else ''
+                    repo = parts[2] if len(parts) > 2 else ""
+                    file_path = "/".join(parts[3:]) if len(parts) > 3 else ""
                     file_info = f"{repo}/{file_path}"
 
             # Truncate content for readability
-            preview = content[:500] + '...' if len(content) > 500 else content
+            preview = content[:500] + "..." if len(content) > 500 else content
 
-            results.append(f"""
+            results.append(
+                f"""
 --- Result {i} (score: {score:.2f}) ---
 File: {file_info}
 Content:
 {preview}
-""")
+"""
+            )
 
         if not results:
             return f"No code found matching: '{query}'"
@@ -123,26 +124,21 @@ def search_code_in_repo(query: str, repo_name: str, num_results: int = 5) -> str
         # Use filter to restrict to specific repo
         response = client.retrieve(
             knowledgeBaseId=KNOWLEDGE_BASE_ID,
-            retrievalQuery={'text': f"{query} in {repo_name}"},
+            retrievalQuery={"text": f"{query} in {repo_name}"},
             retrievalConfiguration={
-                'vectorSearchConfiguration': {
-                    'numberOfResults': num_results * 2,  # Get more, filter later
-                    'filter': {
-                        'equals': {
-                            'key': 'repo_name',
-                            'value': repo_name
-                        }
-                    }
+                "vectorSearchConfiguration": {
+                    "numberOfResults": num_results * 2,  # Get more, filter later
+                    "filter": {"equals": {"key": "repo_name", "value": repo_name}},
                 }
-            }
+            },
         )
 
         results = []
-        for i, result in enumerate(response.get('retrievalResults', []), 1):
-            content = result.get('content', {}).get('text', '')
-            location = result.get('location', {})
-            s3_uri = location.get('s3Location', {}).get('uri', '')
-            score = result.get('score', 0)
+        for i, result in enumerate(response.get("retrievalResults", []), 1):
+            content = result.get("content", {}).get("text", "")
+            location = result.get("location", {})
+            s3_uri = location.get("s3Location", {}).get("uri", "")
+            score = result.get("score", 0)
 
             # Filter by repo name in URI if filter didn't work
             if repo_name.lower() not in s3_uri.lower():
@@ -151,19 +147,21 @@ def search_code_in_repo(query: str, repo_name: str, num_results: int = 5) -> str
             # Extract file path
             file_info = "Unknown"
             if s3_uri:
-                parts = s3_uri.replace('s3://', '').split('/')
+                parts = s3_uri.replace("s3://", "").split("/")
                 if len(parts) > 3:
-                    file_path = '/'.join(parts[3:])
+                    file_path = "/".join(parts[3:])
                     file_info = file_path
 
-            preview = content[:500] + '...' if len(content) > 500 else content
+            preview = content[:500] + "..." if len(content) > 500 else content
 
-            results.append(f"""
+            results.append(
+                f"""
 --- Result {i} (score: {score:.2f}) ---
 File: {file_info}
 Content:
 {preview}
-""")
+"""
+            )
 
             if len(results) >= num_results:
                 break
@@ -200,35 +198,31 @@ def ask_about_code(question: str) -> str:
         client = _get_bedrock_agent_runtime()
 
         response = client.retrieve_and_generate(
-            input={'text': question},
+            input={"text": question},
             retrieveAndGenerateConfiguration={
-                'type': 'KNOWLEDGE_BASE',
-                'knowledgeBaseConfiguration': {
-                    'knowledgeBaseId': KNOWLEDGE_BASE_ID,
-                    'modelArn': f'arn:aws:bedrock:{AWS_REGION}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0',
-                    'retrievalConfiguration': {
-                        'vectorSearchConfiguration': {
-                            'numberOfResults': 5
-                        }
-                    }
-                }
-            }
+                "type": "KNOWLEDGE_BASE",
+                "knowledgeBaseConfiguration": {
+                    "knowledgeBaseId": KNOWLEDGE_BASE_ID,
+                    "modelArn": f"arn:aws:bedrock:{AWS_REGION}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
+                    "retrievalConfiguration": {"vectorSearchConfiguration": {"numberOfResults": 5}},
+                },
+            },
         )
 
-        output = response.get('output', {}).get('text', 'No answer generated')
+        output = response.get("output", {}).get("text", "No answer generated")
 
         # Include citations
-        citations = response.get('citations', [])
+        citations = response.get("citations", [])
         sources = []
         for citation in citations:
-            for ref in citation.get('retrievedReferences', []):
-                location = ref.get('location', {})
-                s3_uri = location.get('s3Location', {}).get('uri', '')
+            for ref in citation.get("retrievedReferences", []):
+                location = ref.get("location", {})
+                s3_uri = location.get("s3Location", {}).get("uri", "")
                 if s3_uri:
-                    parts = s3_uri.replace('s3://', '').split('/')
+                    parts = s3_uri.replace("s3://", "").split("/")
                     if len(parts) > 2:
                         repo = parts[2]
-                        file_path = '/'.join(parts[3:]) if len(parts) > 3 else ''
+                        file_path = "/".join(parts[3:]) if len(parts) > 3 else ""
                         sources.append(f"  - {repo}/{file_path}")
 
         result = f"Answer:\n{output}"
@@ -256,18 +250,18 @@ def find_file(filename: str, num_results: int = 10) -> str:
         s3 = _get_s3_client()
 
         # List objects in the bucket under repos/
-        paginator = s3.get_paginator('list_objects_v2')
+        paginator = s3.get_paginator("list_objects_v2")
 
         matches = []
-        for page in paginator.paginate(Bucket=S3_BUCKET, Prefix='repos/'):
-            for obj in page.get('Contents', []):
-                key = obj['Key']
+        for page in paginator.paginate(Bucket=S3_BUCKET, Prefix="repos/"):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
                 if filename.lower() in key.lower():
                     # Extract repo and path
-                    parts = key.split('/')
+                    parts = key.split("/")
                     if len(parts) > 2:
                         repo = parts[1]
-                        file_path = '/'.join(parts[2:])
+                        file_path = "/".join(parts[2:])
                         matches.append(f"{repo}/{file_path}")
 
                 if len(matches) >= num_results:
@@ -295,15 +289,11 @@ def list_indexed_repositories() -> str:
         s3 = _get_s3_client()
 
         # List top-level "directories" under repos/
-        response = s3.list_objects_v2(
-            Bucket=S3_BUCKET,
-            Prefix='repos/',
-            Delimiter='/'
-        )
+        response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix="repos/", Delimiter="/")
 
         repos = []
-        for prefix in response.get('CommonPrefixes', []):
-            repo_name = prefix['Prefix'].replace('repos/', '').rstrip('/')
+        for prefix in response.get("CommonPrefixes", []):
+            repo_name = prefix["Prefix"].replace("repos/", "").rstrip("/")
             if repo_name:
                 repos.append(repo_name)
 
@@ -337,10 +327,10 @@ def get_knowledge_base_status() -> str:
     # Try to get KB info
     try:
         session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
-        client = session.client('bedrock-agent')
+        client = session.client("bedrock-agent")
 
         kb_response = client.get_knowledge_base(knowledgeBaseId=KNOWLEDGE_BASE_ID)
-        kb = kb_response.get('knowledgeBase', {})
+        kb = kb_response.get("knowledgeBase", {})
 
         status_info.append(f"\nKnowledge Base Status:")
         status_info.append(f"  Name: {kb.get('name', 'N/A')}")
@@ -354,8 +344,8 @@ def get_knowledge_base_status() -> str:
     if S3_BUCKET:
         try:
             s3 = _get_s3_client()
-            response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix='repos/', MaxKeys=1)
-            count = response.get('KeyCount', 0)
+            response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix="repos/", MaxKeys=1)
+            count = response.get("KeyCount", 0)
             status_info.append(f"\nS3 Content: {'Files present' if count > 0 else 'Empty - run sync script'}")
         except Exception as e:
             status_info.append(f"\nCould not check S3: {e}")
@@ -366,6 +356,7 @@ def get_knowledge_base_status() -> str:
 # ============================================================================
 # BITBUCKET API TOOLS - Direct API access for PRs, Pipelines
 # ============================================================================
+
 
 @tool
 def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20) -> str:
@@ -388,25 +379,25 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
         else:
             url = f"https://api.bitbucket.org/2.0/pullrequests/{BITBUCKET_WORKSPACE}"
 
-        params = {'state': state, 'pagelen': limit}
+        params = {"state": state, "pagelen": limit}
         response = requests.get(url, auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN), params=params)
 
         if response.status_code != 200:
             return f"Error fetching PRs: {response.status_code}"
 
         data = response.json()
-        prs = data.get('values', [])
+        prs = data.get("values", [])
 
         if not prs:
             return f"No {state} pull requests found"
 
         results = [f"Pull Requests ({state}):"]
         for pr in prs[:limit]:
-            title = pr.get('title', 'No title')
-            author = pr.get('author', {}).get('display_name', 'Unknown')
-            created = pr.get('created_on', '')[:10]
-            pr_id = pr.get('id', '')
-            repo = pr.get('destination', {}).get('repository', {}).get('name', '')
+            title = pr.get("title", "No title")
+            author = pr.get("author", {}).get("display_name", "Unknown")
+            created = pr.get("created_on", "")[:10]
+            pr_id = pr.get("id", "")
+            repo = pr.get("destination", {}).get("repository", {}).get("name", "")
 
             results.append(f"  [{repo}] #{pr_id}: {title}")
             results.append(f"      Author: {author} | Created: {created}")
@@ -432,7 +423,7 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> str:
 
     try:
         url = f"https://api.bitbucket.org/2.0/repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pipelines/"
-        params = {'pagelen': limit, 'sort': '-created_on'}
+        params = {"pagelen": limit, "sort": "-created_on"}
 
         response = requests.get(url, auth=(BITBUCKET_EMAIL, BITBUCKET_TOKEN), params=params)
 
@@ -440,24 +431,24 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> str:
             return f"Error fetching pipelines: {response.status_code}"
 
         data = response.json()
-        pipelines = data.get('values', [])
+        pipelines = data.get("values", [])
 
         if not pipelines:
             return f"No pipelines found for {repo_slug}"
 
         results = [f"Recent pipelines for {repo_slug}:"]
         for pipe in pipelines:
-            state = pipe.get('state', {}).get('name', 'Unknown')
-            result = pipe.get('state', {}).get('result', {}).get('name', '')
-            branch = pipe.get('target', {}).get('ref_name', 'N/A')
-            created = pipe.get('created_on', '')[:16].replace('T', ' ')
-            build_num = pipe.get('build_number', '')
+            state = pipe.get("state", {}).get("name", "Unknown")
+            result = pipe.get("state", {}).get("result", {}).get("name", "")
+            branch = pipe.get("target", {}).get("ref_name", "N/A")
+            created = pipe.get("created_on", "")[:16].replace("T", " ")
+            build_num = pipe.get("build_number", "")
 
             status = f"{state}"
             if result:
                 status = result
 
-            emoji = {'SUCCESSFUL': 'OK', 'FAILED': 'FAIL', 'RUNNING': 'RUN'}.get(status, status)
+            emoji = {"SUCCESSFUL": "OK", "FAILED": "FAIL", "RUNNING": "RUN"}.get(status, status)
 
             results.append(f"  #{build_num} [{emoji}] {branch} - {created}")
 
@@ -522,15 +513,10 @@ Example interactions:
 - "Find serverless configs" -> find_file("serverless.yml")
 """
 
+
 def create_bitbucket_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=BITBUCKET_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=BITBUCKET_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 bitbucket_agent = None  # Lazy initialization

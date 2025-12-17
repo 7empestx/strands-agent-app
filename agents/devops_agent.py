@@ -4,8 +4,10 @@ READ-ONLY: This agent only reads/queries data, never modifies anything.
 
 Coordinates specialized agents to answer complex cross-system queries.
 """
+
 import os
 import sys
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 
@@ -18,31 +20,35 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _agents = {}
 
+
 def get_coralogix_agent():
     """Get or create the Coralogix agent."""
-    if 'coralogix' not in _agents:
+    if "coralogix" not in _agents:
         try:
             from coralogix_agent import create_coralogix_agent
-            _agents['coralogix'] = create_coralogix_agent()
+
+            _agents["coralogix"] = create_coralogix_agent()
         except Exception as e:
             return None, f"Failed to load Coralogix agent: {e}"
-    return _agents.get('coralogix'), None
+    return _agents.get("coralogix"), None
 
 
 def get_bitbucket_agent():
     """Get or create the Bitbucket/Code Search agent."""
-    if 'bitbucket' not in _agents:
+    if "bitbucket" not in _agents:
         try:
             from agents.bitbucket_agent import create_bitbucket_agent
-            _agents['bitbucket'] = create_bitbucket_agent()
+
+            _agents["bitbucket"] = create_bitbucket_agent()
         except Exception as e:
             return None, f"Failed to load Bitbucket agent: {e}"
-    return _agents.get('bitbucket'), None
+    return _agents.get("bitbucket"), None
 
 
 # ============================================================================
 # READ-ONLY TOOLS
 # ============================================================================
+
 
 @tool
 def query_coralogix(question: str) -> str:
@@ -66,7 +72,7 @@ def query_coralogix(question: str) -> str:
     try:
         result = agent(question)
         # Extract the text response
-        if hasattr(result, 'message'):
+        if hasattr(result, "message"):
             return str(result.message)
         return str(result)
     except Exception as e:
@@ -100,7 +106,7 @@ def search_code(question: str) -> str:
 
     try:
         result = agent(question)
-        if hasattr(result, 'message'):
+        if hasattr(result, "message"):
             return str(result.message)
         return str(result)
     except Exception as e:
@@ -177,7 +183,7 @@ def get_system_overview() -> str:
     if agent:
         try:
             health_result = agent("Give me a quick health summary of prod services - just error counts")
-            if hasattr(health_result, 'message'):
+            if hasattr(health_result, "message"):
                 results.append(f"LOG HEALTH:\n{health_result.message}")
             else:
                 results.append(f"LOG HEALTH:\n{health_result}")
@@ -208,14 +214,14 @@ def investigate_service(service_name: str, environment: str = "prod") -> str:
         try:
             # Get recent errors
             error_result = coralogix_agent(f"Get recent errors for {service_name} in {environment} environment")
-            if hasattr(error_result, 'message'):
+            if hasattr(error_result, "message"):
                 results.append(f"RECENT ERRORS:\n{error_result.message}")
             else:
                 results.append(f"RECENT ERRORS:\n{error_result}")
 
             # Get health
             health_result = coralogix_agent(f"What's the health of {service_name} in {environment}?")
-            if hasattr(health_result, 'message'):
+            if hasattr(health_result, "message"):
                 results.append(f"\nHEALTH STATUS:\n{health_result.message}")
             else:
                 results.append(f"\nHEALTH STATUS:\n{health_result}")
@@ -230,7 +236,7 @@ def investigate_service(service_name: str, environment: str = "prod") -> str:
     if bitbucket_agent:
         try:
             code_result = bitbucket_agent(f"Search for configuration and key files in {service_name}")
-            if hasattr(code_result, 'message'):
+            if hasattr(code_result, "message"):
                 results.append(f"\nCODE ANALYSIS:\n{code_result.message}")
             else:
                 results.append(f"\nCODE ANALYSIS:\n{code_result}")
@@ -259,7 +265,7 @@ def search_across_systems(query: str) -> str:
     if coralogix_agent:
         try:
             log_result = coralogix_agent(f"Search logs for '{query}' in the last 4 hours")
-            if hasattr(log_result, 'message'):
+            if hasattr(log_result, "message"):
                 results.append(f"CORALOGIX LOGS:\n{log_result.message}")
             else:
                 results.append(f"CORALOGIX LOGS:\n{log_result}")
@@ -273,7 +279,7 @@ def search_across_systems(query: str) -> str:
     if bitbucket_agent:
         try:
             code_result = bitbucket_agent(f"Search code for '{query}'")
-            if hasattr(code_result, 'message'):
+            if hasattr(code_result, "message"):
                 results.append(f"\nCODE SEARCH:\n{code_result.message}")
             else:
                 results.append(f"\nCODE SEARCH:\n{code_result}")
@@ -297,10 +303,10 @@ def compare_environments(service_name: str) -> str:
 
     agent, error = get_coralogix_agent()
     if agent:
-        for env in ['prod', 'dev', 'staging']:
+        for env in ["prod", "dev", "staging"]:
             try:
                 result = agent(f"Get error count and health for {service_name} in {env} environment in the last hour")
-                if hasattr(result, 'message'):
+                if hasattr(result, "message"):
                     results.append(f"{env.upper()}:\n{result.message}\n")
                 else:
                     results.append(f"{env.upper()}:\n{result}\n")
@@ -371,15 +377,8 @@ Example interactions:
 
 def create_devops_agent():
     """Create and return a DevOps orchestrator agent."""
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=DEVOPS_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=DEVOPS_TOOLS, system_prompt=SYSTEM_PROMPT)
 
 
 # For direct import

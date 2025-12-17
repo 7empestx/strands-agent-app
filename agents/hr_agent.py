@@ -2,16 +2,19 @@
 HR Agent - Human Resources assistant
 Tools for HR policies, employee information, and HR-related queries.
 """
+
 import os
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-HR_SYSTEM_URL = os.environ.get('HR_SYSTEM_URL', '')
+HR_SYSTEM_URL = os.environ.get("HR_SYSTEM_URL", "")
 
 # ============================================================================
 # TOOLS
 # ============================================================================
+
 
 @tool
 def search_policies(query: str, category: str = "all") -> str:
@@ -139,16 +142,11 @@ IMPORTANT:
 - Encourage employees to check with HR for specific situations
 """
 
+
 # Create agent
 def create_hr_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=HR_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=HR_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 hr_agent = None  # Lazy initialization

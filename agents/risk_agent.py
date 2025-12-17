@@ -2,19 +2,21 @@
 Risk Agent - Underwriting and risk assessment
 Connects to: mrrobot-risk-rest, emvio-underwriting-service
 """
+
 import os
 
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-RISK_SERVICE_URL = os.environ.get('MRROBOT_RISK_URL', 'https://risk.mrrobotpay.com')
-UNDERWRITING_SERVICE_URL = os.environ.get('UNDERWRITING_URL', 'https://underwriting.mrrobotpay.com')
-API_KEY = os.environ.get('MRROBOT_INTERNAL_API_KEY', '')
+RISK_SERVICE_URL = os.environ.get("MRROBOT_RISK_URL", "https://risk.mrrobotpay.com")
+UNDERWRITING_SERVICE_URL = os.environ.get("UNDERWRITING_URL", "https://underwriting.mrrobotpay.com")
+API_KEY = os.environ.get("MRROBOT_INTERNAL_API_KEY", "")
 
 # ============================================================================
 # MRROBOT-RISK-REST TOOLS
 # ============================================================================
+
 
 @tool
 def get_risk_assessment(merchant_id: str) -> str:
@@ -81,6 +83,7 @@ def get_fraud_alerts(merchant_id: str = "", status: str = "active") -> str:
 # ============================================================================
 # EMVIO-UNDERWRITING-SERVICE TOOLS
 # ============================================================================
+
 
 @tool
 def get_underwriting_status(application_id: str) -> str:
@@ -216,16 +219,11 @@ RISK SCORE INTERPRETATION:
 Always explain risk factors clearly and recommend next steps.
 """
 
+
 # Create agent
 def create_risk_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=RISK_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=RISK_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 risk_agent = None  # Lazy initialization

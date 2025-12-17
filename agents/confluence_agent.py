@@ -2,17 +2,20 @@
 Confluence Agent - Documentation and knowledge base
 Tools for searching and retrieving Confluence documentation.
 """
+
 import os
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-CONFLUENCE_URL = os.environ.get('CONFLUENCE_URL', 'https://mrrobot.atlassian.net')
-CONFLUENCE_TOKEN = os.environ.get('CONFLUENCE_TOKEN', '')
+CONFLUENCE_URL = os.environ.get("CONFLUENCE_URL", "https://mrrobot.atlassian.net")
+CONFLUENCE_TOKEN = os.environ.get("CONFLUENCE_TOKEN", "")
 
 # ============================================================================
 # TOOLS
 # ============================================================================
+
 
 @tool
 def search_confluence(query: str, space_key: str = "", limit: int = 20) -> str:
@@ -133,16 +136,11 @@ COMMON SPACES:
 When searching, try multiple approaches if the first doesn't find results.
 """
 
+
 # Create agent
 def create_confluence_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=CONFLUENCE_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=CONFLUENCE_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 confluence_agent = None  # Lazy initialization

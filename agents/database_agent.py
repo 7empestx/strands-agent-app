@@ -2,18 +2,21 @@
 Database Agent - Database queries and health monitoring
 Tools for querying Core DB, Cast DB, and other databases.
 """
+
 import os
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-CORE_DB_HOST = os.environ.get('CORE_DB_HOST', '')
-CAST_DB_HOST = os.environ.get('CAST_DB_HOST', '')
-ANALYTICS_DB_HOST = os.environ.get('ANALYTICS_DB_HOST', '')
+CORE_DB_HOST = os.environ.get("CORE_DB_HOST", "")
+CAST_DB_HOST = os.environ.get("CAST_DB_HOST", "")
+ANALYTICS_DB_HOST = os.environ.get("ANALYTICS_DB_HOST", "")
 
 # ============================================================================
 # TOOLS
 # ============================================================================
+
 
 @tool
 def list_databases() -> str:
@@ -182,16 +185,11 @@ COMMON QUERIES:
 - Chargeback rates
 """
 
+
 # Create agent
 def create_database_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=DATABASE_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=DATABASE_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 database_agent = None  # Lazy initialization

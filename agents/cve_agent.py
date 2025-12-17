@@ -4,10 +4,9 @@ Lookup and analyze security vulnerabilities using Strands SDK + Claude Sonnet on
 """
 
 import json
-import pandas as pd
 import os
 
-
+import pandas as pd
 from strands import Agent, tool
 
 # Configuration
@@ -19,7 +18,7 @@ def load_cve_data():
     """Load CVE data from local JSON files."""
     filepath = os.path.join(DATA_DIR, "cves.json")
     if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             return json.load(f)
     return []
 
@@ -50,7 +49,9 @@ def lookup_cve(cve_id: str) -> str:
             print(f"[Tool] Found: {cve_id} - {cve['severity']}")
             return json.dumps(cve, indent=2)
 
-    return json.dumps({"error": f"CVE {cve_id} not found in database", "suggestion": "Try searching by product or vendor"})
+    return json.dumps(
+        {"error": f"CVE {cve_id} not found in database", "suggestion": "Try searching by product or vendor"}
+    )
 
 
 @tool
@@ -72,26 +73,30 @@ def search_cves_by_product(product: str) -> str:
         # Check in affected_products
         for prod in cve.get("affected_products", []):
             if product_lower in prod.lower():
-                matches.append({
-                    "cve_id": cve["cve_id"],
-                    "severity": cve["severity"],
-                    "cvss_score": cve["cvss_score"],
-                    "description": cve["description"][:200] + "...",
-                    "affected_product": prod,
-                    "patch_available": cve.get("patch_available", False)
-                })
+                matches.append(
+                    {
+                        "cve_id": cve["cve_id"],
+                        "severity": cve["severity"],
+                        "cvss_score": cve["cvss_score"],
+                        "description": cve["description"][:200] + "...",
+                        "affected_product": prod,
+                        "patch_available": cve.get("patch_available", False),
+                    }
+                )
                 break
 
         # Also check description
         if not any(m["cve_id"] == cve["cve_id"] for m in matches):
             if product_lower in cve.get("description", "").lower():
-                matches.append({
-                    "cve_id": cve["cve_id"],
-                    "severity": cve["severity"],
-                    "cvss_score": cve["cvss_score"],
-                    "description": cve["description"][:200] + "...",
-                    "patch_available": cve.get("patch_available", False)
-                })
+                matches.append(
+                    {
+                        "cve_id": cve["cve_id"],
+                        "severity": cve["severity"],
+                        "cvss_score": cve["cvss_score"],
+                        "description": cve["description"][:200] + "...",
+                        "patch_available": cve.get("patch_available", False),
+                    }
+                )
 
     print(f"[Tool] Found {len(matches)} CVEs for '{product}'")
 
@@ -117,14 +122,16 @@ def search_cves_by_severity(severity: str) -> str:
 
     for cve in CVE_DATABASE:
         if cve.get("severity") == severity:
-            matches.append({
-                "cve_id": cve["cve_id"],
-                "cvss_score": cve["cvss_score"],
-                "description": cve["description"][:150] + "...",
-                "affected_vendors": cve.get("affected_vendors", []),
-                "published_date": cve.get("published_date"),
-                "exploit_available": cve.get("exploit_available", False)
-            })
+            matches.append(
+                {
+                    "cve_id": cve["cve_id"],
+                    "cvss_score": cve["cvss_score"],
+                    "description": cve["description"][:150] + "...",
+                    "affected_vendors": cve.get("affected_vendors", []),
+                    "published_date": cve.get("published_date"),
+                    "exploit_available": cve.get("exploit_available", False),
+                }
+            )
 
     # Sort by CVSS score descending
     matches.sort(key=lambda x: x["cvss_score"], reverse=True)
@@ -154,7 +161,7 @@ def get_cve_stats() -> str:
         "max_cvss_score": float(df["cvss_score"].max()),
         "exploits_available": int(df["exploit_available"].sum()),
         "patches_available": int(df["patch_available"].sum()),
-        "recent_cves": df.nlargest(5, "published_date")[["cve_id", "severity", "published_date"]].to_dict("records")
+        "recent_cves": df.nlargest(5, "published_date")[["cve_id", "severity", "published_date"]].to_dict("records"),
     }
 
     return json.dumps(stats, indent=2)
@@ -186,7 +193,7 @@ def get_remediation(cve_id: str) -> str:
                 "affected_products": cve.get("affected_products", []),
                 "references": cve.get("references", []),
                 "cwe_id": cve.get("cwe_id"),
-                "cwe_name": cve.get("cwe_name")
+                "cwe_name": cve.get("cwe_name"),
             }
             return json.dumps(remediation, indent=2)
 
@@ -215,28 +222,25 @@ def check_software_vulnerabilities(software_list: str) -> str:
         for cve in CVE_DATABASE:
             for prod in cve.get("affected_products", []):
                 if software_lower in prod.lower():
-                    found_cves.append({
-                        "cve_id": cve["cve_id"],
-                        "severity": cve["severity"],
-                        "cvss_score": cve["cvss_score"],
-                        "patch_available": cve.get("patch_available", False)
-                    })
+                    found_cves.append(
+                        {
+                            "cve_id": cve["cve_id"],
+                            "severity": cve["severity"],
+                            "cvss_score": cve["cvss_score"],
+                            "patch_available": cve.get("patch_available", False),
+                        }
+                    )
                     break
 
-        results.append({
-            "software": software,
-            "vulnerable": len(found_cves) > 0,
-            "cve_count": len(found_cves),
-            "cves": found_cves
-        })
+        results.append(
+            {"software": software, "vulnerable": len(found_cves) > 0, "cve_count": len(found_cves), "cves": found_cves}
+        )
 
     vulnerable_count = sum(1 for r in results if r["vulnerable"])
 
-    return json.dumps({
-        "software_checked": len(results),
-        "vulnerable_software": vulnerable_count,
-        "results": results
-    }, indent=2)
+    return json.dumps(
+        {"software_checked": len(results), "vulnerable_software": vulnerable_count, "results": results}, indent=2
+    )
 
 
 def create_cve_agent():
@@ -283,9 +287,9 @@ Never downplay security risks. If something is critical, emphasize urgency."""
             search_cves_by_severity,
             get_cve_stats,
             get_remediation,
-            check_software_vulnerabilities
+            check_software_vulnerabilities,
         ],
-        system_prompt=system_prompt
+        system_prompt=system_prompt,
     )
 
 

@@ -4,9 +4,9 @@ Uses Strands SDK with Claude Sonnet on Amazon Bedrock
 """
 
 import json
-import pandas as pd
 import os
 
+import pandas as pd
 from strands import Agent, tool
 
 # Configuration
@@ -26,7 +26,7 @@ def load_merchant_data():
     for name, filename in data_files.items():
         filepath = os.path.join(DATA_DIR, filename)
         if os.path.exists(filepath):
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 datasets[name] = json.load(f)
 
     return datasets
@@ -57,31 +57,31 @@ def get_transaction_summary(time_period: str = "week", merchant_id: str = "merch
             return json.dumps({"error": "No transaction data available"})
 
         # Filter by merchant
-        df = df[df['merchant_id'] == merchant_id]
+        df = df[df["merchant_id"] == merchant_id]
 
         # Calculate metrics
-        sales = df[df['transaction_type'] == 'sale']
-        settled = sales[sales['status'] == 'settled']
-        declined = sales[sales['status'] == 'declined']
-        refunds = df[df['transaction_type'] == 'refund']
-        chargebacks = df[df['status'] == 'chargeback']
+        sales = df[df["transaction_type"] == "sale"]
+        settled = sales[sales["status"] == "settled"]
+        declined = sales[sales["status"] == "declined"]
+        refunds = df[df["transaction_type"] == "refund"]
+        chargebacks = df[df["status"] == "chargeback"]
 
         summary = {
             "period": time_period,
             "total_transactions": len(df),
             "total_sales": len(sales),
-            "gross_volume": float(sales['amount'].sum()),
-            "settled_volume": float(settled['amount'].sum()),
+            "gross_volume": float(sales["amount"].sum()),
+            "settled_volume": float(settled["amount"].sum()),
             "settled_count": len(settled),
             "declined_count": len(declined),
             "decline_rate": f"{(len(declined) / len(sales) * 100):.1f}%" if len(sales) > 0 else "0%",
             "refund_count": len(refunds),
-            "refund_volume": float(refunds['amount'].sum()),
+            "refund_volume": float(refunds["amount"].sum()),
             "chargeback_count": len(chargebacks),
-            "total_fees": float(df['fee'].sum()),
-            "net_volume": float(df['net_amount'].sum()),
-            "average_transaction": float(settled['amount'].mean()) if len(settled) > 0 else 0,
-            "largest_transaction": float(settled['amount'].max()) if len(settled) > 0 else 0
+            "total_fees": float(df["fee"].sum()),
+            "net_volume": float(df["net_amount"].sum()),
+            "average_transaction": float(settled["amount"].mean()) if len(settled) > 0 else 0,
+            "largest_transaction": float(settled["amount"].max()) if len(settled) > 0 else 0,
         }
 
         print(f"[Tool] Summary: {summary['total_transactions']} transactions, ${summary['gross_volume']:.2f} volume")
@@ -112,10 +112,10 @@ def get_transactions_by_status(status: str, merchant_id: str = "merch_100") -> s
             return json.dumps({"error": "No transaction data available"})
 
         # Filter
-        df = df[df['merchant_id'] == merchant_id]
-        df = df[df['status'] == status]
+        df = df[df["merchant_id"] == merchant_id]
+        df = df[df["status"] == status]
 
-        results = df.to_dict('records')
+        results = df.to_dict("records")
         print(f"[Tool] Found {len(results)} {status} transactions")
         return json.dumps(results, indent=2, default=str)
 
@@ -142,22 +142,22 @@ def get_settlement_details(merchant_id: str = "merch_100") -> str:
         if df.empty:
             return json.dumps({"error": "No settlement data available"})
 
-        df = df[df['merchant_id'] == merchant_id]
+        df = df[df["merchant_id"] == merchant_id]
 
         # Add summary stats
-        total_deposited = df[df['status'] == 'deposited']['net_amount'].sum()
-        pending = df[df['status'] == 'pending']['net_amount'].sum()
+        total_deposited = df[df["status"] == "deposited"]["net_amount"].sum()
+        pending = df[df["status"] == "pending"]["net_amount"].sum()
 
         result = {
-            "settlements": df.to_dict('records'),
+            "settlements": df.to_dict("records"),
             "summary": {
                 "total_deposited": float(total_deposited),
                 "pending_amount": float(pending),
                 "total_settlements": len(df),
-                "total_fees_paid": float(df['total_fees'].sum()),
-                "total_chargebacks": float(df['chargebacks'].sum()),
-                "total_refunds": float(df['refunds'].sum())
-            }
+                "total_fees_paid": float(df["total_fees"].sum()),
+                "total_chargebacks": float(df["chargebacks"].sum()),
+                "total_refunds": float(df["refunds"].sum()),
+            },
         }
 
         print(f"[Tool] Found {len(df)} settlements, ${total_deposited:.2f} deposited")
@@ -186,20 +186,20 @@ def analyze_card_types(merchant_id: str = "merch_100") -> str:
         if df.empty:
             return json.dumps({"error": "No transaction data available"})
 
-        df = df[df['merchant_id'] == merchant_id]
-        sales = df[df['transaction_type'] == 'sale']
+        df = df[df["merchant_id"] == merchant_id]
+        sales = df[df["transaction_type"] == "sale"]
 
         breakdown = {}
-        for card_type in sales['card_type'].unique():
-            card_txns = sales[sales['card_type'] == card_type]
-            settled = card_txns[card_txns['status'] == 'settled']
+        for card_type in sales["card_type"].unique():
+            card_txns = sales[sales["card_type"] == card_type]
+            settled = card_txns[card_txns["status"] == "settled"]
             breakdown[card_type] = {
                 "transaction_count": len(card_txns),
-                "volume": float(card_txns['amount'].sum()),
-                "settled_volume": float(settled['amount'].sum()),
-                "fees": float(settled['fee'].sum()),
-                "avg_transaction": float(card_txns['amount'].mean()),
-                "percentage_of_volume": f"{(card_txns['amount'].sum() / sales['amount'].sum() * 100):.1f}%"
+                "volume": float(card_txns["amount"].sum()),
+                "settled_volume": float(settled["amount"].sum()),
+                "fees": float(settled["fee"].sum()),
+                "avg_transaction": float(card_txns["amount"].mean()),
+                "percentage_of_volume": f"{(card_txns['amount'].sum() / sales['amount'].sum() * 100):.1f}%",
             }
 
         print(f"[Tool] Analyzed {len(breakdown)} card types")
@@ -228,29 +228,26 @@ def get_decline_analysis(merchant_id: str = "merch_100") -> str:
         if df.empty:
             return json.dumps({"error": "No transaction data available"})
 
-        df = df[df['merchant_id'] == merchant_id]
-        declines = df[df['status'] == 'declined']
+        df = df[df["merchant_id"] == merchant_id]
+        declines = df[df["status"] == "declined"]
 
         if declines.empty:
             return json.dumps({"message": "No declined transactions found", "decline_count": 0})
 
         # Group by reason
         reasons = {}
-        if 'decline_reason' in declines.columns:
-            for reason in declines['decline_reason'].unique():
-                reason_txns = declines[declines['decline_reason'] == reason]
-                reasons[reason] = {
-                    "count": len(reason_txns),
-                    "total_amount": float(reason_txns['amount'].sum())
-                }
+        if "decline_reason" in declines.columns:
+            for reason in declines["decline_reason"].unique():
+                reason_txns = declines[declines["decline_reason"] == reason]
+                reasons[reason] = {"count": len(reason_txns), "total_amount": float(reason_txns["amount"].sum())}
 
-        total_attempted = len(df[df['transaction_type'] == 'sale'])
+        total_attempted = len(df[df["transaction_type"] == "sale"])
         result = {
             "total_declines": len(declines),
             "decline_rate": f"{(len(declines) / total_attempted * 100):.1f}%" if total_attempted > 0 else "0%",
-            "declined_volume": float(declines['amount'].sum()),
+            "declined_volume": float(declines["amount"].sum()),
             "reasons": reasons,
-            "declined_transactions": declines.to_dict('records')
+            "declined_transactions": declines.to_dict("records"),
         }
 
         print(f"[Tool] Found {len(declines)} declines")
@@ -283,13 +280,13 @@ def compare_periods(period1: str, period2: str, merchant_id: str = "merch_100") 
             "transaction_count": {"period1": 20, "period2": 18, "change": "+11.1%"},
             "average_transaction": {"period1": 175.00, "period2": 177.78, "change": "-1.6%"},
             "decline_rate": {"period1": "10.0%", "period2": "12.0%", "change": "-2.0pp"},
-            "fees": {"period1": 101.50, "period2": 92.80, "change": "+9.4%"}
+            "fees": {"period1": 101.50, "period2": 92.80, "change": "+9.4%"},
         },
         "insights": [
             "Volume increased 9.4% compared to previous period",
             "Decline rate improved from 12% to 10%",
-            "Average transaction size remained stable"
-        ]
+            "Average transaction size remained stable",
+        ],
     }
 
     return json.dumps(comparison, indent=2)
@@ -341,9 +338,9 @@ Always use the tools to get real data before answering. Don't make up numbers.""
             get_settlement_details,
             analyze_card_types,
             get_decline_analysis,
-            compare_periods
+            compare_periods,
         ],
-        system_prompt=system_prompt
+        system_prompt=system_prompt,
     )
 
 

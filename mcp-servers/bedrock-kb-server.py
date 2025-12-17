@@ -6,13 +6,13 @@ Supports both stdio (local) and SSE (remote) transports.
 Local usage:  python bedrock-kb-server.py
 Remote usage: python bedrock-kb-server.py --sse --port 8080
 """
-import json
-import sys
-import os
 import argparse
+import json
+import os
+import sys
+
 import boto3
 import requests
-
 
 # Configuration
 KB_ID = os.environ.get("CODE_KB_ID", "SAJJWYFTNG")
@@ -29,16 +29,17 @@ SECRETS_NAME = "mrrobot-ai-core/secrets"
 def get_secrets():
     """Fetch secrets from AWS Secrets Manager with timeout."""
     from botocore.config import Config
+
     try:
-        config = Config(connect_timeout=5, read_timeout=5, retries={'max_attempts': 1})
+        config = Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1})
         if AWS_PROFILE:
             session = boto3.Session(profile_name=AWS_PROFILE, region_name=REGION)
         else:
             session = boto3.Session(region_name=REGION)
-        client = session.client('secretsmanager', config=config)
+        client = session.client("secretsmanager", config=config)
         response = client.get_secret_value(SecretId=SECRETS_NAME)
         print(f"Successfully loaded secrets from {SECRETS_NAME}")
-        return json.loads(response['SecretString'])
+        return json.loads(response["SecretString"])
     except Exception as e:
         print(f"Warning: Could not fetch secrets from Secrets Manager: {e}")
         return {}
@@ -54,12 +55,12 @@ def get_bitbucket_token():
     global _secrets, _bitbucket_token
     if _bitbucket_token is not None:
         return _bitbucket_token
-    
+
     # Check env var first
     _bitbucket_token = os.environ.get("CVE_BB_TOKEN", "")
     if _bitbucket_token:
         return _bitbucket_token
-    
+
     # Try Secrets Manager
     if _secrets is None:
         _secrets = get_secrets()
@@ -79,11 +80,7 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
         response = client.retrieve(
             knowledgeBaseId=KB_ID,
             retrievalQuery={"text": query},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {
-                    "numberOfResults": num_results
-                }
-            }
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": num_results}},
         )
 
         results = []
@@ -99,14 +96,16 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             repo_name = path.split("/")[0] if "/" in path else path
             file_path = "/".join(path.split("/")[1:]) if "/" in path else path
 
-            results.append({
-                "repo": repo_name,
-                "file": file_path,
-                "full_path": path,
-                "score": round(item.get("score", 0), 3),
-                "content": item.get("content", {}).get("text", "")[:1000],
-                "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}"
-            })
+            results.append(
+                {
+                    "repo": repo_name,
+                    "file": file_path,
+                    "full_path": path,
+                    "score": round(item.get("score", 0), 3),
+                    "content": item.get("content", {}).get("text", "")[:1000],
+                    "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}",
+                }
+            )
 
         return {"results": results, "query": query}
     except Exception as e:
@@ -122,11 +121,7 @@ def get_file_from_bitbucket(repo: str, file_path: str, branch: str = "master") -
     try:
         url = f"https://api.bitbucket.org/2.0/repositories/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}"
 
-        response = requests.get(
-            url,
-            auth=(BITBUCKET_EMAIL, token),
-            timeout=30
-        )
+        response = requests.get(url, auth=(BITBUCKET_EMAIL, token), timeout=30)
 
         if response.status_code == 404:
             return {"error": f"File not found: {repo}/{file_path}"}
@@ -145,7 +140,7 @@ def get_file_from_bitbucket(repo: str, file_path: str, branch: str = "master") -
             "branch": branch,
             "content": content,
             "size_bytes": len(response.text),
-            "bitbucket_url": f"https://bitbucket.org/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}"
+            "bitbucket_url": f"https://bitbucket.org/{BITBUCKET_WORKSPACE}/{repo}/src/{branch}/{file_path}",
         }
     except Exception as e:
         return {"error": str(e)}
@@ -162,16 +157,16 @@ def get_tools_list():
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Natural language search query (e.g., 'Content Security Policy headers', 'S3 file upload', 'authentication middleware', 'CORS configuration')"
+                        "description": "Natural language search query (e.g., 'Content Security Policy headers', 'S3 file upload', 'authentication middleware', 'CORS configuration')",
                     },
                     "num_results": {
                         "type": "integer",
                         "description": "Number of results (default: 5, max: 10)",
-                        "default": 5
-                    }
+                        "default": 5,
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         },
         {
             "name": "search_in_repo",
@@ -179,22 +174,19 @@ def get_tools_list():
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural language search query"
-                    },
+                    "query": {"type": "string", "description": "Natural language search query"},
                     "repo_name": {
                         "type": "string",
-                        "description": "Repository name to search in (e.g., 'mrrobot-auth-rest', 'cast-core')"
+                        "description": "Repository name to search in (e.g., 'mrrobot-auth-rest', 'cast-core')",
                     },
                     "num_results": {
                         "type": "integer",
                         "description": "Number of results (default: 5, max: 10)",
-                        "default": 5
-                    }
+                        "default": 5,
+                    },
                 },
-                "required": ["query", "repo_name"]
-            }
+                "required": ["query", "repo_name"],
+            },
         },
         {
             "name": "find_similar_code",
@@ -202,27 +194,20 @@ def get_tools_list():
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "code_snippet": {
-                        "type": "string",
-                        "description": "Code snippet to find similar patterns for"
-                    },
+                    "code_snippet": {"type": "string", "description": "Code snippet to find similar patterns for"},
                     "num_results": {
                         "type": "integer",
                         "description": "Number of results (default: 5, max: 10)",
-                        "default": 5
-                    }
+                        "default": 5,
+                    },
                 },
-                "required": ["code_snippet"]
-            }
+                "required": ["code_snippet"],
+            },
         },
         {
             "name": "get_kb_info",
             "description": "Get information about the MrRobot code knowledge base - how many repos, what's indexed, when last updated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
-                "required": []
-            }
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
         },
         {
             "name": "get_file_content",
@@ -232,21 +217,17 @@ def get_tools_list():
                 "properties": {
                     "repo": {
                         "type": "string",
-                        "description": "Repository name (e.g., 'mrrobot-rest-utils-npm', 'cast-core')"
+                        "description": "Repository name (e.g., 'mrrobot-rest-utils-npm', 'cast-core')",
                     },
                     "file_path": {
                         "type": "string",
-                        "description": "Path to file within the repo (e.g., 'src/index.js', 'serverless.yml')"
+                        "description": "Path to file within the repo (e.g., 'src/index.js', 'serverless.yml')",
                     },
-                    "branch": {
-                        "type": "string",
-                        "description": "Branch name (default: 'master')",
-                        "default": "master"
-                    }
+                    "branch": {"type": "string", "description": "Branch name (default: 'master')", "default": "master"},
                 },
-                "required": ["repo", "file_path"]
-            }
-        }
+                "required": ["repo", "file_path"],
+            },
+        },
     ]
 
 
@@ -262,16 +243,12 @@ def handle_request(request: dict) -> dict:
             "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "bedrock-kb", "version": "1.0.0"}
-            }
+                "serverInfo": {"name": "bedrock-kb", "version": "1.0.0"},
+            },
         }
 
     elif method == "tools/list":
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {"tools": get_tools_list()}
-        }
+        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": get_tools_list()}}
 
     elif method == "tools/call":
         params = request.get("params", {})
@@ -279,16 +256,11 @@ def handle_request(request: dict) -> dict:
         args = params.get("arguments", {})
 
         if tool_name == "search_mrrobot_repos":
-            result = search_knowledge_base(
-                query=args.get("query", ""),
-                num_results=args.get("num_results", 5)
-            )
+            result = search_knowledge_base(query=args.get("query", ""), num_results=args.get("num_results", 5))
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                }
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
             }
 
         elif tool_name == "search_in_repo":
@@ -296,39 +268,26 @@ def handle_request(request: dict) -> dict:
             repo_name = args.get("repo_name", "")
             query = args.get("query", "")
             combined_query = f"repository:{repo_name} {query}"
-            result = search_knowledge_base(
-                query=combined_query,
-                num_results=args.get("num_results", 5)
-            )
+            result = search_knowledge_base(query=combined_query, num_results=args.get("num_results", 5))
             # Filter results to only include the specified repo
             if "results" in result:
-                result["results"] = [
-                    r for r in result["results"]
-                    if repo_name.lower() in r.get("repo", "").lower()
-                ]
+                result["results"] = [r for r in result["results"] if repo_name.lower() in r.get("repo", "").lower()]
             result["repo_filter"] = repo_name
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                }
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
             }
 
         elif tool_name == "find_similar_code":
             # Use code snippet as search query to find similar patterns
             code_snippet = args.get("code_snippet", "")
-            result = search_knowledge_base(
-                query=code_snippet,
-                num_results=args.get("num_results", 5)
-            )
+            result = search_knowledge_base(query=code_snippet, num_results=args.get("num_results", 5))
             result["search_type"] = "similar_code"
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                }
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
             }
 
         elif tool_name == "get_kb_info":
@@ -339,22 +298,20 @@ def handle_request(request: dict) -> dict:
                     "repositories": 254,
                     "documents_indexed": 17169,
                     "embedding_model": "amazon.titan-embed-text-v2:0",
-                    "vector_store": "OpenSearch Serverless"
+                    "vector_store": "OpenSearch Serverless",
                 },
                 "available_tools": [t["name"] for t in get_tools_list()],
                 "tips": [
                     "Use natural language queries - semantic search understands intent",
                     "Be specific: 'JWT validation in gateway' beats 'authentication'",
                     "Use find_similar_code to find patterns matching your code",
-                    "Use search_in_repo when you know which repo to search"
-                ]
+                    "Use search_in_repo when you know which repo to search",
+                ],
             }
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                }
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
             }
 
         elif tool_name == "get_file_content":
@@ -366,19 +323,13 @@ def handle_request(request: dict) -> dict:
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
-                }
+                "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
             }
 
     elif method == "notifications/initialized":
         return None  # No response needed for notifications
 
-    return {
-        "jsonrpc": "2.0",
-        "id": req_id,
-        "error": {"code": -32601, "message": f"Method not found: {method}"}
-    }
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
 
 
 def run_stdio():
@@ -399,36 +350,33 @@ def run_stdio():
         except json.JSONDecodeError:
             continue
         except Exception as e:
-            error_response = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {"code": -32603, "message": str(e)}
-            }
+            error_response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32603, "message": str(e)}}
             sys.stdout.write(json.dumps(error_response) + "\n")
             sys.stdout.flush()
 
 
 def run_sse(host: str, port: int):
     """Run MCP server using SSE transport (remote)."""
-    from flask import Flask, Response, request, jsonify
     import queue
     import uuid
+
+    from flask import Flask, Response, jsonify, request
 
     app = Flask(__name__)
 
     # Store client connections and their message queues
     clients = {}
 
-    @app.route('/health', methods=['GET'])
+    @app.route("/health", methods=["GET"])
     def health():
         return jsonify({"status": "ok", "kb_id": KB_ID})
 
-    @app.route('/sse', methods=['GET'])
+    @app.route("/sse", methods=["GET"])
     def sse_connect():
         """SSE endpoint for MCP clients - implements MCP SSE transport."""
         client_id = str(uuid.uuid4())
         # Capture the base URL from the request for use in the generator
-        base_url = request.url_root.rstrip('/')
+        base_url = request.url_root.rstrip("/")
 
         def event_stream():
             q = queue.Queue()
@@ -453,28 +401,31 @@ def run_sse(host: str, port: int):
 
         return Response(
             event_stream(),
-            mimetype='text/event-stream',
+            mimetype="text/event-stream",
             headers={
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Access-Control-Allow-Origin': '*',
-                'X-Accel-Buffering': 'no'
-            }
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "X-Accel-Buffering": "no",
+            },
         )
 
-    @app.route('/message', methods=['POST', 'OPTIONS'])
+    @app.route("/message", methods=["POST", "OPTIONS"])
     def handle_message():
         """Handle incoming MCP JSON-RPC messages."""
         # Handle CORS preflight
-        if request.method == 'OPTIONS':
-            return Response('', headers={
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            })
+        if request.method == "OPTIONS":
+            return Response(
+                "",
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                },
+            )
 
         try:
-            session_id = request.args.get('session_id')
+            session_id = request.args.get("session_id")
             data = request.get_json()
             response = handle_request(data)
 
@@ -484,19 +435,11 @@ def run_sse(host: str, port: int):
                     clients[session_id].put(response)
 
             if response:
-                return jsonify(response), 200, {
-                    'Access-Control-Allow-Origin': '*'
-                }
-            return '', 204, {'Access-Control-Allow-Origin': '*'}
+                return jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
+            return "", 204, {"Access-Control-Allow-Origin": "*"}
         except Exception as e:
-            error_response = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {"code": -32603, "message": str(e)}
-            }
-            return jsonify(error_response), 500, {
-                'Access-Control-Allow-Origin': '*'
-            }
+            error_response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32603, "message": str(e)}}
+            return jsonify(error_response), 500, {"Access-Control-Allow-Origin": "*"}
 
     print(f"Starting MCP server on http://{host}:{port}")
     print(f"Knowledge Base ID: {KB_ID}")
@@ -507,10 +450,10 @@ def run_sse(host: str, port: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='MCP Server for Bedrock Knowledge Base')
-    parser.add_argument('--sse', action='store_true', help='Run as SSE server instead of stdio')
-    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
-    parser.add_argument('--port', type=int, default=8080, help='Port for SSE server (default: 8080)')
+    parser = argparse.ArgumentParser(description="MCP Server for Bedrock Knowledge Base")
+    parser.add_argument("--sse", action="store_true", help="Run as SSE server instead of stdio")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8080, help="Port for SSE server (default: 8080)")
     args = parser.parse_args()
 
     if args.sse:

@@ -2,16 +2,19 @@
 CloudWatch Agent - AWS monitoring and metrics
 Tools for querying CloudWatch logs, metrics, and alarms.
 """
+
 import os
+
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 # Configuration
-AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # ============================================================================
 # TOOLS
 # ============================================================================
+
 
 @tool
 def list_log_groups(prefix: str = "/aws/lambda", limit: int = 50) -> str:
@@ -54,7 +57,9 @@ def get_log_events(log_group: str, log_stream: str = "", hours_back: int = 1, fi
 
 
 @tool
-def get_metric_statistics(namespace: str, metric_name: str, dimensions: str = "", hours_back: int = 1, statistic: str = "Average") -> str:
+def get_metric_statistics(
+    namespace: str, metric_name: str, dimensions: str = "", hours_back: int = 1, statistic: str = "Average"
+) -> str:
     """Get CloudWatch metric statistics.
 
     Args:
@@ -140,16 +145,11 @@ When investigating issues:
 4. Check alarms for known issues
 """
 
+
 # Create agent
 def create_cloudwatch_agent():
-    model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2"
-    )
-    return Agent(
-        model=model,
-        tools=CLOUDWATCH_TOOLS,
-        system_prompt=SYSTEM_PROMPT
-    )
+    model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0", region_name="us-west-2")
+    return Agent(model=model, tools=CLOUDWATCH_TOOLS, system_prompt=SYSTEM_PROMPT)
+
 
 cloudwatch_agent = None  # Lazy initialization

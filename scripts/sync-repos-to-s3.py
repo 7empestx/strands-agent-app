@@ -16,85 +16,102 @@ Environment variables:
     AWS_PROFILE - AWS profile to use (default: dev)
 """
 
-import os
-import sys
-import json
-import subprocess
 import argparse
-import tempfile
+import os
 import shutil
-from pathlib import Path
+import subprocess
+import sys
+import tempfile
 from datetime import datetime
+from pathlib import Path
+
 import boto3
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # File extensions to index (code files)
 CODE_EXTENSIONS = {
     # JavaScript/TypeScript
-    '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
     # Python
-    '.py',
+    ".py",
     # Java/Kotlin
-    '.java', '.kt',
+    ".java",
+    ".kt",
     # Configuration
-    '.json', '.yaml', '.yml', '.toml',
-    '.env.example', '.env.sample',
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".env.example",
+    ".env.sample",
     # Infrastructure
-    '.tf', '.tfvars',
+    ".tf",
+    ".tfvars",
     # Docker
-    'Dockerfile', '.dockerignore',
+    "Dockerfile",
+    ".dockerignore",
     # Shell
-    '.sh', '.bash',
+    ".sh",
+    ".bash",
     # Web
-    '.html', '.css', '.scss', '.less',
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
     # Documentation
-    '.md', '.rst',
+    ".md",
+    ".rst",
     # SQL
-    '.sql',
+    ".sql",
     # GraphQL
-    '.graphql', '.gql',
+    ".graphql",
+    ".gql",
 }
 
 # Files to always include (exact names)
 INCLUDE_FILES = {
-    'package.json',
-    'tsconfig.json',
-    'serverless.yml',
-    'serverless.yaml',
-    'docker-compose.yml',
-    'docker-compose.yaml',
-    'Dockerfile',
-    '.env.example',
-    'requirements.txt',
-    'pyproject.toml',
-    'Cargo.toml',
-    'go.mod',
-    'pom.xml',
-    'build.gradle',
-    'Makefile',
+    "package.json",
+    "tsconfig.json",
+    "serverless.yml",
+    "serverless.yaml",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "Dockerfile",
+    ".env.example",
+    "requirements.txt",
+    "pyproject.toml",
+    "Cargo.toml",
+    "go.mod",
+    "pom.xml",
+    "build.gradle",
+    "Makefile",
 }
 
 # Directories to skip
 SKIP_DIRS = {
-    'node_modules',
-    '.git',
-    '.next',
-    '.nuxt',
-    'dist',
-    'build',
-    'out',
-    '__pycache__',
-    '.pytest_cache',
-    '.tox',
-    'venv',
-    'env',
-    '.venv',
-    'vendor',
-    'coverage',
-    '.nyc_output',
-    'target',
-    '.idea',
-    '.vscode',
+    "node_modules",
+    ".git",
+    ".next",
+    ".nuxt",
+    "dist",
+    "build",
+    "out",
+    "__pycache__",
+    ".pytest_cache",
+    ".tox",
+    "venv",
+    "env",
+    ".venv",
+    "vendor",
+    "coverage",
+    ".nyc_output",
+    "target",
+    ".idea",
+    ".vscode",
 }
 
 # Max file size (1MB)
@@ -143,30 +160,32 @@ def get_bitbucket_repos(workspace: str, token: str, email: str) -> list:
             break
 
         data = response.json()
-        values = data.get('values', [])
+        values = data.get("values", [])
 
         if not values:
             break
 
         for repo in values:
-            name = repo['name']
+            name = repo["name"]
             ssh_url = None
-            for link in repo.get('links', {}).get('clone', []):
-                if link.get('name') == 'ssh':
-                    ssh_url = link.get('href')
+            for link in repo.get("links", {}).get("clone", []):
+                if link.get("name") == "ssh":
+                    ssh_url = link.get("href")
                     break
 
             if ssh_url:
-                repos.append({
-                    'name': name,
-                    'ssh_url': ssh_url,
-                    'full_name': repo.get('full_name', f"{workspace}/{name}"),
-                    'description': repo.get('description', ''),
-                    'language': repo.get('language', 'unknown'),
-                    'updated_on': repo.get('updated_on', ''),
-                })
+                repos.append(
+                    {
+                        "name": name,
+                        "ssh_url": ssh_url,
+                        "full_name": repo.get("full_name", f"{workspace}/{name}"),
+                        "description": repo.get("description", ""),
+                        "language": repo.get("language", "unknown"),
+                        "updated_on": repo.get("updated_on", ""),
+                    }
+                )
 
-        if 'next' not in data:
+        if "next" not in data:
             break
 
         page += 1
@@ -176,38 +195,28 @@ def get_bitbucket_repos(workspace: str, token: str, email: str) -> list:
 
 def clone_or_update_repo(repo: dict, base_dir: Path) -> Path:
     """Clone or update a repository."""
-    repo_dir = base_dir / repo['name']
+    repo_dir = base_dir / repo["name"]
 
     if repo_dir.exists():
         # Update existing repo
         try:
-            subprocess.run(
-                ['git', 'pull', '--ff-only'],
-                cwd=repo_dir,
-                capture_output=True,
-                check=True,
-                timeout=120
-            )
+            subprocess.run(["git", "pull", "--ff-only"], cwd=repo_dir, capture_output=True, check=True, timeout=120)
             print(f"  Updated: {repo['name']}")
         except subprocess.CalledProcessError:
             # Try to reset
             try:
-                subprocess.run(['git', 'fetch', 'origin'], cwd=repo_dir, capture_output=True, timeout=60)
+                subprocess.run(["git", "fetch", "origin"], cwd=repo_dir, capture_output=True, timeout=60)
                 result = subprocess.run(
-                    ['git', 'remote', 'show', 'origin'],
-                    cwd=repo_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=30
+                    ["git", "remote", "show", "origin"], cwd=repo_dir, capture_output=True, text=True, timeout=30
                 )
-                for line in result.stdout.split('\n'):
-                    if 'HEAD branch' in line:
-                        branch = line.split(':')[-1].strip()
+                for line in result.stdout.split("\n"):
+                    if "HEAD branch" in line:
+                        branch = line.split(":")[-1].strip()
                         subprocess.run(
-                            ['git', 'reset', '--hard', f'origin/{branch}'],
+                            ["git", "reset", "--hard", f"origin/{branch}"],
                             cwd=repo_dir,
                             capture_output=True,
-                            timeout=60
+                            timeout=60,
                         )
                         print(f"  Reset: {repo['name']}")
                         break
@@ -217,10 +226,10 @@ def clone_or_update_repo(repo: dict, base_dir: Path) -> Path:
         # Clone new repo
         try:
             subprocess.run(
-                ['git', 'clone', '--depth', '1', repo['ssh_url'], str(repo_dir)],
+                ["git", "clone", "--depth", "1", repo["ssh_url"], str(repo_dir)],
                 capture_output=True,
                 check=True,
-                timeout=180
+                timeout=180,
             )
             print(f"  Cloned: {repo['name']}")
         except subprocess.CalledProcessError as e:
@@ -237,7 +246,7 @@ def upload_repo_to_s3(repo: dict, repo_dir: Path, s3_client, bucket: str) -> int
     if not repo_dir or not repo_dir.exists():
         return 0
 
-    for file_path in repo_dir.rglob('*'):
+    for file_path in repo_dir.rglob("*"):
         if not file_path.is_file():
             continue
 
@@ -247,7 +256,7 @@ def upload_repo_to_s3(repo: dict, repo_dir: Path, s3_client, bucket: str) -> int
         try:
             # Read file content
             try:
-                content = file_path.read_text(encoding='utf-8')
+                content = file_path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
                 continue  # Skip binary files
 
@@ -257,11 +266,11 @@ def upload_repo_to_s3(repo: dict, repo_dir: Path, s3_client, bucket: str) -> int
 
             # Create metadata for the file
             metadata = {
-                'repo_name': repo['name'],
-                'file_path': str(relative_path),
-                'language': repo.get('language', 'unknown'),
-                'repo_full_name': repo.get('full_name', ''),
-                'file_extension': file_path.suffix,
+                "repo_name": repo["name"],
+                "file_path": str(relative_path),
+                "language": repo.get("language", "unknown"),
+                "repo_full_name": repo.get("full_name", ""),
+                "file_extension": file_path.suffix,
             }
 
             # Wrap content with metadata header for better RAG
@@ -277,9 +286,9 @@ def upload_repo_to_s3(repo: dict, repo_dir: Path, s3_client, bucket: str) -> int
             s3_client.put_object(
                 Bucket=bucket,
                 Key=s3_key,
-                Body=wrapped_content.encode('utf-8'),
-                ContentType='text/plain',
-                Metadata=metadata
+                Body=wrapped_content.encode("utf-8"),
+                ContentType="text/plain",
+                Metadata=metadata,
             )
 
             uploaded += 1
@@ -292,16 +301,14 @@ def upload_repo_to_s3(repo: dict, repo_dir: Path, s3_client, bucket: str) -> int
 
 def trigger_kb_sync(kb_id: str, ds_id: str, region: str):
     """Trigger Knowledge Base data source sync."""
-    client = boto3.client('bedrock-agent', region_name=region)
+    client = boto3.client("bedrock-agent", region_name=region)
 
     try:
         response = client.start_ingestion_job(
-            knowledgeBaseId=kb_id,
-            dataSourceId=ds_id,
-            description=f"Sync triggered at {datetime.now().isoformat()}"
+            knowledgeBaseId=kb_id, dataSourceId=ds_id, description=f"Sync triggered at {datetime.now().isoformat()}"
         )
 
-        job_id = response.get('ingestionJob', {}).get('ingestionJobId')
+        job_id = response.get("ingestionJob", {}).get("ingestionJobId")
         print(f"\nTriggered Knowledge Base sync: Job ID = {job_id}")
         return job_id
 
@@ -311,27 +318,27 @@ def trigger_kb_sync(kb_id: str, ds_id: str, region: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Sync Bitbucket repos to S3 for Bedrock KB')
-    parser.add_argument('--bucket', required=True, help='S3 bucket name')
-    parser.add_argument('--kb-id', help='Bedrock Knowledge Base ID (optional, for auto-sync)')
-    parser.add_argument('--ds-id', help='Bedrock Data Source ID (optional, for auto-sync)')
-    parser.add_argument('--region', default='us-west-2', help='AWS region')
-    parser.add_argument('--workspace', default='mrrobot-labs', help='Bitbucket workspace')
-    parser.add_argument('--email', default='gstarkman@nex.io', help='Bitbucket email')
-    parser.add_argument('--temp-dir', help='Temp directory for cloning (default: system temp)')
-    parser.add_argument('--keep-repos', action='store_true', help='Keep cloned repos after upload')
+    parser = argparse.ArgumentParser(description="Sync Bitbucket repos to S3 for Bedrock KB")
+    parser.add_argument("--bucket", required=True, help="S3 bucket name")
+    parser.add_argument("--kb-id", help="Bedrock Knowledge Base ID (optional, for auto-sync)")
+    parser.add_argument("--ds-id", help="Bedrock Data Source ID (optional, for auto-sync)")
+    parser.add_argument("--region", default="us-west-2", help="AWS region")
+    parser.add_argument("--workspace", default="mrrobot-labs", help="Bitbucket workspace")
+    parser.add_argument("--email", default="gstarkman@nex.io", help="Bitbucket email")
+    parser.add_argument("--temp-dir", help="Temp directory for cloning (default: system temp)")
+    parser.add_argument("--keep-repos", action="store_true", help="Keep cloned repos after upload")
     args = parser.parse_args()
 
     # Check for Bitbucket token
-    bb_token = os.environ.get('CVE_BB_TOKEN')
+    bb_token = os.environ.get("CVE_BB_TOKEN")
     if not bb_token:
         print("Error: CVE_BB_TOKEN environment variable not set")
         sys.exit(1)
 
     # Setup AWS
-    profile = os.environ.get('AWS_PROFILE', 'dev')
+    profile = os.environ.get("AWS_PROFILE", "dev")
     session = boto3.Session(profile_name=profile, region_name=args.region)
-    s3_client = session.client('s3')
+    s3_client = session.client("s3")
 
     print(f"=== MrRobot Code Knowledge Base Sync ===")
     print(f"Bucket: {args.bucket}")
@@ -345,7 +352,7 @@ def main():
         base_dir.mkdir(parents=True, exist_ok=True)
         cleanup = False
     else:
-        temp_dir = tempfile.mkdtemp(prefix='mrrobot-kb-sync-')
+        temp_dir = tempfile.mkdtemp(prefix="mrrobot-kb-sync-")
         base_dir = Path(temp_dir)
         cleanup = not args.keep_repos
 
@@ -390,5 +397,5 @@ def main():
             shutil.rmtree(base_dir, ignore_errors=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
