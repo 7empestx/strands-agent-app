@@ -712,43 +712,152 @@ def get_query_examples() -> str:
     return json.dumps(result, indent=2, default=str)
 
 
+# =============================================================================
+# PCI DATA DETECTION PATTERNS
+# Based on mrrobot-pii-npm/src/pii/pci.js and pci-file-scanner
+# =============================================================================
+
+# CVV/CVC regex patterns from mrrobot-pii-npm
+# Matches: cvv, cvv2, cvc, ccv, ssc, security code, security_code, securityCode
+# With various delimiters and 3-4 digit values
+CVV_REGEX_PATTERNS = [
+    # Main CVV pattern with field name prefix (from mrrobot-pii-npm)
+    r'(?:credit_card_|creditCard)?(?:cvv|cvv2|cvc|ccv|ssc|security[_ ]?code|securityCode)[\s"\'\\=:]+(\d{3,4})',
+    # JSON format: "cvv": "123" or "cvv": 123
+    r'"(?:cvv|cvv2|cvc|ccv|ssc|security_code|securityCode)":\s*"?(\d{3,4})"?',
+    # Key=value format: cvv=123
+    r"(?:cvv|cvv2|cvc|ccv|ssc|security_code|securityCode)=(\d{3,4})",
+    # Python/JS object: 'cvv': '123'
+    r"'(?:cvv|cvv2|cvc|ccv|ssc|security_code|securityCode)':\s*'?(\d{3,4})'?",
+]
+
+# PAN (Card Number) regex patterns from pci-file-scanner
+# Matches major card brands with various separators
+PAN_REGEX_PATTERNS = [
+    # Visa: 4xxx xxxx xxxx xxxx
+    r"\b4\d{3}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}\b",
+    # Mastercard: 5[1-5]xx or 2[2-7]xx
+    r"\b(?:5[1-5]\d{2}|2[2-7]\d{2})[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}\b",
+    # Amex: 3[47]xx xxxxxx xxxxx
+    r"\b3[47]\d{2}[\s.-]?\d{6}[\s.-]?\d{5}\b",
+    # Discover: 6011, 65, 644-649
+    r"\b(?:6011|65\d{2}|64[4-9]\d)[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}\b",
+]
+
+# Terms to search for in Coralogix (used in DataPrime query)
+CVV_SEARCH_TERMS = [
+    "cvv",
+    "cvc",
+    "cvv2",
+    "ccv",
+    "ssc",
+    "security_code",
+    "securityCode",
+]
+
+# Known false positive patterns to ignore (from mrrobot-pii-npm cvvCheckAlwaysIgnore)
+CVV_FALSE_POSITIVES = [
+    "cvv is required",
+    "cvv must be",
+    "cvv validation",
+    "cvv error",
+    "invalid cvv",
+    "cvv field",
+    "cvv_required",
+    "cvv_validation",
+]
+
+
+def detect_pci_data(text: str) -> dict:
+    """
+    Detect PCI data (CVV and PAN) in text using patterns from mrrobot-pii-npm.
+    Returns detection results with redacted values.
+
+    Based on: mrrobot-pii-npm/src/pii/pci.js and pci-file-scanner/classes/scanner.py
+    """
+    import re
+
+    result = {
+        "has_cvv": False,
+        "has_pan": False,
+        "cvv_count": 0,
+        "pan_count": 0,
+        "redacted_text": text,
+        "is_false_positive": False,
+    }
+
+    # Check for false positives first
+    text_lower = text.lower()
+    for fp in CVV_FALSE_POSITIVES:
+        if fp in text_lower:
+            result["is_false_positive"] = True
+
+    # Detect CVV patterns
+    for pattern in CVV_REGEX_PATTERNS:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            result["has_cvv"] = True
+            result["cvv_count"] += len(matches)
+            # Redact CVV values
+            result["redacted_text"] = re.sub(
+                pattern,
+                lambda m: m.group(0).replace(m.group(1), "[CVV-REDACTED]") if m.groups() else "[CVV-REDACTED]",
+                result["redacted_text"],
+                flags=re.IGNORECASE,
+            )
+
+    # Detect PAN patterns (with Luhn validation would be ideal, but regex first)
+    for pattern in PAN_REGEX_PATTERNS:
+        matches = re.findall(pattern, text)
+        if matches:
+            result["has_pan"] = True
+            result["pan_count"] += len(matches)
+            # Redact PAN values (show only last 4)
+            result["redacted_text"] = re.sub(
+                pattern,
+                lambda m: "[PAN-REDACTED-" + m.group(0)[-4:] + "]",
+                result["redacted_text"],
+            )
+
+    return result
+
+
 @tool
 def find_cvv_in_logs(
     service_name: str = "all",
     hours_back: int = 24,
     environment: str = "all",
     limit: int = 100,
+    include_pan: bool = True,
 ) -> str:
-    """Search for CVV/CVC/security code patterns in logs - PCI-DSS compliance check.
+    """Search for CVV/CVC/PAN patterns in logs - PCI-DSS compliance check.
 
-    CVVs should NEVER appear in logs. This tool helps identify potential data leaks.
+    Uses detection patterns from mrrobot-pii-npm and pci-file-scanner.
+    CVVs and unmasked PANs should NEVER appear in logs.
 
     Args:
         service_name: Service name pattern, or 'all' for all services
         hours_back: How many hours back to search (default: 24)
         environment: Environment filter - 'all', 'prod', 'dev', etc.
         limit: Maximum number of results (default: 100)
+        include_pan: Also search for card numbers/PANs (default: True)
 
     Returns:
-        str: JSON with any log entries containing CVV patterns (values are redacted)
+        str: JSON with any log entries containing PCI data (values are redacted)
     """
-    print(f"[Tool] find_cvv_in_logs: service={service_name}, hours_back={hours_back}, environment={environment}")
+    print(
+        f"[Tool] find_cvv_in_logs: service={service_name}, hours_back={hours_back}, "
+        f"environment={environment}, include_pan={include_pan}"
+    )
 
-    # CVV-related field patterns to search for
-    cvv_patterns = [
-        "cvv",
-        "cvc",
-        "cv2",
-        "cvv2",
-        "cid",  # Amex calls it CID
-        "security_code",
-        "securityCode",
-        "card_verification",
-        "cardVerification",
-    ]
+    # Build the search pattern for Coralogix
+    pattern_conditions = " || ".join([f"message ~ '{term}'" for term in CVV_SEARCH_TERMS])
 
-    # Build the search pattern - look for these field names with values
-    pattern_conditions = " || ".join([f"message ~ '{p}'" for p in cvv_patterns])
+    # Add PAN patterns if requested (search for card number prefixes)
+    if include_pan:
+        pan_search_terms = ["4[0-9]{3}", "5[1-5][0-9]{2}", "3[47][0-9]{2}", "6011"]
+        pan_conditions = " || ".join([f"message ~ '{term}'" for term in pan_search_terms])
+        pattern_conditions = f"({pattern_conditions}) || ({pan_conditions})"
 
     # Build filters
     filters = [f"({pattern_conditions})"]
@@ -768,45 +877,46 @@ def find_cvv_in_logs(
     response = make_coralogix_request(query, start_time, end_time, limit)
     logs = parse_coralogix_response(response)
 
-    # Process and redact actual CVV values for safety
-    import re
-
-    cvv_value_patterns = [
-        r'"(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)":\s*"?(\d{3,4})"?',
-        r"(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)[=:]\s*(\d{3,4})",
-        r"'(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)':\s*'?(\d{3,4})'?",
-    ]
-
+    # Process logs with PCI detection
     findings = []
+    cvv_findings = 0
+    pan_findings = 0
+    false_positives = 0
+
     for log in logs:
         message = log.get("message", "")
         log_group = log.get("logGroup", "unknown")
 
-        # Check if this actually contains a CVV value (not just the field name)
-        has_cvv_value = False
-        for pattern in cvv_value_patterns:
-            if re.search(pattern, message, re.IGNORECASE):
-                has_cvv_value = True
-                # Redact the actual CVV value
-                message = re.sub(pattern, r'"\1": "[REDACTED]"', message, flags=re.IGNORECASE)
-                break
+        # Use the detection function based on mrrobot-pii-npm patterns
+        detection = detect_pci_data(message)
 
-        # Also flag if CVV field appears even without obvious value
-        for cvv_term in cvv_patterns:
-            if cvv_term.lower() in message.lower():
-                has_cvv_value = True
-                break
+        if detection["has_cvv"] or detection["has_pan"]:
+            if detection["is_false_positive"]:
+                false_positives += 1
+                continue
 
-        if has_cvv_value:
             parts = log_group.split("/")
             service = parts[-1] if parts else log_group
+
+            if detection["has_cvv"]:
+                cvv_findings += detection["cvv_count"]
+            if detection["has_pan"]:
+                pan_findings += detection["pan_count"]
+
+            redacted_preview = detection["redacted_text"]
+            if len(redacted_preview) > 500:
+                redacted_preview = redacted_preview[:500] + "..."
 
             findings.append(
                 {
                     "service": service,
                     "log_group": log_group,
                     "timestamp": log.get("timestamp"),
-                    "message_preview": message[:500] + "..." if len(message) > 500 else message,
+                    "has_cvv": detection["has_cvv"],
+                    "has_pan": detection["has_pan"],
+                    "cvv_count": detection["cvv_count"],
+                    "pan_count": detection["pan_count"],
+                    "message_preview": redacted_preview,
                     "request_id": log.get("requestID", ""),
                 }
             )
@@ -819,24 +929,54 @@ def find_cvv_in_logs(
             by_service[svc] = []
         by_service[svc].append(finding)
 
-    severity = "CRITICAL" if len(findings) > 0 else "OK"
+    # Determine severity
+    if cvv_findings > 0:
+        severity = "CRITICAL"  # CVV in logs is always critical
+    elif pan_findings > 0:
+        severity = "HIGH"  # Unmasked PAN is high severity
+    else:
+        severity = "OK"
 
     result = {
         "severity": severity,
-        "pci_compliance_check": "CVV in logs",
+        "pci_compliance_check": "CVV and PAN in logs",
+        "detection_source": "Based on mrrobot-pii-npm and pci-file-scanner patterns",
         "time_range": f"Last {hours_back} hour(s)",
         "environment": environment,
-        "total_findings": len(findings),
-        "services_affected": len(by_service),
-        "findings_by_service": {svc: {"count": len(items), "samples": items[:5]} for svc, items in by_service.items()},
+        "summary": {
+            "total_findings": len(findings),
+            "cvv_instances": cvv_findings,
+            "pan_instances": pan_findings,
+            "false_positives_filtered": false_positives,
+            "services_affected": len(by_service),
+        },
+        "findings_by_service": {
+            svc: {
+                "count": len(items),
+                "cvv_count": sum(i["cvv_count"] for i in items),
+                "pan_count": sum(i["pan_count"] for i in items),
+                "samples": items[:5],
+            }
+            for svc, items in by_service.items()
+        },
         "recommendation": (
-            "CVVs must NEVER be logged. If findings exist, immediately investigate and remediate the logging code."
-            if findings
-            else "No CVV patterns detected in logs - good!"
+            "CRITICAL: CVV data found in logs! CVVs must NEVER be logged per PCI-DSS. "
+            "Immediately investigate and remediate the logging code."
+            if cvv_findings > 0
+            else (
+                "HIGH: Unmasked PAN data found in logs. Card numbers should be masked. "
+                "Review logging to ensure only last 4 digits are shown."
+                if pan_findings > 0
+                else "No PCI data detected in logs - compliant!"
+            )
         ),
+        "reference": "Detection patterns from: mrrobot-pii-npm/src/pii/pci.js, pci-file-scanner/classes/scanner.py",
     }
 
-    print(f"[Tool] CVV scan complete: {len(findings)} findings across {len(by_service)} services")
+    print(
+        f"[Tool] PCI scan complete: {len(findings)} findings "
+        f"(CVV: {cvv_findings}, PAN: {pan_findings}) across {len(by_service)} services"
+    )
     return json.dumps(result, indent=2, default=str)
 
 
@@ -965,7 +1105,7 @@ TOOLS AVAILABLE:
 4. get_service_logs - Get all logs for a specific service
 5. get_log_count - Get log volume counts (useful for trends)
 6. get_service_health - Health overview with error rates
-7. find_cvv_in_logs - PCI-DSS compliance check for CVV/CVC data in logs
+7. find_cvv_in_logs - PCI-DSS compliance check for CVV/CVC/PAN data in logs (uses mrrobot-pii-npm patterns)
 8. get_query_examples - See example queries from the knowledge store
 9. search_logs - Execute raw DataPrime queries (advanced users only)
 
