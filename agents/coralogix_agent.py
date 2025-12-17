@@ -408,6 +408,134 @@ def search_logs(query: str, hours_back: int = 1, limit: int = 50) -> str:
 
 
 @tool
+def find_cvv_in_logs(
+    service_name: str = "all",
+    hours_back: int = 24,
+    environment: str = "all",
+    limit: int = 100,
+) -> str:
+    """Search for CVV/CVC/security code patterns in logs - PCI-DSS compliance check.
+
+    CVVs should NEVER appear in logs. This tool helps identify potential data leaks.
+
+    Args:
+        service_name: Service name pattern, or 'all' for all services
+        hours_back: How many hours back to search (default: 24)
+        environment: Environment filter - 'all', 'prod', 'dev', etc.
+        limit: Maximum number of results (default: 100)
+
+    Returns:
+        str: JSON with any log entries containing CVV patterns (values are redacted)
+    """
+    print(f"[Tool] find_cvv_in_logs: service={service_name}, hours_back={hours_back}, environment={environment}")
+
+    # CVV-related field patterns to search for
+    cvv_patterns = [
+        "cvv",
+        "cvc",
+        "cv2",
+        "cvv2",
+        "cid",  # Amex calls it CID
+        "security_code",
+        "securityCode",
+        "card_verification",
+        "cardVerification",
+    ]
+
+    # Build the search pattern - look for these field names with values
+    pattern_conditions = " || ".join([f"message ~ '{p}'" for p in cvv_patterns])
+
+    # Build filters
+    filters = [f"({pattern_conditions})"]
+
+    if service_name.lower() != "all":
+        filters.append(f"logGroup ~ '{service_name}'")
+
+    if environment.lower() != "all":
+        filters.append(f"logGroup ~ '-{environment.lower()}'")
+
+    filter_str = " && ".join(filters)
+    query = f"source logs | filter {filter_str} | limit {limit}"
+
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=hours_back)
+
+    response = make_coralogix_request(query, start_time, end_time, limit)
+    logs = parse_coralogix_response(response)
+
+    # Process and redact actual CVV values for safety
+    import re
+
+    cvv_value_patterns = [
+        r'"(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)":\s*"?(\d{3,4})"?',
+        r"(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)[=:]\s*(\d{3,4})",
+        r"'(?:cvv|cvc|cv2|cvv2|cid|security_code|securityCode)':\s*'?(\d{3,4})'?",
+    ]
+
+    findings = []
+    for log in logs:
+        message = log.get("message", "")
+        log_group = log.get("logGroup", "unknown")
+
+        # Check if this actually contains a CVV value (not just the field name)
+        has_cvv_value = False
+        for pattern in cvv_value_patterns:
+            if re.search(pattern, message, re.IGNORECASE):
+                has_cvv_value = True
+                # Redact the actual CVV value
+                message = re.sub(pattern, r'"\1": "[REDACTED]"', message, flags=re.IGNORECASE)
+                break
+
+        # Also flag if CVV field appears even without obvious value
+        for cvv_term in cvv_patterns:
+            if cvv_term.lower() in message.lower():
+                has_cvv_value = True
+                break
+
+        if has_cvv_value:
+            parts = log_group.split("/")
+            service = parts[-1] if parts else log_group
+
+            findings.append(
+                {
+                    "service": service,
+                    "log_group": log_group,
+                    "timestamp": log.get("timestamp"),
+                    "message_preview": message[:500] + "..." if len(message) > 500 else message,
+                    "request_id": log.get("requestID", ""),
+                }
+            )
+
+    # Group by service
+    by_service = {}
+    for finding in findings:
+        svc = finding["service"]
+        if svc not in by_service:
+            by_service[svc] = []
+        by_service[svc].append(finding)
+
+    severity = "CRITICAL" if len(findings) > 0 else "OK"
+
+    result = {
+        "severity": severity,
+        "pci_compliance_check": "CVV in logs",
+        "time_range": f"Last {hours_back} hour(s)",
+        "environment": environment,
+        "total_findings": len(findings),
+        "services_affected": len(by_service),
+        "findings_by_service": {svc: {"count": len(items), "samples": items[:5]} for svc, items in by_service.items()},
+        "recommendation": (
+            "CVVs must NEVER be logged. If findings exist, immediately investigate and remediate the logging code."
+            if findings
+            else "No CVV patterns detected in logs - good!"
+        ),
+    }
+
+    print(f"[Tool] CVV scan complete: {len(findings)} findings across {len(by_service)} services")
+    return json.dumps(result, indent=2, default=str)
+
+
+@tool
 def get_service_health(service_name: str = "all", environment: str = "prod") -> str:
     """Get health overview for services based on error rates in the last hour.
 
@@ -533,6 +661,7 @@ TOOLS AVAILABLE:
 4. get_log_count - Get log volume counts (useful for trends)
 5. search_logs - Custom DataPrime queries for advanced searches
 6. get_service_health - Health overview with error rates
+7. find_cvv_in_logs - PCI-DSS compliance check for CVV/CVC data in logs
 
 ENVIRONMENT FILTERING (IMPORTANT):
 When users mention an environment, ALWAYS use the environment parameter:
@@ -547,6 +676,7 @@ TOOL SELECTION:
 - "Logs for [service]" → get_service_logs
 - "How many logs?" → get_log_count
 - "Health check" → get_service_health
+- "Check for CVV/CVC in logs" → find_cvv_in_logs (PCI compliance)
 - Complex queries → search_logs
 
 RESPONSE STYLE:
@@ -565,6 +695,7 @@ RESPONSE STYLE:
             get_log_count,
             search_logs,
             get_service_health,
+            find_cvv_in_logs,
         ],
         system_prompt=system_prompt,
     )
