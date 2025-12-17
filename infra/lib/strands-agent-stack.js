@@ -1,16 +1,20 @@
 const cdk = require('aws-cdk-lib');
 const ec2 = require('aws-cdk-lib/aws-ec2');
 const iam = require('aws-cdk-lib/aws-iam');
-const cloudfront = require('aws-cdk-lib/aws-cloudfront');
-const origins = require('aws-cdk-lib/aws-cloudfront-origins');
+const route53 = require('aws-cdk-lib/aws-route53');
+const { addOfficeIngressRules } = require('./constants/office-ips');
+
+// DNS Configuration
+const DNS_DOMAIN = 'mrrobot.dev';
+const DNS_HOSTED_ZONE_ID = 'Z00099541PMCE1WUL76PK';
 
 class StrandsAgentStack extends cdk.Stack {
   constructor(scope, id, props) {
     super(scope, id, props);
 
-    // VPC - use default VPC for simplicity
-    const vpc = ec2.Vpc.fromLookup(this, 'DefaultVPC', {
-      isDefault: true
+    // VPC - use existing nonpci VPC in us-east-1
+    const vpc = ec2.Vpc.fromLookup(this, 'NonPciVPC', {
+      vpcId: 'vpc-5c8c1725'  // mrrobot-nonpci VPC in dev
     });
 
     // Security Group for EC2
@@ -26,6 +30,9 @@ class StrandsAgentStack extends cdk.Stack {
       ec2.Port.tcp(8501),
       'Allow Streamlit port'
     );
+
+    // Allow MCP server port from office/VPN IPs only
+    addOfficeIngressRules(securityGroup, ec2.Port.tcp(8080), 'MCP server', ec2);
 
     // Allow SSH for debugging (restrict in production)
     securityGroup.addIngressRule(
@@ -52,41 +59,37 @@ class StrandsAgentStack extends cdk.Stack {
       resources: ['*']
     }));
 
+    // Add Bedrock Knowledge Base retrieve permissions (for MCP server)
+    ec2Role.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock:Retrieve',
+        'bedrock:RetrieveAndGenerate',
+        'bedrock-agent-runtime:Retrieve',
+        'bedrock-agent-runtime:RetrieveAndGenerate'
+      ],
+      resources: ['*']
+    }));
+
     // Add SSM for Session Manager access
     ec2Role.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
     );
 
-    // User data script to set up the EC2 instance
+    // User data script - install system dependencies only
+    // App code is deployed separately via: ./scripts/deploy-to-ec2.sh
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
       '#!/bin/bash',
       'set -e',
       '',
-      '# Update system',
+      '# Install Python 3.11 and dependencies',
       'yum update -y',
-      '',
-      '# Install Python 3.11 and pip',
       'yum install -y python3.11 python3.11-pip git',
       '',
-      '# Create app directory',
+      '# Create app directory with correct ownership',
       'mkdir -p /opt/strands-agent-app',
-      'cd /opt/strands-agent-app',
-      '',
-      '# Clone or copy your app (placeholder - replace with your repo)',
-      '# git clone https://github.com/YOUR_REPO/strands-agent-app.git .',
-      '',
-      '# Create a simple placeholder app for now',
-      'cat > requirements.txt << \'EOF\'',
-      'streamlit>=1.28.0',
-      'strands-agents>=1.0.0',
-      'boto3>=1.26.0',
-      'pandas>=1.3.0',
-      'plotly>=5.0.0',
-      'EOF',
-      '',
-      '# Install dependencies',
-      'python3.11 -m pip install -r requirements.txt',
+      'chown -R ec2-user:ec2-user /opt/strands-agent-app',
       '',
       '# Create systemd service for Streamlit',
       'cat > /etc/systemd/system/streamlit.service << \'EOF\'',
@@ -98,7 +101,7 @@ class StrandsAgentStack extends cdk.Stack {
       'Type=simple',
       'User=ec2-user',
       'WorkingDirectory=/opt/strands-agent-app',
-      'Environment=AWS_DEFAULT_REGION=us-west-2',
+      'Environment=AWS_DEFAULT_REGION=us-east-1',
       'ExecStart=/usr/bin/python3.11 -m streamlit run app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true',
       'Restart=always',
       'RestartSec=3',
@@ -107,16 +110,32 @@ class StrandsAgentStack extends cdk.Stack {
       'WantedBy=multi-user.target',
       'EOF',
       '',
-      '# Set permissions',
-      'chown -R ec2-user:ec2-user /opt/strands-agent-app',
+      '# Create systemd service for MCP server',
+      'cat > /etc/systemd/system/mcp-server.service << \'EOF\'',
+      '[Unit]',
+      'Description=MCP Server for Bedrock KB',
+      'After=network.target',
       '',
-      '# Enable and start service (will fail until app is deployed)',
+      '[Service]',
+      'Type=simple',
+      'User=ec2-user',
+      'WorkingDirectory=/opt/strands-agent-app/mcp-servers',
+      'Environment=AWS_DEFAULT_REGION=us-east-1',
+      'Environment=CODE_KB_ID=SAJJWYFTNG',
+      'ExecStart=/usr/bin/python3.11 /opt/strands-agent-app/mcp-servers/bedrock-kb-server.py --sse --port 8080',
+      'Restart=always',
+      'RestartSec=3',
+      '',
+      '[Install]',
+      'WantedBy=multi-user.target',
+      'EOF',
+      '',
+      '# Enable services (start after deploy)',
       'systemctl daemon-reload',
-      'systemctl enable streamlit',
-      '# systemctl start streamlit  # Uncomment after deploying app code'
+      'systemctl enable streamlit mcp-server'
     );
 
-    // EC2 Instance
+    // EC2 Instance - use a specific public subnet
     const instance = new ec2.Instance(this, 'StreamlitInstance', {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
@@ -125,28 +144,51 @@ class StrandsAgentStack extends cdk.Stack {
       securityGroup,
       role: ec2Role,
       userData,
-      keyPair: ec2.KeyPair.fromKeyPairName(this, 'KeyPair', 'streamlit-key'), // Create this key pair first
+      keyPair: ec2.KeyPair.fromKeyPairName(this, 'KeyPair', 'streamlit-key'),
       blockDevices: [{
         deviceName: '/dev/xvda',
         volume: ec2.BlockDeviceVolume.ebs(30, {
           volumeType: ec2.EbsDeviceVolumeType.GP3
         })
-      }]
+      }],
+      associatePublicIpAddress: true,  // Request public IP assignment
     });
 
-    // CloudFront Distribution
-    const distribution = new cloudfront.Distribution(this, 'StreamlitDistribution', {
-      defaultBehavior: {
-        origin: new origins.HttpOrigin(instance.instancePublicDnsName, {
-          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
-          httpPort: 8501
-        }),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Disable caching for dynamic content
-        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER
-      },
-      comment: 'Strands Agent Streamlit App'
+    // Elastic IP for consistent public access
+    const eip = new ec2.CfnEIP(this, 'StreamlitEIP', {
+      domain: 'vpc',
+    });
+
+    // Associate EIP with instance
+    new ec2.CfnEIPAssociation(this, 'StreamlitEIPAssociation', {
+      instanceId: instance.instanceId,
+      allocationId: eip.attrAllocationId,
+    });
+
+    // ========================================================================
+    // DNS Records (Route53)
+    // ========================================================================
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+      hostedZoneId: DNS_HOSTED_ZONE_ID,
+      zoneName: DNS_DOMAIN,
+    });
+
+    // A record for MCP server: mcp.mrrobot.dev
+    new route53.ARecord(this, 'McpDnsRecord', {
+      zone: hostedZone,
+      recordName: 'mcp',
+      target: route53.RecordTarget.fromIpAddresses(eip.ref),
+      ttl: cdk.Duration.minutes(5),
+      comment: 'MCP Server for AI IDE integration',
+    });
+
+    // A record for Streamlit: ai-agent.mrrobot.dev
+    new route53.ARecord(this, 'StreamlitDnsRecord', {
+      zone: hostedZone,
+      recordName: 'ai-agent',
+      target: route53.RecordTarget.fromIpAddresses(eip.ref),
+      ttl: cdk.Duration.minutes(5),
+      comment: 'Streamlit AI Agent UI',
     });
 
     // Outputs
@@ -156,23 +198,33 @@ class StrandsAgentStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'EC2PublicIP', {
-      value: instance.instancePublicIp,
-      description: 'EC2 Public IP'
+      value: eip.ref,
+      description: 'EC2 Elastic IP'
     });
 
-    new cdk.CfnOutput(this, 'EC2PublicDNS', {
-      value: instance.instancePublicDnsName,
-      description: 'EC2 Public DNS'
+    new cdk.CfnOutput(this, 'StreamlitURL', {
+      value: `http://ai-agent.${DNS_DOMAIN}:8501`,
+      description: 'Streamlit URL'
     });
 
-    new cdk.CfnOutput(this, 'CloudFrontURL', {
-      value: `https://${distribution.distributionDomainName}`,
-      description: 'CloudFront Distribution URL'
+    new cdk.CfnOutput(this, 'MCPServerURL', {
+      value: `http://mcp.${DNS_DOMAIN}:8080/sse`,
+      description: 'MCP Server URL for Cursor'
     });
 
-    new cdk.CfnOutput(this, 'StreamlitDirectURL', {
-      value: `http://${instance.instancePublicDnsName}:8501`,
-      description: 'Direct Streamlit URL (for testing)'
+    new cdk.CfnOutput(this, 'CursorMCPConfig', {
+      value: `{"mcpServers":{"mrrobot-code-kb":{"url":"http://mcp.${DNS_DOMAIN}:8080/sse","transport":"sse"}}}`,
+      description: 'Cursor MCP config JSON'
+    });
+
+    new cdk.CfnOutput(this, 'McpDnsName', {
+      value: `mcp.${DNS_DOMAIN}`,
+      description: 'MCP Server DNS name'
+    });
+
+    new cdk.CfnOutput(this, 'StreamlitDnsName', {
+      value: `ai-agent.${DNS_DOMAIN}`,
+      description: 'Streamlit DNS name'
     });
   }
 }

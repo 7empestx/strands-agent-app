@@ -1,161 +1,114 @@
-# Merchant Insights Platform
+# Strands Agent App
 
-AI-powered transaction insights for merchants using **Strands SDK** + **Claude Sonnet on Amazon Bedrock**.
+AI-powered platform for merchant insights and code search using **Strands SDK** + **Claude Sonnet on Amazon Bedrock**.
 
-## Current: Transaction Insights Agent
+## Features
 
-Help merchants understand their payment data through natural language:
+### 1. Merchant Insights Agent (Streamlit)
+Natural language interface for merchants to understand their payment data:
+- "Give me an overview of my transactions"
+- "Why are cards being declined?"
+- "When will I get my next deposit?"
 
-```
-"Give me an overview of my transactions"
-"Why are cards being declined?"
-"Break down my fees by card type"
-"When will I get my next deposit?"
-```
+### 2. Code Knowledge Base (MCP Server)
+Search 254 MrRobot repositories (17,169 documents) via AI-powered semantic search:
+- Integrated with Cursor, Claude Code, and other MCP-compatible IDEs
+- Natural language queries: "How does authentication work in the API?"
+- Backed by Amazon Bedrock Knowledge Base + OpenSearch Serverless
 
-### Architecture
+## Quick Start
 
-```
-Merchant → Streamlit UI → Strands Agent → Claude Sonnet (Bedrock)
-                              ↓
-                         Tool Calls
-                    (query transactions,
-                     analyze declines,
-                     get settlements)
-```
-
-### Quick Start
-
+### Local Development
 ```bash
-# Set up
 cd ~/Mine/strands-agent-app
 source venv/bin/activate
-
-# Run (requires AWS credentials)
 AWS_PROFILE=dev streamlit run app.py
 ```
-
 Open http://localhost:8501
 
----
+### Connect AI IDE to MCP Server
 
-## Roadmap: Additional Agents
+**Requirement:** Must be connected to VPN.
 
-### Phase 2: Settlement/Payout Agent
+#### Cursor
+Add to `~/.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "mrrobot-code-kb": {
+      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
 
-**Purpose:** Help merchants understand when and how they get paid
+#### Claude Code
+Add to `~/.claude/settings.json`:
+```json
+{
+  "mcpServers": {
+    "mrrobot-code-kb": {
+      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
 
-**Sample Questions:**
-- "When will I get paid for yesterday's sales?"
-- "Why is this deposit less than I expected?"
-- "Show me my payout schedule"
-- "Reconcile my bank statement with my settlements"
+## Infrastructure
 
-**Tools Needed:**
-- `get_pending_settlements` - Show upcoming payouts
-- `explain_settlement` - Break down a specific deposit
-- `reconcile_deposits` - Match settlements to bank records
-- `get_hold_reasons` - Explain any fund holds
+| Resource | Value |
+|----------|-------|
+| EC2 Elastic IP | `34.202.219.55` |
+| Streamlit URL | http://ai-agent.mrrobot.dev:8501 |
+| MCP Server URL | http://mcp.mrrobot.dev:8080/sse |
+| Knowledge Base ID | `SAJJWYFTNG` |
+| AWS Account | `720154970215` (dev) |
+| Region | `us-east-1` |
 
-**Data Required:**
-- Settlement schedules
-- Bank deposit records
-- Hold/reserve information
-- Fee breakdown per settlement
+## Deployment
 
----
+### Deploy App to EC2
+```bash
+# Code only
+./scripts/deploy-to-ec2.sh
 
-### Phase 3: Chargeback Assistant
+# Code + restart services
+./scripts/deploy-to-ec2.sh --start
+```
 
-**Purpose:** Help merchants manage and respond to disputes
+### Deploy Infrastructure (CDK)
+```bash
+cd infra && npm install
 
-**Sample Questions:**
-- "I got a chargeback - what do I do?"
-- "What evidence do I need to fight this dispute?"
-- "Show me my chargeback rate"
-- "Why did I get charged $15 for this dispute?"
+# EC2 stack
+AWS_PROFILE=dev npx cdk deploy StrandsAgentStack
 
-**Tools Needed:**
-- `get_chargeback_details` - Full dispute information
-- `suggest_evidence` - Recommend what to submit
-- `draft_response` - Help write dispute response
-- `analyze_chargeback_trends` - Identify patterns
-
-**Data Required:**
-- Dispute records with reason codes
-- Original transaction details
-- Evidence templates by reason code
-- Chargeback fee schedule
-
----
-
-### Phase 4: Integration Helper
-
-**Purpose:** Help merchants integrate the payment API
-
-**Sample Questions:**
-- "How do I process a refund via API?"
-- "Show me a code example for recurring billing"
-- "My API call is returning error 422 - what's wrong?"
-- "What webhooks should I set up?"
-
-**Tools Needed:**
-- `search_docs` - Search API documentation
-- `get_code_example` - Return code snippets
-- `explain_error` - Decode error messages
-- `validate_request` - Check API request format
-
-**Data Required:**
-- API documentation (indexed)
-- Code examples by language
-- Error code reference
-- Webhook event catalog
-
----
-
-### Phase 5: Fee Analyzer
-
-**Purpose:** Help merchants understand and optimize processing costs
-
-**Sample Questions:**
-- "Break down my fees for this month"
-- "Why was this transaction charged 3.5% instead of 2.9%?"
-- "How can I reduce my processing costs?"
-- "What would I save with a different pricing plan?"
-
-**Tools Needed:**
-- `analyze_fees` - Detailed fee breakdown
-- `explain_rate` - Why a specific rate was applied
-- `suggest_optimizations` - Cost reduction tips
-- `compare_pricing` - Model different rate structures
-
-**Data Required:**
-- Fee schedule by card type
-- Interchange rates
-- Qualification criteria
-- Historical fee data
-
----
+# Knowledge Base stack
+AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
+```
 
 ## Project Structure
 
 ```
 strands-agent-app/
-├── app.py                      # Streamlit frontend
-├── agent.py                    # Transaction Insights Agent
-├── requirements.txt
-├── data/
-│   ├── merchant-insights/      # Transaction data
-│   │   ├── transactions.json
-│   │   ├── settlements.json
-│   │   └── merchants.json
-│   └── player-analytics/       # Original demo data
-│       └── ...
-├── infra/                      # CDK (JavaScript)
-│   └── ...
-└── scripts/
-    ├── deploy.sh
-    └── copy-to-ec2.sh
+├── app.py                  # Streamlit frontend
+├── agent.py                # Merchant insights agent
+├── mcp-servers/
+│   └── bedrock-kb-server.py  # MCP server for KB search
+├── infra/                  # AWS CDK (JavaScript)
+│   ├── bin/app.js
+│   └── lib/
+│       ├── strands-agent-stack.js    # EC2 infrastructure
+│       ├── knowledge-base-stack.js   # Bedrock KB infrastructure
+│       └── constants/
+│           └── aws-accounts.js       # Shared AWS config
+├── scripts/
+│   ├── deploy-to-ec2.sh    # Deploy app to EC2
+│   ├── sync-repos-to-s3.py # Sync code to KB bucket
+│   └── create-opensearch-index.py
+└── data/                   # Sample merchant data
 ```
 
 ## Tech Stack
@@ -164,58 +117,13 @@ strands-agent-app/
 |-----------|------------|
 | AI Agent | Strands SDK |
 | LLM | Claude Sonnet 4 (Bedrock) |
+| Vector Store | OpenSearch Serverless |
+| Knowledge Base | Amazon Bedrock KB |
 | Frontend | Streamlit |
-| Hosting | EC2 + CloudFront |
-| IaC | AWS CDK (JavaScript) |
+| Infrastructure | AWS CDK (JavaScript) |
+| MCP Transport | Server-Sent Events (SSE) |
 
-## Development
+## Documentation
 
-### Adding a New Agent
-
-1. Create agent file (e.g., `chargeback_agent.py`)
-2. Define tools with `@tool` decorator
-3. Create agent with system prompt
-4. Add UI page in `app.py`
-5. Add sample data to `data/` folder
-
-### Tool Pattern
-
-```python
-from strands import Agent, tool
-
-@tool
-def my_tool(param: str) -> str:
-    """Tool description for the LLM.
-
-    Args:
-        param: What this parameter does
-
-    Returns:
-        str: JSON result
-    """
-    # Query data, call APIs, etc.
-    return json.dumps(result)
-
-agent = Agent(
-    model="anthropic.claude-sonnet-4-20250514-v1:0",
-    tools=[my_tool],
-    system_prompt="You are..."
-)
-```
-
-## AWS Deployment
-
-```bash
-# Configure AWS
-aws sso login --profile dev
-
-# Deploy infrastructure
-cd infra && npm install && npx cdk deploy
-
-# Copy app to EC2
-./scripts/copy-to-ec2.sh <EC2_IP>
-```
-
-## License
-
-MIT License
+- [CLAUDE.md](./CLAUDE.md) - Project context for AI assistants
+- [DEMO.md](./DEMO.md) - Demo walkthrough and architecture

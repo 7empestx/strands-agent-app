@@ -11,7 +11,7 @@ from strands import Agent, tool
 
 # Configuration
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "merchant-insights")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "merchant-insights")
 
 
 def load_merchant_data():

@@ -1,0 +1,113 @@
+# Bitbucket Pipelines for Strands Agent App
+# Deploys to EC2 and manages CDK infrastructure
+
+image:
+  name: 246295362269.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-prod:latest
+  aws:
+    oidc-role: arn:aws:iam::246295362269:role/prod/mrrobot-ecs-prod
+
+definitions:
+  caches:
+    pre-commit: ~/.cache/pre-commit
+    pip: ~/.cache/pip
+
+  steps:
+    - step: &pre-commit
+        oidc: true
+        name: "Pre-commit Checks"
+        caches:
+          - pre-commit
+          - pip
+        script:
+          - pip install pre-commit
+          - pre-commit run --all-files
+
+    - step: &python-lint
+        oidc: true
+        name: "Python Lint & Test"
+        caches:
+          - pip
+        script:
+          - pip install -r requirements.txt
+          - pip install flake8 pytest
+          - flake8 . --max-line-length=120 --exclude=venv,__pycache__,infra/node_modules
+          # - pytest  # Uncomment when tests are added
+
+    - step: &deploy-ec2
+        oidc: true
+        name: "Deploy to EC2"
+        caches:
+          - pip
+        script:
+          - echo "Deploying to EC2..."
+          # Configure SSH
+          - mkdir -p ~/.ssh
+          - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
+          - chmod 600 ~/.ssh/streamlit-key.pem
+          # Sync code to EC2
+          - |
+            rsync -avz --delete \
+              --exclude='.git' \
+              --exclude='venv' \
+              --exclude='__pycache__' \
+              --exclude='*.pyc' \
+              --exclude='.env' \
+              --exclude='node_modules' \
+              --exclude='infra' \
+              -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
+              ./ ec2-user@$EC2_IP:/opt/strands-agent-app/
+          # Install dependencies and restart services
+          - |
+            ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
+              cd /opt/strands-agent-app
+              python3.11 -m pip install -r requirements.txt --quiet
+              sudo systemctl restart mcp-server
+              sudo systemctl restart streamlit
+              echo "Services restarted successfully"
+            EOF
+          - echo "Deploy complete!"
+
+    - step: &deploy-cdk
+        oidc: true
+        name: "Deploy CDK Infrastructure"
+        caches:
+          - node
+        script:
+          - cd infra
+          - npm ci
+          - npx cdk synth
+          - npx cdk deploy --all --require-approval never
+
+options:
+  size: 4x
+  runtime:
+    cloud:
+      atlassian-ip-ranges: true
+
+pipelines:
+  # Run on all branches
+  branches:
+    "**":
+      - parallel:
+          - step: *pre-commit
+          - step: *python-lint
+
+    # Deploy to EC2 on master
+    master:
+      - parallel:
+          - step: *pre-commit
+          - step: *python-lint
+      - step: *deploy-ec2
+
+  # Manual triggers for infrastructure changes
+  custom:
+    deploy-infrastructure:
+      - step: *deploy-cdk
+
+    deploy-app-only:
+      - step: *deploy-ec2
+
+    full-deploy:
+      - step: *deploy-cdk
+      - step: *deploy-ec2
+
