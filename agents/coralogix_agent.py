@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
+import boto3
 import requests
 from strands import Agent, tool
 
@@ -41,6 +42,216 @@ KNOWN_SERVICES = {
     "dashboard": {"logGroup": "emvio-dashboard-app", "description": "Dashboard application"},
     "webhook-service": {"logGroup": "emvio-webhook-service", "description": "Webhook handling"},
 }
+
+# =============================================================================
+# DATAPRIME QUERY KNOWLEDGE STORE
+# =============================================================================
+# This knowledge store contains DataPrime query patterns and examples that
+# the AI uses to generate queries dynamically from natural language.
+
+DATAPRIME_KNOWLEDGE = {
+    "syntax": {
+        "description": "DataPrime is Coralogix's query language for searching logs",
+        "structure": "source logs | filter <conditions> | <aggregations> | limit <n>",
+        "operators": {
+            "~": "Contains/regex match (e.g., message ~ 'error')",
+            "==": "Exact match (e.g., severity == 'ERROR')",
+            "!=": "Not equal",
+            "&&": "Logical AND",
+            "||": "Logical OR",
+            ">": "Greater than (for numbers/dates)",
+            "<": "Less than",
+            ">=": "Greater than or equal",
+            "<=": "Less than or equal",
+        },
+        "functions": {
+            "count": "Count results (groupby field | count)",
+            "distinct": "Get unique values (distinct fieldName)",
+            "groupby": "Group results by field",
+            "sort": "Sort results (sort -field for descending)",
+            "limit": "Limit number of results",
+        },
+    },
+    "field_mappings": {
+        "message": "The log message content",
+        "logGroup": "Service/application identifier (e.g., '/aws/lambda/mrrobot-cast-core-prod')",
+        "timestamp": "Log timestamp",
+        "requestID": "Request correlation ID for tracing",
+        "severity": "Log level (INFO, WARN, ERROR, etc.)",
+    },
+    "environment_patterns": {
+        "prod": "-prod",
+        "production": "-prod",
+        "dev": "-dev",
+        "development": "-dev",
+        "staging": "-staging",
+        "stage": "-staging",
+        "local": "-devopslocal",
+    },
+    "examples": [
+        {
+            "intent": "Find all errors",
+            "query": "source logs | filter message ~ 'ERROR' || message ~ 'Error' || message ~ 'Exception' | limit 100",
+        },
+        {
+            "intent": "Find errors in a specific service",
+            "query": "source logs | filter logGroup ~ 'cast-core' && (message ~ 'ERROR' || message ~ 'Exception') | limit 100",
+        },
+        {
+            "intent": "Find errors in production environment",
+            "query": "source logs | filter logGroup ~ '-prod' && (message ~ 'ERROR' || message ~ 'Exception') | limit 100",
+        },
+        {
+            "intent": "Count logs by service",
+            "query": "source logs | groupby logGroup | count | sort -_count | limit 50",
+        },
+        {
+            "intent": "Find timeout errors",
+            "query": "source logs | filter message ~ 'timeout' || message ~ 'Timeout' || message ~ 'TIMEOUT' | limit 100",
+        },
+        {
+            "intent": "Find authentication failures",
+            "query": "source logs | filter message ~ 'auth' && (message ~ 'fail' || message ~ 'denied' || message ~ 'unauthorized') | limit 100",
+        },
+        {
+            "intent": "Find logs with specific request ID",
+            "query": "source logs | filter requestID == 'abc-123-def' | limit 100",
+        },
+        {
+            "intent": "Find database connection errors",
+            "query": "source logs | filter message ~ 'database' || message ~ 'connection' || message ~ 'ECONNREFUSED' | limit 100",
+        },
+        {
+            "intent": "Find payment processing issues",
+            "query": "source logs | filter logGroup ~ 'payment' && (message ~ 'fail' || message ~ 'decline' || message ~ 'error') | limit 100",
+        },
+        {
+            "intent": "Get unique services/log groups",
+            "query": "source logs | distinct logGroup | limit 100",
+        },
+        {
+            "intent": "Find 5xx HTTP errors",
+            "query": "source logs | filter message ~ '500' || message ~ '502' || message ~ '503' || message ~ '504' | limit 100",
+        },
+        {
+            "intent": "Find memory or OOM issues",
+            "query": "source logs | filter message ~ 'memory' || message ~ 'OOM' || message ~ 'heap' || message ~ 'OutOfMemory' | limit 100",
+        },
+        {
+            "intent": "Find slow queries or latency issues",
+            "query": "source logs | filter message ~ 'slow' || message ~ 'latency' || message ~ 'duration' | limit 100",
+        },
+        {
+            "intent": "Find CVV or sensitive card data in logs",
+            "query": "source logs | filter message ~ 'cvv' || message ~ 'cvc' || message ~ 'security_code' | limit 100",
+        },
+        {
+            "intent": "Find Lambda cold starts",
+            "query": "source logs | filter message ~ 'cold start' || message ~ 'Init Duration' | limit 100",
+        },
+    ],
+}
+
+
+def generate_dataprime_query(
+    natural_language_request: str,
+    service_filter: str = None,
+    environment: str = None,
+    limit: int = 100,
+) -> str:
+    """
+    Generate a DataPrime query from natural language using the knowledge store.
+    Uses Claude via Bedrock to translate the request into a valid query.
+    """
+    # Build context from knowledge store
+    examples_text = "\n".join(
+        [f"- Intent: {ex['intent']}\n  Query: {ex['query']}" for ex in DATAPRIME_KNOWLEDGE["examples"]]
+    )
+
+    operators_text = "\n".join([f"- {op}: {desc}" for op, desc in DATAPRIME_KNOWLEDGE["syntax"]["operators"].items()])
+
+    functions_text = "\n".join([f"- {fn}: {desc}" for fn, desc in DATAPRIME_KNOWLEDGE["syntax"]["functions"].items()])
+
+    fields_text = "\n".join([f"- {field}: {desc}" for field, desc in DATAPRIME_KNOWLEDGE["field_mappings"].items()])
+
+    # Build additional filters
+    additional_filters = []
+    if service_filter:
+        additional_filters.append(f"Filter to service matching: {service_filter}")
+    if environment:
+        env_pattern = DATAPRIME_KNOWLEDGE["environment_patterns"].get(environment.lower(), f"-{environment}")
+        additional_filters.append(f"Filter to environment: {environment} (pattern: {env_pattern})")
+
+    additional_context = "\n".join(additional_filters) if additional_filters else "No additional filters"
+
+    prompt = f"""Generate a DataPrime query for Coralogix based on this request.
+
+USER REQUEST: {natural_language_request}
+
+ADDITIONAL FILTERS:
+{additional_context}
+
+DATAPRIME SYNTAX:
+Structure: {DATAPRIME_KNOWLEDGE["syntax"]["structure"]}
+
+OPERATORS:
+{operators_text}
+
+FUNCTIONS:
+{functions_text}
+
+AVAILABLE FIELDS:
+{fields_text}
+
+EXAMPLE QUERIES:
+{examples_text}
+
+RULES:
+1. Always start with "source logs"
+2. Use filter for conditions
+3. Use ~ for contains/regex matching (case sensitive - include variations)
+4. Use && for AND, || for OR
+5. Always end with "| limit {limit}"
+6. For environment filtering, use logGroup ~ '-prod' or '-dev' etc.
+7. Return ONLY the query, no explanation
+
+QUERY:"""
+
+    try:
+        # Use Bedrock to generate the query
+        bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION)
+        response = bedrock.invoke_model(
+            modelId="us.anthropic.claude-sonnet-4-20250514-v1:0",
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 500,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
+        )
+        result = json.loads(response["body"].read())
+        query = result["content"][0]["text"].strip()
+
+        # Clean up the query (remove any markdown formatting)
+        if query.startswith("```"):
+            query = query.split("\n", 1)[1] if "\n" in query else query[3:]
+        if query.endswith("```"):
+            query = query.rsplit("```", 1)[0]
+        query = query.strip()
+
+        return query
+    except Exception as e:
+        # Fallback to a basic query if generation fails
+        print(f"[Query Generator] Failed to generate query: {e}")
+        base_query = f"source logs | filter message ~ '{natural_language_request.split()[0]}'"
+        if service_filter:
+            base_query += f" && logGroup ~ '{service_filter}'"
+        if environment:
+            env_pattern = DATAPRIME_KNOWLEDGE["environment_patterns"].get(environment.lower(), f"-{environment}")
+            base_query += f" && logGroup ~ '{env_pattern}'"
+        base_query += f" | limit {limit}"
+        return base_query
 
 
 def get_coralogix_endpoint():
@@ -408,6 +619,100 @@ def search_logs(query: str, hours_back: int = 1, limit: int = 50) -> str:
 
 
 @tool
+def smart_log_search(
+    request: str,
+    service_name: str = None,
+    environment: str = None,
+    hours_back: int = 4,
+    limit: int = 100,
+) -> str:
+    """AI-powered log search - describe what you're looking for in natural language.
+
+    This tool uses AI to generate the appropriate DataPrime query based on your
+    natural language description. No need to know query syntax!
+
+    Args:
+        request: Natural language description of what to search for
+                 (e.g., "find timeout errors", "show authentication failures",
+                 "find slow database queries", "look for payment declines")
+        service_name: Optional service filter (e.g., "cast-core", "payment")
+        environment: Optional environment filter ("prod", "dev", "staging")
+        hours_back: How many hours back to search (default: 4)
+        limit: Maximum number of results (default: 100)
+
+    Returns:
+        str: JSON with generated query and matching log entries
+    """
+    print(f"[Tool] smart_log_search: request='{request}', service={service_name}, env={environment}")
+
+    # Generate the query using AI
+    generated_query = generate_dataprime_query(
+        natural_language_request=request,
+        service_filter=service_name,
+        environment=environment,
+        limit=limit,
+    )
+
+    print(f"[Tool] Generated query: {generated_query}")
+
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=hours_back)
+
+    response = make_coralogix_request(generated_query, start_time, end_time, limit)
+    logs = parse_coralogix_response(response)
+
+    # Group logs by service for better readability
+    logs_by_service = {}
+    for log in logs:
+        log_group = log.get("logGroup", "unknown")
+        parts = log_group.split("/")
+        service = parts[-1] if parts else log_group
+        if service not in logs_by_service:
+            logs_by_service[service] = []
+        logs_by_service[service].append(log)
+
+    result = {
+        "original_request": request,
+        "generated_query": generated_query,
+        "filters_applied": {
+            "service": service_name or "all",
+            "environment": environment or "all",
+        },
+        "time_range": f"Last {hours_back} hour(s)",
+        "total_results": len(logs),
+        "services_found": len(logs_by_service),
+        "logs_by_service": {svc: {"count": len(items), "logs": items[:20]} for svc, items in logs_by_service.items()},
+    }
+
+    print(f"[Tool] Found {len(logs)} log entries across {len(logs_by_service)} services")
+    return json.dumps(result, indent=2, default=str)
+
+
+@tool
+def get_query_examples() -> str:
+    """Get examples of log search queries from the knowledge store.
+
+    Use this to understand what kinds of searches are available and
+    to get inspiration for your own queries.
+
+    Returns:
+        str: JSON with example queries and their intents
+    """
+    print("[Tool] get_query_examples")
+
+    result = {
+        "description": "Example DataPrime queries for common log searches",
+        "syntax_reference": DATAPRIME_KNOWLEDGE["syntax"],
+        "examples": DATAPRIME_KNOWLEDGE["examples"],
+        "available_fields": DATAPRIME_KNOWLEDGE["field_mappings"],
+        "environment_patterns": DATAPRIME_KNOWLEDGE["environment_patterns"],
+        "tip": "Use smart_log_search with natural language instead of writing queries manually!",
+    }
+
+    return json.dumps(result, indent=2, default=str)
+
+
+@tool
 def find_cvv_in_logs(
     service_name: str = "all",
     hours_back: int = 24,
@@ -639,8 +944,7 @@ def create_coralogix_agent():
     """Create the Coralogix log analysis agent."""
 
     system_prompt = """You are a Log Analysis Assistant for Coralogix.
-    if you cant do it or you dont have the tool let me know?? also should we do natuarl langauge to real queries??
-    chat back to ask more clairifying questions about what the user wants before you use a tool.
+Ask clarifying questions before using tools if the user's request is ambiguous.
 
 Your role is to help developers and operators understand and troubleshoot issues using Coralogix logs.
 
@@ -655,40 +959,42 @@ SERVICE NAMING PATTERNS:
 - Environment suffix: -prod, -dev, -staging, -devopslocal
 
 TOOLS AVAILABLE:
-1. discover_services - Find what services exist (USE THIS FIRST if unsure)
-2. get_recent_errors - Find errors with filtering by service/environment/scope
-3. get_service_logs - Get all logs for a specific service
-4. get_log_count - Get log volume counts (useful for trends)
-5. search_logs - Custom DataPrime queries for advanced searches
+1. smart_log_search - AI-POWERED search: describe what you want in natural language! (PREFERRED)
+2. discover_services - Find what services exist (USE THIS FIRST if unsure)
+3. get_recent_errors - Find errors with filtering by service/environment/scope
+4. get_service_logs - Get all logs for a specific service
+5. get_log_count - Get log volume counts (useful for trends)
 6. get_service_health - Health overview with error rates
 7. find_cvv_in_logs - PCI-DSS compliance check for CVV/CVC data in logs
+8. get_query_examples - See example queries from the knowledge store
+9. search_logs - Execute raw DataPrime queries (advanced users only)
+
+TOOL SELECTION (PREFER smart_log_search for flexibility):
+- "Find timeout errors in prod" → smart_log_search(request="timeout errors", environment="prod")
+- "Show me authentication failures" → smart_log_search(request="authentication failures")
+- "Any database connection issues?" → smart_log_search(request="database connection errors")
+- "What services exist?" → discover_services
+- "Health check" → get_service_health
+- "Check for CVV in logs" → find_cvv_in_logs (PCI compliance)
+- "How do I write queries?" → get_query_examples
 
 ENVIRONMENT FILTERING (IMPORTANT):
 When users mention an environment, ALWAYS use the environment parameter:
-- "cast core prod errors" → get_recent_errors(service_name="cast-core", environment="prod")
-- "prod errors" → get_recent_errors(environment="prod")
-- "dev cast errors" → get_recent_errors(scope="cast", environment="dev")
-
-TOOL SELECTION:
-- "What services exist?" → discover_services
-- "Show me errors" → get_recent_errors
-- "Errors in [service] [env]" → get_recent_errors(service_name="...", environment="...")
-- "Logs for [service]" → get_service_logs
-- "How many logs?" → get_log_count
-- "Health check" → get_service_health
-- "Check for CVV/CVC in logs" → find_cvv_in_logs (PCI compliance)
-- Complex queries → search_logs
+- "prod errors" → smart_log_search(request="errors", environment="prod")
+- "dev cast errors" → smart_log_search(request="errors", service_name="cast", environment="dev")
 
 RESPONSE STYLE:
 - Be concise and actionable
 - Highlight errors first
 - Group by service for clarity
 - Suggest troubleshooting next steps
-- Include error counts"""
+- Include error counts
+- Show the generated query so users can learn"""
 
     return Agent(
         model="us.anthropic.claude-sonnet-4-20250514-v1:0",
         tools=[
+            smart_log_search,
             discover_services,
             get_recent_errors,
             get_service_logs,
@@ -696,6 +1002,7 @@ RESPONSE STYLE:
             search_logs,
             get_service_health,
             find_cvv_in_logs,
+            get_query_examples,
         ],
         system_prompt=system_prompt,
     )
