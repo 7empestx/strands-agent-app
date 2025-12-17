@@ -113,4 +113,3 @@ pipelines:
     full-deploy:
       - step: *deploy-cdk
       - step: *deploy-ec2
-
