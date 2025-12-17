@@ -38,18 +38,18 @@ definitions:
 
     - step: &deploy-ec2
         oidc: true
-        name: "Deploy to EC2"
+        name: "Deploy to EC2 (App Only)"
         caches:
           - pip
         script:
-          - echo "Deploying to EC2..."
+          - echo "Deploying app to EC2 (MCP server NOT restarted)..."
           # Install rsync if not available
           - which rsync || (yum install -y rsync 2>/dev/null || apt-get update && apt-get install -y rsync)
           # Configure SSH
           - mkdir -p ~/.ssh
           - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
           - chmod 600 ~/.ssh/streamlit-key.pem
-          # Sync code to EC2
+          # Sync code to EC2 (EXCLUDING mcp-servers to avoid accidental restarts)
           - |
             rsync -avz --delete \
               --exclude='.git' \
@@ -59,18 +59,46 @@ definitions:
               --exclude='.env' \
               --exclude='node_modules' \
               --exclude='infra' \
+              --exclude='mcp-servers' \
               -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
               ./ ec2-user@$EC2_IP:/opt/mrrobot-ai-core/
-          # Install dependencies and restart services
+          # Install dependencies and restart ONLY Streamlit (not MCP)
+          - |
+            ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
+              cd /opt/mrrobot-ai-core
+              python3.11 -m pip install -r requirements.txt --quiet
+              sudo systemctl restart streamlit
+              echo "Streamlit restarted (MCP server unchanged)"
+            EOF
+          - echo "Deploy complete! MCP connections preserved."
+
+    - step: &deploy-mcp
+        oidc: true
+        name: "Deploy MCP Server (Will Disconnect Clients)"
+        caches:
+          - pip
+        script:
+          - echo "⚠️  Deploying MCP server - clients will need to reconnect..."
+          # Install rsync if not available
+          - which rsync || (yum install -y rsync 2>/dev/null || apt-get update && apt-get install -y rsync)
+          # Configure SSH
+          - mkdir -p ~/.ssh
+          - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
+          - chmod 600 ~/.ssh/streamlit-key.pem
+          # Sync ONLY mcp-servers folder
+          - |
+            rsync -avz \
+              -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
+              ./mcp-servers/ ec2-user@$EC2_IP:/opt/mrrobot-ai-core/mcp-servers/
+          # Restart MCP server
           - |
             ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
               cd /opt/mrrobot-ai-core
               python3.11 -m pip install -r requirements.txt --quiet
               sudo systemctl restart mcp-server
-              sudo systemctl restart streamlit
-              echo "Services restarted successfully"
+              echo "MCP server restarted - clients need to reconnect"
             EOF
-          - echo "Deploy complete!"
+          - echo "MCP deploy complete! Users need to toggle MCP in their IDE."
 
     - step: &deploy-cdk
         oidc: true
@@ -104,7 +132,7 @@ pipelines:
           - step: *python-lint
       - step: *deploy-ec2
 
-  # Manual triggers for infrastructure changes
+  # Manual triggers
   custom:
     deploy-infrastructure:
       - step: *deploy-cdk
@@ -112,6 +140,10 @@ pipelines:
     deploy-app-only:
       - step: *deploy-ec2
 
+    deploy-mcp-server:
+      - step: *deploy-mcp
+
     full-deploy:
       - step: *deploy-cdk
       - step: *deploy-ec2
+      - step: *deploy-mcp
