@@ -70,11 +70,16 @@ def get_bitbucket_token():
 
 def search_knowledge_base(query: str, num_results: int = 5) -> dict:
     """Search the Bedrock Knowledge Base."""
+    from botocore.config import Config
+
+    # Add timeout configuration to prevent hanging
+    config = Config(connect_timeout=10, read_timeout=25, retries={"max_attempts": 1})
+
     if AWS_PROFILE:
         session = boto3.Session(profile_name=AWS_PROFILE, region_name=REGION)
     else:
         session = boto3.Session(region_name=REGION)
-    client = session.client("bedrock-agent-runtime")
+    client = session.client("bedrock-agent-runtime", config=config)
 
     try:
         response = client.retrieve(
@@ -294,14 +299,17 @@ def handle_request(request: dict) -> dict:
             }
 
         elif tool_name == "search_in_repo":
-            # Search with repo name in query to filter results
+            # Search with repo context to help semantic search
             repo_name = args.get("repo_name", "")
             query = args.get("query", "")
-            combined_query = f"repository:{repo_name} {query}"
-            result = search_knowledge_base(query=combined_query, num_results=args.get("num_results", 5))
+            # Include repo name naturally in query for better semantic matching
+            combined_query = f"{query} in {repo_name}"
+            # Request more results since we'll filter
+            result = search_knowledge_base(query=combined_query, num_results=min(args.get("num_results", 5) * 3, 15))
             # Filter results to only include the specified repo
             if "results" in result:
-                result["results"] = [r for r in result["results"] if repo_name.lower() in r.get("repo", "").lower()]
+                filtered = [r for r in result["results"] if repo_name.lower() in r.get("repo", "").lower()]
+                result["results"] = filtered[: args.get("num_results", 5)]
             result["repo_filter"] = repo_name
             return {
                 "jsonrpc": "2.0",
@@ -358,8 +366,9 @@ def handle_request(request: dict) -> dict:
 
         elif tool_name == "list_repos":
             filter_pattern = args.get("filter", "").lower()
-            # Hardcoded list of known repos (could be fetched from S3 or Bitbucket API)
+            # Comprehensive list of known repos (sample - full 254 repos in KB)
             all_repos = [
+                # Cast integrations
                 "cast-core",
                 "cast-quickbooks",
                 "cast-housecallpro",
@@ -368,6 +377,9 @@ def handle_request(request: dict) -> dict:
                 "cast-xero",
                 "cast-databases",
                 "cast-support-portal-service",
+                "cast-dashboard",
+                "cast-api",
+                # MrRobot services
                 "mrrobot-auth-rest",
                 "mrrobot-rest-utils-npm",
                 "mrrobot-common-js-utils",
@@ -381,6 +393,10 @@ def handle_request(request: dict) -> dict:
                 "mrrobot-crowdstrike-logs-sync-lambda",
                 "mrrobot-media-cdn",
                 "mrrobot-azuread-last-login",
+                "mrrobot-pii-npm",
+                "mrrobot-secrets-npm",
+                "mrrobot-ai-core",
+                # Emvio services
                 "emvio-gateway",
                 "emvio-dashboard-app",
                 "emvio-payment-service",
@@ -392,9 +408,12 @@ def handle_request(request: dict) -> dict:
                 "emvio-ui",
                 "emvio-developer-tools",
                 "emvio-tutorials",
-                "devops-scripts",
+                "emvio-proxy-tokenization-service",
+                # Infrastructure
+                "aws-terraform",
                 "bitbucket-terraform",
                 "bastion-ec2-ami",
+                "devops-scripts",
                 "pci-file-scanner",
                 "freshdesk",
                 "AWS-utility",
@@ -407,9 +426,10 @@ def handle_request(request: dict) -> dict:
 
             result = {
                 "total_indexed": 254,
-                "sample_repos": repos[:50],
+                "matching_repos": repos,
+                "count": len(repos),
                 "filter": filter_pattern if filter_pattern else "none",
-                "note": "This is a sample list. Use search_mrrobot_repos to find code in any of the 254 repos.",
+                "note": "This is a curated sample. Use search_mrrobot_repos to find code in any of the 254 indexed repos.",
             }
             return {
                 "jsonrpc": "2.0",
