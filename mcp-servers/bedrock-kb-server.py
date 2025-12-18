@@ -483,7 +483,16 @@ def run_stdio():
 
 
 def run_sse(host: str, port: int):
-    """Run MCP server using SSE transport (remote)."""
+    """Run MCP server supporting both StreamableHTTP and SSE transports.
+
+    StreamableHTTP (preferred by Cursor):
+    - POST /sse with JSON-RPC request, get JSON-RPC response
+    - Simpler, more reliable - no persistent connection needed
+
+    SSE (legacy fallback):
+    - GET /sse to establish SSE stream
+    - POST /message to send requests, responses via SSE stream
+    """
     import queue
     import uuid
 
@@ -491,18 +500,50 @@ def run_sse(host: str, port: int):
 
     app = Flask(__name__)
 
-    # Store client connections and their message queues
+    # Store client connections and their message queues (for SSE)
     clients = {}
 
     @app.route("/health", methods=["GET"])
     def health():
-        return jsonify({"status": "ok", "kb_id": KB_ID})
+        return jsonify({"status": "ok", "kb_id": KB_ID, "transport": "streamable-http+sse"})
 
-    @app.route("/sse", methods=["GET"])
-    def sse_connect():
-        """SSE endpoint for MCP clients - implements MCP SSE transport."""
+    @app.route("/sse", methods=["GET", "POST", "OPTIONS"])
+    def sse_endpoint():
+        """Combined endpoint supporting both StreamableHTTP and SSE transports.
+
+        - POST: StreamableHTTP - direct request/response (preferred)
+        - GET: SSE - establish event stream for legacy clients
+        - OPTIONS: CORS preflight
+        """
+        # Handle CORS preflight
+        if request.method == "OPTIONS":
+            return Response(
+                "",
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Accept",
+                },
+            )
+
+        # StreamableHTTP: POST with JSON-RPC request
+        if request.method == "POST":
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({"error": "No JSON body provided"}), 400, {"Access-Control-Allow-Origin": "*"}
+
+                response = handle_request(data)
+
+                if response:
+                    return jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
+                return "", 204, {"Access-Control-Allow-Origin": "*"}
+            except Exception as e:
+                error_response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32603, "message": str(e)}}
+                return jsonify(error_response), 500, {"Access-Control-Allow-Origin": "*"}
+
+        # SSE: GET to establish event stream
         client_id = str(uuid.uuid4())
-        # Capture the base URL from the request for use in the generator
         base_url = request.url_root.rstrip("/")
 
         def event_stream():
@@ -510,8 +551,6 @@ def run_sse(host: str, port: int):
             clients[client_id] = q
 
             # Send the endpoint event first (MCP SSE protocol requirement)
-            # This tells the client where to POST messages
-            # Use absolute URL as required by MCP SSE spec
             endpoint_url = f"{base_url}/message?session_id={client_id}"
             yield f"event: endpoint\ndata: {endpoint_url}\n\n"
 
@@ -522,7 +561,7 @@ def run_sse(host: str, port: int):
                         yield f"event: message\ndata: {json.dumps(message)}\n\n"
                     except queue.Empty:
                         # Send keepalive comment
-                        yield f": keepalive\n\n"
+                        yield ": keepalive\n\n"
             finally:
                 clients.pop(client_id, None)
 
@@ -539,7 +578,7 @@ def run_sse(host: str, port: int):
 
     @app.route("/message", methods=["POST", "OPTIONS"])
     def handle_message():
-        """Handle incoming MCP JSON-RPC messages."""
+        """Handle incoming MCP JSON-RPC messages (for SSE transport)."""
         # Handle CORS preflight
         if request.method == "OPTIONS":
             return Response(
@@ -570,8 +609,8 @@ def run_sse(host: str, port: int):
 
     print(f"Starting MCP server on http://{host}:{port}")
     print(f"Knowledge Base ID: {KB_ID}")
-    print(f"SSE endpoint: http://{host}:{port}/sse")
-    print(f"Message endpoint: http://{host}:{port}/message")
+    print(f"Transports: StreamableHTTP (POST /sse) + SSE (GET /sse)")
+    print(f"Health: http://{host}:{port}/health")
 
     app.run(host=host, port=port, threaded=True)
 
