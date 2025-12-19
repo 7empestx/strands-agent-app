@@ -4,11 +4,14 @@ These tools use the Atlassian Admin API v2 for onboarding/offboarding workflows.
 API Reference: https://developer.atlassian.com/cloud/admin/organization/rest/
 """
 
-import json
-
 import requests
 
-from ..utils.secrets import get_secret
+import sys
+import os
+
+# Add project root to path to import shared utils
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from utils.secrets import get_secret
 
 # Atlassian Admin API base URL
 ATLASSIAN_ADMIN_API = "https://api.atlassian.com"
@@ -62,10 +65,7 @@ def _make_request(method: str, endpoint: str, data: dict = None) -> dict:
             return {"success": True, "message": "Operation completed successfully"}
 
         if response.status_code >= 400:
-            return {
-                "error": f"API error {response.status_code}",
-                "details": response.text,
-            }
+            return {"error": f"API error {response.status_code}", "details": response.text}
 
         return response.json() if response.text else {"success": True}
 
@@ -101,7 +101,6 @@ def handle_list_users(limit: int = 100, cursor: str = None) -> dict:
 
     result = _make_request("GET", endpoint)
 
-    # Format for easier consumption
     if "data" in result:
         users = []
         for user in result.get("data", []):
@@ -175,7 +174,6 @@ def handle_list_groups(limit: int = 100) -> dict:
     endpoint = f"/v2/orgs/{org_id}/directories/{directory_id}/groups?limit={limit}"
     result = _make_request("GET", endpoint)
 
-    # Format for easier consumption
     if "data" in result:
         groups = []
         for group in result.get("data", []):
@@ -290,173 +288,3 @@ def handle_revoke_group_access(group_id: str, role: str, resource_id: str = None
         result["message"] = f"Role '{role}' revoked from group {group_id}"
 
     return result
-
-
-# ============================================================================
-# Registration
-# ============================================================================
-
-def register_atlassian_tools(protocol):
-    """Register all Atlassian Admin tools with the MCP protocol handler."""
-
-    # Directory tools
-    protocol.register_tool(
-        name="atlassian_get_directories",
-        description="Get directories in the Atlassian organization.",
-        input_schema={"type": "object", "properties": {}, "required": []},
-        handler=handle_get_directories,
-    )
-
-    # User tools
-    protocol.register_tool(
-        name="atlassian_list_users",
-        description="List users in the Atlassian organization directory.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 100, "description": "Max users to return"},
-                "cursor": {"type": "string", "description": "Pagination cursor"},
-            },
-            "required": [],
-        },
-        handler=handle_list_users,
-    )
-
-    protocol.register_tool(
-        name="atlassian_suspend_user",
-        description="Suspend a user's access in the Atlassian directory. Use for offboarding.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "account_id": {"type": "string", "description": "User's Atlassian account ID"},
-            },
-            "required": ["account_id"],
-        },
-        handler=handle_suspend_user,
-    )
-
-    protocol.register_tool(
-        name="atlassian_restore_user",
-        description="Restore a suspended user's access.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "account_id": {"type": "string", "description": "User's Atlassian account ID"},
-            },
-            "required": ["account_id"],
-        },
-        handler=handle_restore_user,
-    )
-
-    protocol.register_tool(
-        name="atlassian_remove_user",
-        description="Completely remove a user from the Atlassian directory.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "account_id": {"type": "string", "description": "User's Atlassian account ID"},
-            },
-            "required": ["account_id"],
-        },
-        handler=handle_remove_user,
-    )
-
-    # Group tools
-    protocol.register_tool(
-        name="atlassian_list_groups",
-        description="List all groups in the Atlassian organization.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 100},
-            },
-            "required": [],
-        },
-        handler=handle_list_groups,
-    )
-
-    protocol.register_tool(
-        name="atlassian_create_group",
-        description="Create a new group in the Atlassian directory.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Group name"},
-                "description": {"type": "string", "description": "Group description"},
-            },
-            "required": ["name"],
-        },
-        handler=handle_create_group,
-    )
-
-    protocol.register_tool(
-        name="atlassian_delete_group",
-        description="Delete a group from the Atlassian directory.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "group_id": {"type": "string", "description": "Group ID"},
-            },
-            "required": ["group_id"],
-        },
-        handler=handle_delete_group,
-    )
-
-    protocol.register_tool(
-        name="atlassian_add_user_to_group",
-        description="Add a user to an Atlassian group. Use for onboarding.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "group_id": {"type": "string", "description": "Group ID"},
-                "account_id": {"type": "string", "description": "User's account ID"},
-            },
-            "required": ["group_id", "account_id"],
-        },
-        handler=handle_add_user_to_group,
-    )
-
-    protocol.register_tool(
-        name="atlassian_remove_user_from_group",
-        description="Remove a user from an Atlassian group. Use for offboarding.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "group_id": {"type": "string", "description": "Group ID"},
-                "account_id": {"type": "string", "description": "User's account ID"},
-            },
-            "required": ["group_id", "account_id"],
-        },
-        handler=handle_remove_user_from_group,
-    )
-
-    protocol.register_tool(
-        name="atlassian_grant_group_access",
-        description="Grant product access to a group via role assignment.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "group_id": {"type": "string", "description": "Group ID"},
-                "role": {"type": "string", "description": "Role to grant"},
-                "resource_id": {"type": "string", "description": "Optional resource ID"},
-            },
-            "required": ["group_id", "role"],
-        },
-        handler=handle_grant_group_access,
-    )
-
-    protocol.register_tool(
-        name="atlassian_revoke_group_access",
-        description="Revoke product access from a group.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "group_id": {"type": "string", "description": "Group ID"},
-                "role": {"type": "string", "description": "Role to revoke"},
-                "resource_id": {"type": "string", "description": "Optional resource ID"},
-            },
-            "required": ["group_id", "role"],
-        },
-        handler=handle_revoke_group_access,
-    )
-

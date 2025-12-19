@@ -6,7 +6,12 @@ from datetime import datetime, timedelta
 
 import requests
 
-from ..utils.secrets import get_secret
+import sys
+import os as os_module
+
+# Add project root to path to import shared utils
+sys.path.insert(0, os_module.path.dirname(os_module.path.dirname(os_module.path.dirname(os_module.path.abspath(__file__)))))
+from utils.secrets import get_secret
 
 # Configuration
 CORALOGIX_REGION = os.environ.get("CORALOGIX_REGION", "us2")
@@ -59,7 +64,6 @@ def _make_request(query: str, hours_back: int = 4, limit: int = 100) -> dict:
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
-        # Handle NDJSON response
         results = []
         for line in response.text.strip().split("\n"):
             if line.strip():
@@ -99,7 +103,6 @@ def _parse_response(response: dict) -> list:
     return logs
 
 
-# Tool handlers
 def handle_discover_services(hours_back: int = 1, limit: int = 50) -> dict:
     """Discover available log groups/services."""
     query = f"source logs | distinct logGroup | limit {limit}"
@@ -151,7 +154,6 @@ def handle_get_recent_errors(
     response = _make_request(query, hours_back, limit)
     logs = _parse_response(response)
 
-    # Group by service
     errors_by_service = {}
     for log in logs:
         log_group = log.get("logGroup", "unknown")
@@ -225,7 +227,6 @@ def handle_search_logs(query: str, hours_back: int = 4, limit: int = 100) -> dic
 
 def handle_get_service_health(service_name: str = "all", environment: str = "prod") -> dict:
     """Get health overview based on error rates."""
-    # Get total counts
     total_filters = []
     if service_name.lower() != "all":
         total_filters.append(f"logGroup ~ '{service_name}'")
@@ -238,7 +239,6 @@ def handle_get_service_health(service_name: str = "all", environment: str = "pro
     total_response = _make_request(total_query, 1, 20)
     total_logs = _parse_response(total_response)
 
-    # Get error counts
     error_patterns = "message ~ 'ERROR' || message ~ 'Error' || message ~ 'Exception'"
     error_filters = total_filters + [f"({error_patterns})"]
     error_filter_str = " && ".join(error_filters)
@@ -247,7 +247,6 @@ def handle_get_service_health(service_name: str = "all", environment: str = "pro
     error_response = _make_request(error_query, 1, 20)
     error_logs = _parse_response(error_response)
 
-    # Build counts
     total_counts = {}
     for log in total_logs:
         lg = log.get("logGroup", "")
@@ -262,7 +261,6 @@ def handle_get_service_health(service_name: str = "all", environment: str = "pro
         service = parts[-1] if parts else lg
         error_counts[service] = log.get("_count", 0)
 
-    # Calculate health
     health_results = []
     for service, total in sorted(total_counts.items(), key=lambda x: -x[1]):
         errors = error_counts.get(service, 0)
@@ -289,84 +287,3 @@ def handle_get_service_health(service_name: str = "all", environment: str = "pro
         "services_checked": len(health_results),
         "health_summary": health_results,
     }
-
-
-def register_coralogix_tools(protocol):
-    """Register all Coralogix tools with the MCP protocol handler."""
-
-    protocol.register_tool(
-        name="coralogix_discover_services",
-        description="Discover available log groups/services in Coralogix.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "hours_back": {"type": "integer", "default": 1, "description": "Hours to search back"},
-                "limit": {"type": "integer", "default": 50},
-            },
-            "required": [],
-        },
-        handler=handle_discover_services,
-    )
-
-    protocol.register_tool(
-        name="coralogix_get_recent_errors",
-        description="Get recent errors from Coralogix logs, grouped by service.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "service_name": {"type": "string", "default": "all", "description": "Service name or 'all'"},
-                "hours_back": {"type": "integer", "default": 4},
-                "limit": {"type": "integer", "default": 100},
-                "environment": {"type": "string", "default": "all", "description": "prod, dev, staging, or all"},
-            },
-            "required": [],
-        },
-        handler=handle_get_recent_errors,
-    )
-
-    protocol.register_tool(
-        name="coralogix_get_service_logs",
-        description="Get logs for a specific service from Coralogix.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "service_name": {"type": "string", "description": "Service name pattern"},
-                "hours_back": {"type": "integer", "default": 1},
-                "error_only": {"type": "boolean", "default": False},
-                "limit": {"type": "integer", "default": 50},
-                "environment": {"type": "string", "default": "all"},
-            },
-            "required": ["service_name"],
-        },
-        handler=handle_get_service_logs,
-    )
-
-    protocol.register_tool(
-        name="coralogix_search_logs",
-        description="Execute a custom DataPrime query on Coralogix logs.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "DataPrime query (e.g., source logs | filter message ~ 'error')"},
-                "hours_back": {"type": "integer", "default": 4},
-                "limit": {"type": "integer", "default": 100},
-            },
-            "required": ["query"],
-        },
-        handler=handle_search_logs,
-    )
-
-    protocol.register_tool(
-        name="coralogix_get_service_health",
-        description="Get health overview for services based on error rates.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "service_name": {"type": "string", "default": "all"},
-                "environment": {"type": "string", "default": "prod"},
-            },
-            "required": [],
-        },
-        handler=handle_get_service_health,
-    )
-
