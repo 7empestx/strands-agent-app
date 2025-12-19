@@ -1,5 +1,5 @@
 # Bitbucket Pipelines for MrRobot AI Core
-# Deploys to ECS Fargate (primary) and EC2 (legacy)
+# Deploys to ECS Fargate with CDK infrastructure
 
 image:
   name: 246295362269.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-prod:latest
@@ -11,12 +11,16 @@ definitions:
     pre-commit: ~/.cache/pre-commit
     pip: ~/.cache/pip
     docker: ~/.docker
+    node: ~/.npm
 
   services:
     docker:
       memory: 2048
 
   steps:
+    # ==========================================================================
+    # QUALITY CHECKS
+    # ==========================================================================
     - step: &pre-commit
         oidc: true
         name: "Pre-commit Checks"
@@ -41,70 +45,9 @@ definitions:
           - flake8 .
           # - pytest  # Uncomment when tests are added
 
-    - step: &deploy-ec2
-        oidc: true
-        name: "Deploy to EC2 (App Only)"
-        caches:
-          - pip
-        script:
-          - echo "Deploying app to EC2 (MCP server NOT restarted)..."
-          # Install rsync if not available
-          - which rsync || (yum install -y rsync 2>/dev/null || apt-get update && apt-get install -y rsync)
-          # Configure SSH
-          - mkdir -p ~/.ssh
-          - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
-          - chmod 600 ~/.ssh/streamlit-key.pem
-          # Sync code to EC2 (EXCLUDING mcp-servers to avoid accidental restarts)
-          - |
-            rsync -avz --delete \
-              --exclude='.git' \
-              --exclude='venv' \
-              --exclude='__pycache__' \
-              --exclude='*.pyc' \
-              --exclude='.env' \
-              --exclude='node_modules' \
-              --exclude='infra' \
-              --exclude='mcp-servers' \
-              -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
-              ./ ec2-user@$EC2_IP:/opt/mrrobot-ai-core/
-          # Install dependencies and restart ONLY Streamlit (not MCP)
-          - |
-            ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
-              cd /opt/mrrobot-ai-core
-              python3.11 -m pip install -r requirements.txt --quiet
-              sudo systemctl restart streamlit
-              echo "Streamlit restarted (MCP server unchanged)"
-            EOF
-          - echo "Deploy complete! MCP connections preserved."
-
-    - step: &deploy-mcp
-        oidc: true
-        name: "Deploy MCP Server (Will Disconnect Clients)"
-        caches:
-          - pip
-        script:
-          - echo "⚠️  Deploying MCP server - clients will need to reconnect..."
-          # Install rsync if not available
-          - which rsync || (yum install -y rsync 2>/dev/null || apt-get update && apt-get install -y rsync)
-          # Configure SSH
-          - mkdir -p ~/.ssh
-          - echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/streamlit-key.pem
-          - chmod 600 ~/.ssh/streamlit-key.pem
-          # Sync ONLY mcp-servers folder
-          - |
-            rsync -avz \
-              -e "ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no" \
-              ./mcp-servers/ ec2-user@$EC2_IP:/opt/mrrobot-ai-core/mcp-servers/
-          # Restart MCP server
-          - |
-            ssh -i ~/.ssh/streamlit-key.pem -o StrictHostKeyChecking=no ec2-user@$EC2_IP << 'EOF'
-              cd /opt/mrrobot-ai-core
-              python3.11 -m pip install -r requirements.txt --quiet
-              sudo systemctl restart mcp-server
-              echo "MCP server restarted - clients need to reconnect"
-            EOF
-          - echo "MCP deploy complete! Users need to toggle MCP in their IDE."
-
+    # ==========================================================================
+    # CDK INFRASTRUCTURE
+    # ==========================================================================
     - step: &deploy-cdk
         oidc: true
         name: "Deploy CDK Infrastructure"
@@ -115,9 +58,10 @@ definitions:
           - npm ci
           - npx cdk synth
           - npx cdk deploy --all --require-approval never
+          - echo "CDK infrastructure deployed!"
 
     # ==========================================================================
-    # ECS FARGATE DEPLOYMENT
+    # DOCKER BUILD & PUSH
     # ==========================================================================
     - step: &build-docker-images
         oidc: true
@@ -150,6 +94,9 @@ definitions:
           - docker push $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT
           - echo "Docker images pushed successfully!"
 
+    # ==========================================================================
+    # ECS DEPLOYMENT
+    # ==========================================================================
     - step: &deploy-ecs
         oidc: true
         name: "Deploy to ECS Fargate"
@@ -166,7 +113,8 @@ definitions:
           - echo "ECS services updated! Waiting for deployment to stabilize..."
           # Wait for services to stabilize (optional, adds ~2-3 min)
           - aws ecs wait services-stable --cluster $CLUSTER_NAME --services mrrobot-streamlit mrrobot-mcp-server --region $AWS_REGION || echo "Warning: Services may still be deploying"
-          - echo "ECS deployment complete!"
+          - echo ""
+          - echo "✅ ECS deployment complete!"
           - echo "  Streamlit: http://ai-agent.mrrobot.dev"
           - echo "  MCP Server: https://mcp.mrrobot.dev/sse"
 
@@ -177,44 +125,45 @@ options:
       atlassian-ip-ranges: true
 
 pipelines:
-  # Run on all branches (lint only)
+  # ==========================================================================
+  # BRANCH PIPELINES
+  # ==========================================================================
+
+  # All branches: lint only
   branches:
     "**":
       - parallel:
           - step: *pre-commit
           - step: *python-lint
 
-    # Deploy to ECS on main branch (primary deployment)
+    # Main branch: full deploy (CDK + Docker + ECS)
     main:
       - parallel:
           - step: *pre-commit
           - step: *python-lint
-      - step: *build-docker-images
-      - step: *deploy-ecs
-
-  # Manual triggers
-  custom:
-    # ECS Deployments (Primary)
-    deploy-ecs:
-      - step: *build-docker-images
-      - step: *deploy-ecs
-
-    deploy-ecs-images-only:
-      - step: *build-docker-images
-
-    # Infrastructure
-    deploy-infrastructure:
       - step: *deploy-cdk
+      - step: *build-docker-images
+      - step: *deploy-ecs
 
-    # EC2 Deployments (Legacy)
-    deploy-ec2:
-      - step: *deploy-ec2
-
-    deploy-ec2-mcp:
-      - step: *deploy-mcp
-
-    # Full deployment (Infrastructure + ECS)
+  # ==========================================================================
+  # MANUAL TRIGGERS
+  # ==========================================================================
+  custom:
+    # Full deployment
     full-deploy:
       - step: *deploy-cdk
       - step: *build-docker-images
       - step: *deploy-ecs
+
+    # Infrastructure only
+    deploy-infrastructure:
+      - step: *deploy-cdk
+
+    # App only (no infra changes)
+    deploy-app:
+      - step: *build-docker-images
+      - step: *deploy-ecs
+
+    # Docker images only (no ECS update)
+    build-images:
+      - step: *build-docker-images
