@@ -1,10 +1,12 @@
 """
 DevOps Agent - Orchestrator (Agent of Agents)
-READ-ONLY: This agent only reads/queries data, never modifies anything.
 
-Coordinates specialized agents to answer complex cross-system queries.
+Coordinates specialized agents for:
+- Observability: Log analysis, code search, service health
+- User Management: Onboarding/offboarding via Atlassian
 """
 
+import json
 import os
 import sys
 
@@ -319,10 +321,212 @@ def compare_environments(service_name: str) -> str:
 
 
 # ============================================================================
+# MCP TOOL HELPERS
+# ============================================================================
+
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "https://mcp.mrrobot.dev")
+
+
+def _call_mcp_tool(tool_name: str, arguments: dict) -> dict:
+    """Call an MCP tool via the HTTP API."""
+    import json
+    import requests
+
+    try:
+        response = requests.post(
+            f"{MCP_SERVER_URL}/sse",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        # Extract the text content from MCP response
+        if "result" in result and "content" in result["result"]:
+            content = result["result"]["content"]
+            if content and len(content) > 0:
+                text = content[0].get("text", "")
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    return {"response": text}
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
+# ONBOARDING/OFFBOARDING TOOLS
+# ============================================================================
+
+
+@tool
+def list_atlassian_users(limit: int = 50) -> str:
+    """List users in the Atlassian organization.
+
+    Args:
+        limit: Maximum number of users to return (default: 50)
+
+    Returns:
+        str: JSON with list of Atlassian users
+    """
+    result = _call_mcp_tool("atlassian_list_users", {"limit": limit})
+    return json.dumps(result, indent=2)
+
+
+@tool
+def list_atlassian_groups() -> str:
+    """List all groups in the Atlassian organization.
+
+    Returns:
+        str: JSON with list of groups and their member counts
+    """
+    result = _call_mcp_tool("atlassian_list_groups", {"limit": 100})
+    return json.dumps(result, indent=2)
+
+
+@tool
+def onboard_employee(
+    account_id: str,
+    groups: list,
+    verify: bool = True,
+) -> str:
+    """Onboard a new employee to Atlassian by adding them to groups.
+
+    This is the orchestration tool for onboarding. It adds the user to
+    all specified groups (e.g., jira-users, confluence-users, team groups).
+
+    Args:
+        account_id: The Atlassian account ID of the user
+        groups: List of group IDs to add the user to
+        verify: Whether to verify the user was added (default: True)
+
+    Returns:
+        str: Summary of onboarding actions taken
+    """
+    results = []
+    results.append(f"=== ONBOARDING USER: {account_id} ===\n")
+
+    successful = []
+    failed = []
+
+    for group_id in groups:
+        result = _call_mcp_tool("atlassian_add_user_to_group", {
+            "group_id": group_id,
+            "account_id": account_id,
+        })
+
+        if "error" in result:
+            failed.append({"group": group_id, "error": result["error"]})
+            results.append(f"FAILED: Add to group {group_id} - {result['error']}")
+        else:
+            successful.append(group_id)
+            results.append(f"SUCCESS: Added to group {group_id}")
+
+    results.append(f"\n=== SUMMARY ===")
+    results.append(f"Successful: {len(successful)} groups")
+    results.append(f"Failed: {len(failed)} groups")
+
+    if failed:
+        results.append(f"\nFailed groups: {json.dumps(failed, indent=2)}")
+
+    return "\n".join(results)
+
+
+@tool
+def offboard_employee(
+    account_id: str,
+    suspend: bool = True,
+    remove_from_groups: bool = True,
+) -> str:
+    """Offboard an employee from Atlassian.
+
+    This orchestrates the offboarding process:
+    1. Suspends the user's access
+    2. Optionally removes them from all groups
+
+    Args:
+        account_id: The Atlassian account ID of the user
+        suspend: Whether to suspend the account (default: True)
+        remove_from_groups: Whether to remove from all groups (default: True)
+
+    Returns:
+        str: Summary of offboarding actions taken
+    """
+    results = []
+    results.append(f"=== OFFBOARDING USER: {account_id} ===\n")
+
+    # Step 1: Suspend the user
+    if suspend:
+        result = _call_mcp_tool("atlassian_suspend_user", {"account_id": account_id})
+        if "error" in result:
+            results.append(f"FAILED: Suspend user - {result['error']}")
+        else:
+            results.append(f"SUCCESS: User suspended")
+
+    # Step 2: Get groups and remove from all
+    if remove_from_groups:
+        groups_result = _call_mcp_tool("atlassian_list_groups", {"limit": 100})
+        if "formatted_groups" in groups_result:
+            results.append(f"\nRemoving from groups...")
+            for group in groups_result["formatted_groups"]:
+                group_id = group["group_id"]
+                remove_result = _call_mcp_tool("atlassian_remove_user_from_group", {
+                    "group_id": group_id,
+                    "account_id": account_id,
+                })
+                if "error" not in remove_result:
+                    results.append(f"  Removed from: {group['name']}")
+
+    results.append(f"\n=== OFFBOARDING COMPLETE ===")
+    return "\n".join(results)
+
+
+@tool
+def search_atlassian_user(email_or_name: str) -> str:
+    """Search for a user in Atlassian by email or name.
+
+    Args:
+        email_or_name: Email address or name to search for
+
+    Returns:
+        str: Matching users found
+    """
+    # Get all users and filter locally (Atlassian API doesn't have search)
+    result = _call_mcp_tool("atlassian_list_users", {"limit": 200})
+
+    if "formatted_users" not in result:
+        return json.dumps(result, indent=2)
+
+    search_term = email_or_name.lower()
+    matches = []
+
+    for user in result["formatted_users"]:
+        name = (user.get("name") or "").lower()
+        email = (user.get("email") or "").lower()
+
+        if search_term in name or search_term in email:
+            matches.append(user)
+
+    return json.dumps({
+        "search_term": email_or_name,
+        "matches_found": len(matches),
+        "users": matches,
+    }, indent=2)
+
+
+# ============================================================================
 # AGENT CONFIGURATION
 # ============================================================================
 
 DEVOPS_TOOLS = [
+    # Observability tools
     query_coralogix,
     search_code,
     list_available_agents,
@@ -330,48 +534,68 @@ DEVOPS_TOOLS = [
     investigate_service,
     search_across_systems,
     compare_environments,
+    # Onboarding/Offboarding tools
+    list_atlassian_users,
+    list_atlassian_groups,
+    search_atlassian_user,
+    onboard_employee,
+    offboard_employee,
 ]
 
-SYSTEM_PROMPT = """You are a DevOps Assistant that orchestrates specialized agents to answer questions.
+SYSTEM_PROMPT = """You are a DevOps Assistant that orchestrates specialized tools and agents.
 
-IMPORTANT: You are READ-ONLY. You can query and analyze but NEVER modify, deploy, or change anything.
+You have TWO modes of operation:
 
-YOUR CAPABILITIES:
-1. Query Coralogix logs for errors, health, and patterns
-2. Search code across all repositories (semantic search)
-3. Investigate specific services across data sources
-4. Search across multiple systems (logs + code)
-5. Compare environments (prod/dev/staging)
-6. Get system-wide overviews
+MODE 1: OBSERVABILITY (READ-ONLY)
+- Query Coralogix logs for errors, health, and patterns
+- Search code across all repositories
+- Investigate services across data sources
+- Compare environments (prod/dev/staging)
+
+MODE 2: USER MANAGEMENT (ONBOARDING/OFFBOARDING)
+- List and search Atlassian users
+- Onboard new employees (add to groups)
+- Offboard employees (suspend + remove from groups)
 
 AVAILABLE TOOLS:
-- query_coralogix: Ask the Coralogix agent any log-related question
-- search_code: Search code semantically (CSP configs, implementations, patterns)
-- list_available_agents: See all agents and their status
+
+**Observability:**
+- query_coralogix: Ask log-related questions
+- search_code: Semantic code search
 - get_system_overview: Quick health summary
-- investigate_service: Deep dive into a service (logs + code)
-- search_across_systems: Search for patterns in logs AND code
-- compare_environments: Compare service across prod/dev/staging
+- investigate_service: Deep dive into a service
+- search_across_systems: Search logs AND code
+- compare_environments: Compare prod/dev/staging
+
+**User Management:**
+- list_atlassian_users: List all Atlassian users
+- list_atlassian_groups: List all groups
+- search_atlassian_user: Find user by email/name
+- onboard_employee: Add user to groups (orchestrated)
+- offboard_employee: Suspend + remove from groups (orchestrated)
 
 HOW TO USE:
-- For log questions -> use query_coralogix
-- For code/config questions -> use search_code
-- For service issues -> use investigate_service (combines logs + code)
-- For broad searches -> use search_across_systems
-- For comparisons -> use compare_environments
+- "What errors in prod?" -> query_coralogix
+- "Find CSP config" -> search_code
+- "Show Atlassian users" -> list_atlassian_users
+- "Find user john@company.com" -> search_atlassian_user
+- "Onboard John to engineering" -> First search_atlassian_user, then list_atlassian_groups, then onboard_employee
+- "Offboard Jane" -> First search_atlassian_user to get ID, then offboard_employee
+
+ONBOARDING WORKFLOW:
+1. search_atlassian_user to find the user's account_id
+2. list_atlassian_groups to see available groups
+3. onboard_employee with account_id and list of group_ids
+
+OFFBOARDING WORKFLOW:
+1. search_atlassian_user to find the user's account_id
+2. offboard_employee with account_id (suspends + removes from all groups)
 
 RESPONSE STYLE:
 - Be concise and actionable
-- Highlight critical issues first
-- Include relevant code locations when found
-- Suggest next steps when appropriate
-- Admit when data is unavailable
-
-Example interactions:
-- "What's wrong with payment-service?" -> investigate_service("payment-service", "prod")
-- "Any errors in prod?" -> query_coralogix("Show me all prod errors in the last hour")
-- "Where is CSP configured in dashboard?" -> search_code("Content Security Policy emvio-dashboard-app")
-- "Search for timeout issues" -> search_across_systems("timeout")
+- For onboarding/offboarding, confirm actions taken
+- Always verify user identity before actions
+- Report any failures clearly
 """
 
 
