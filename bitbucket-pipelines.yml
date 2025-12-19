@@ -113,10 +113,9 @@ definitions:
           - echo "ECS services updated! Waiting for deployment to stabilize..."
           # Wait for services to stabilize (optional, adds ~2-3 min)
           - aws ecs wait services-stable --cluster $CLUSTER_NAME --services mrrobot-streamlit mrrobot-mcp-server --region $AWS_REGION || echo "Warning: Services may still be deploying"
-          - echo ""
           - echo "✅ ECS deployment complete!"
-          - echo "  Streamlit: http://ai-agent.mrrobot.dev"
-          - echo "  MCP Server: https://mcp.mrrobot.dev/sse"
+          - echo "Streamlit URL: http://ai-agent.mrrobot.dev"
+          - echo "MCP Server URL: https://mcp.mrrobot.dev/sse"
 
 options:
   size: 4x
