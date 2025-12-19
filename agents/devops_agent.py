@@ -330,6 +330,7 @@ MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "https://mcp.mrrobot.dev")
 def _call_mcp_tool(tool_name: str, arguments: dict) -> dict:
     """Call an MCP tool via the HTTP API."""
     import json
+
     import requests
 
     try:
@@ -417,10 +418,13 @@ def onboard_employee(
     failed = []
 
     for group_id in groups:
-        result = _call_mcp_tool("atlassian_add_user_to_group", {
-            "group_id": group_id,
-            "account_id": account_id,
-        })
+        result = _call_mcp_tool(
+            "atlassian_add_user_to_group",
+            {
+                "group_id": group_id,
+                "account_id": account_id,
+            },
+        )
 
         if "error" in result:
             failed.append({"group": group_id, "error": result["error"]})
@@ -477,10 +481,13 @@ def offboard_employee(
             results.append(f"\nRemoving from groups...")
             for group in groups_result["formatted_groups"]:
                 group_id = group["group_id"]
-                remove_result = _call_mcp_tool("atlassian_remove_user_from_group", {
-                    "group_id": group_id,
-                    "account_id": account_id,
-                })
+                remove_result = _call_mcp_tool(
+                    "atlassian_remove_user_from_group",
+                    {
+                        "group_id": group_id,
+                        "account_id": account_id,
+                    },
+                )
                 if "error" not in remove_result:
                     results.append(f"  Removed from: {group['name']}")
 
@@ -514,11 +521,14 @@ def search_atlassian_user(email_or_name: str) -> str:
         if search_term in name or search_term in email:
             matches.append(user)
 
-    return json.dumps({
-        "search_term": email_or_name,
-        "matches_found": len(matches),
-        "users": matches,
-    }, indent=2)
+    return json.dumps(
+        {
+            "search_term": email_or_name,
+            "matches_found": len(matches),
+            "users": matches,
+        },
+        indent=2,
+    )
 
 
 # ============================================================================

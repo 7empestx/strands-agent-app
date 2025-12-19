@@ -56,4 +56,3 @@ def get_secret(key: str, default: str = "") -> str:
     # Fall back to Secrets Manager
     secrets = get_secrets()
     return secrets.get(key, default)
-

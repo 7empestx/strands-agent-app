@@ -1,7 +1,7 @@
 """Bedrock Knowledge Base tools for code search."""
 
-import sys
 import os
+import sys
 
 import requests
 
@@ -14,13 +14,30 @@ from utils.secrets import get_secret
 
 # Known repos list (sample)
 KNOWN_REPOS = [
-    "cast-core", "cast-quickbooks", "cast-housecallpro", "cast-jobber",
-    "cast-service-titan", "cast-xero", "cast-databases", "cast-dashboard",
-    "mrrobot-auth-rest", "mrrobot-rest-utils-npm", "mrrobot-common-js-utils",
-    "mrrobot-sdk", "mrrobot-connector-hub", "mrrobot-risk-rest", "mrrobot-ai-core",
-    "emvio-gateway", "emvio-dashboard-app", "emvio-payment-service",
-    "emvio-auth-service", "emvio-transactions-service", "emvio-webhook-service",
-    "aws-terraform", "bitbucket-terraform", "devops-scripts",
+    "cast-core",
+    "cast-quickbooks",
+    "cast-housecallpro",
+    "cast-jobber",
+    "cast-service-titan",
+    "cast-xero",
+    "cast-databases",
+    "cast-dashboard",
+    "mrrobot-auth-rest",
+    "mrrobot-rest-utils-npm",
+    "mrrobot-common-js-utils",
+    "mrrobot-sdk",
+    "mrrobot-connector-hub",
+    "mrrobot-risk-rest",
+    "mrrobot-ai-core",
+    "emvio-gateway",
+    "emvio-dashboard-app",
+    "emvio-payment-service",
+    "emvio-auth-service",
+    "emvio-transactions-service",
+    "emvio-webhook-service",
+    "aws-terraform",
+    "bitbucket-terraform",
+    "devops-scripts",
 ]
 
 
@@ -46,14 +63,16 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             repo_name = path.split("/")[0] if "/" in path else path
             file_path = "/".join(path.split("/")[1:]) if "/" in path else path
 
-            results.append({
-                "repo": repo_name,
-                "file": file_path,
-                "full_path": path,
-                "score": round(item.get("score", 0), 3),
-                "content": item.get("content", {}).get("text", "")[:1000],
-                "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}",
-            })
+            results.append(
+                {
+                    "repo": repo_name,
+                    "file": file_path,
+                    "full_path": path,
+                    "score": round(item.get("score", 0), 3),
+                    "content": item.get("content", {}).get("text", "")[:1000],
+                    "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}",
+                }
+            )
 
         return {"results": results, "query": query}
     except Exception as e:

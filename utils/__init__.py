@@ -1,12 +1,6 @@
 """Shared utilities for MrRobot AI Core."""
 
-from .aws import (
-    get_bedrock_agent,
-    get_bedrock_agent_runtime,
-    get_s3_client,
-    get_secrets_manager,
-    get_session,
-)
+from .aws import get_bedrock_agent, get_bedrock_agent_runtime, get_s3_client, get_secrets_manager, get_session
 from .config import (
     AWS_PROFILE,
     AWS_REGION,
@@ -37,4 +31,3 @@ __all__ = [
     "get_secrets",
     "get_secret",
 ]
-

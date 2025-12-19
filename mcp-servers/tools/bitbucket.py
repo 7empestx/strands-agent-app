@@ -3,8 +3,8 @@
 Provides tools for repository management, PRs, and CI/CD pipelines.
 """
 
-import sys
 import os
+import sys
 
 import requests
 
@@ -68,17 +68,19 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
 
     prs = []
     for pr in data.get("values", [])[:limit]:
-        prs.append({
-            "id": pr.get("id"),
-            "title": pr.get("title", "No title"),
-            "author": pr.get("author", {}).get("display_name", "Unknown"),
-            "created": pr.get("created_on", "")[:10],
-            "state": pr.get("state", ""),
-            "repo": pr.get("destination", {}).get("repository", {}).get("name", ""),
-            "source_branch": pr.get("source", {}).get("branch", {}).get("name", ""),
-            "dest_branch": pr.get("destination", {}).get("branch", {}).get("name", ""),
-            "url": pr.get("links", {}).get("html", {}).get("href", ""),
-        })
+        prs.append(
+            {
+                "id": pr.get("id"),
+                "title": pr.get("title", "No title"),
+                "author": pr.get("author", {}).get("display_name", "Unknown"),
+                "created": pr.get("created_on", "")[:10],
+                "state": pr.get("state", ""),
+                "repo": pr.get("destination", {}).get("repository", {}).get("name", ""),
+                "source_branch": pr.get("source", {}).get("branch", {}).get("name", ""),
+                "dest_branch": pr.get("destination", {}).get("branch", {}).get("name", ""),
+                "url": pr.get("links", {}).get("html", {}).get("href", ""),
+            }
+        )
 
     return {"pull_requests": prs, "state": state, "count": len(prs)}
 
@@ -104,15 +106,17 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> dict:
         state = pipe.get("state", {}).get("name", "Unknown")
         result = pipe.get("state", {}).get("result", {}).get("name", "")
 
-        pipelines.append({
-            "build_number": pipe.get("build_number"),
-            "state": state,
-            "result": result or state,
-            "branch": pipe.get("target", {}).get("ref_name", "N/A"),
-            "created": pipe.get("created_on", "")[:16].replace("T", " "),
-            "duration_seconds": pipe.get("duration_in_seconds"),
-            "url": pipe.get("links", {}).get("html", {}).get("href", ""),
-        })
+        pipelines.append(
+            {
+                "build_number": pipe.get("build_number"),
+                "state": state,
+                "result": result or state,
+                "branch": pipe.get("target", {}).get("ref_name", "N/A"),
+                "created": pipe.get("created_on", "")[:16].replace("T", " "),
+                "duration_seconds": pipe.get("duration_in_seconds"),
+                "url": pipe.get("links", {}).get("html", {}).get("href", ""),
+            }
+        )
 
     return {"pipelines": pipelines, "repo": repo_slug, "count": len(pipelines)}
 
@@ -163,13 +167,15 @@ def list_repositories(limit: int = 50) -> dict:
 
     repos = []
     for repo in data.get("values", []):
-        repos.append({
-            "name": repo.get("name"),
-            "slug": repo.get("slug"),
-            "language": repo.get("language", ""),
-            "updated": repo.get("updated_on", "")[:10],
-            "url": repo.get("links", {}).get("html", {}).get("href", ""),
-        })
+        repos.append(
+            {
+                "name": repo.get("name"),
+                "slug": repo.get("slug"),
+                "language": repo.get("language", ""),
+                "updated": repo.get("updated_on", "")[:10],
+                "url": repo.get("links", {}).get("html", {}).get("href", ""),
+            }
+        )
 
     return {"repositories": repos, "workspace": BITBUCKET_WORKSPACE, "count": len(repos)}
 
@@ -218,11 +224,13 @@ def list_branches(repo_slug: str, limit: int = 25) -> dict:
 
     branches = []
     for branch in data.get("values", []):
-        branches.append({
-            "name": branch.get("name"),
-            "target_hash": branch.get("target", {}).get("hash", "")[:12],
-            "target_date": branch.get("target", {}).get("date", "")[:10],
-        })
+        branches.append(
+            {
+                "name": branch.get("name"),
+                "target_hash": branch.get("target", {}).get("hash", "")[:12],
+                "target_date": branch.get("target", {}).get("date", "")[:10],
+            }
+        )
 
     return {"branches": branches, "repo": repo_slug, "count": len(branches)}
 
@@ -315,4 +323,3 @@ def register_tools(mcp):
             List of branches with latest commit info
         """
         return list_branches(repo_slug, limit)
-

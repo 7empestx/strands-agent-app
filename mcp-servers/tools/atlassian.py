@@ -4,10 +4,10 @@ These tools use the Atlassian Admin API v2 for onboarding/offboarding workflows.
 API Reference: https://developer.atlassian.com/cloud/admin/organization/rest/
 """
 
-import requests
-
-import sys
 import os
+import sys
+
+import requests
 
 # Add project root to path to import shared utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -79,6 +79,7 @@ def _make_request(method: str, endpoint: str, data: dict = None) -> dict:
 # Directory Tools
 # ============================================================================
 
+
 def handle_get_directories() -> dict:
     """Get directories in the organization."""
     org_id = _get_org_id()
@@ -89,6 +90,7 @@ def handle_get_directories() -> dict:
 # ============================================================================
 # User Tools
 # ============================================================================
+
 
 def handle_list_users(limit: int = 100, cursor: str = None) -> dict:
     """List users in the organization directory."""
@@ -104,13 +106,15 @@ def handle_list_users(limit: int = 100, cursor: str = None) -> dict:
     if "data" in result:
         users = []
         for user in result.get("data", []):
-            users.append({
-                "account_id": user.get("accountId"),
-                "name": user.get("name"),
-                "email": user.get("email"),
-                "status": user.get("accountStatus"),
-                "last_active": user.get("lastActive"),
-            })
+            users.append(
+                {
+                    "account_id": user.get("accountId"),
+                    "name": user.get("name"),
+                    "email": user.get("email"),
+                    "status": user.get("accountStatus"),
+                    "last_active": user.get("lastActive"),
+                }
+            )
         result["formatted_users"] = users
         result["count"] = len(users)
 
@@ -166,6 +170,7 @@ def handle_remove_user(account_id: str) -> dict:
 # Group Tools
 # ============================================================================
 
+
 def handle_list_groups(limit: int = 100) -> dict:
     """List all groups in the organization directory."""
     org_id = _get_org_id()
@@ -177,12 +182,14 @@ def handle_list_groups(limit: int = 100) -> dict:
     if "data" in result:
         groups = []
         for group in result.get("data", []):
-            groups.append({
-                "group_id": group.get("id"),
-                "name": group.get("name"),
-                "description": group.get("description", ""),
-                "member_count": group.get("memberCount", 0),
-            })
+            groups.append(
+                {
+                    "group_id": group.get("id"),
+                    "name": group.get("name"),
+                    "description": group.get("description", ""),
+                    "member_count": group.get("memberCount", 0),
+                }
+            )
         result["formatted_groups"] = groups
         result["count"] = len(groups)
 
@@ -253,6 +260,7 @@ def handle_remove_user_from_group(group_id: str, account_id: str) -> dict:
 # ============================================================================
 # Role/Access Tools
 # ============================================================================
+
 
 def handle_grant_group_access(group_id: str, role: str, resource_id: str = None) -> dict:
     """Grant product access to a group via role assignment."""

@@ -17,15 +17,12 @@ sys.path.insert(0, str(_project_root / "mcp-servers"))
 
 # Import the underlying Bitbucket API functions from MCP tools
 # ruff: noqa: E402
-from tools.bitbucket import (  # noqa: E402
-    get_commit_info as _get_commit,
-    get_pipeline_status as _get_pipelines,
-    get_repository_info as _get_repo,
-    list_branches as _list_branches,
-    list_pull_requests as _list_prs,
-    list_repositories as _list_repos,
-)
-
+from tools.bitbucket import get_commit_info as _get_commit  # noqa: E402
+from tools.bitbucket import get_pipeline_status as _get_pipelines
+from tools.bitbucket import get_repository_info as _get_repo
+from tools.bitbucket import list_branches as _list_branches
+from tools.bitbucket import list_pull_requests as _list_prs
+from tools.bitbucket import list_repositories as _list_repos
 
 # ============================================================================
 # STRANDS TOOL WRAPPERS

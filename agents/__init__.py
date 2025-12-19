@@ -15,21 +15,22 @@ PLACEHOLDER AGENTS (not yet implemented):
 - cloudwatch_agent, confluence_agent, database_agent, hr_agent, risk_agent
 """
 
-# Active agents
-from .devops_agent import DEVOPS_TOOLS, create_devops_agent
-from .coralogix_agent import coralogix_agent, run_coralogix_agent, create_coralogix_agent
 from .bitbucket_agent import BITBUCKET_TOOLS, bitbucket_agent
-from .cve_agent import cve_agent, run_cve_agent
-from .vulnerability_agent import vulnerability_agent, run_vulnerability_agent
-from .transaction_agent import agent as transaction_agent
-from .transaction_agent import run_agent as run_transaction_agent
 
 # Placeholder agents (exported for backwards compatibility)
 from .cloudwatch_agent import CLOUDWATCH_TOOLS, cloudwatch_agent
 from .confluence_agent import CONFLUENCE_TOOLS, confluence_agent
+from .coralogix_agent import coralogix_agent, create_coralogix_agent, run_coralogix_agent
+from .cve_agent import cve_agent, run_cve_agent
 from .database_agent import DATABASE_TOOLS, database_agent
+
+# Active agents
+from .devops_agent import DEVOPS_TOOLS, create_devops_agent
 from .hr_agent import HR_TOOLS, hr_agent
 from .risk_agent import RISK_TOOLS, risk_agent
+from .transaction_agent import agent as transaction_agent
+from .transaction_agent import run_agent as run_transaction_agent
+from .vulnerability_agent import run_vulnerability_agent, vulnerability_agent
 
 __all__ = [
     # Active orchestrator

@@ -2,15 +2,16 @@
 
 import json
 import os
+import os as os_module
+import sys
 from datetime import datetime, timedelta
 
 import requests
 
-import sys
-import os as os_module
-
 # Add project root to path to import shared utils
-sys.path.insert(0, os_module.path.dirname(os_module.path.dirname(os_module.path.dirname(os_module.path.abspath(__file__)))))
+sys.path.insert(
+    0, os_module.path.dirname(os_module.path.dirname(os_module.path.dirname(os_module.path.abspath(__file__))))
+)
 from utils.secrets import get_secret
 
 # Configuration
@@ -119,11 +120,13 @@ def handle_discover_services(hours_back: int = 1, limit: int = 50) -> dict:
     for lg in sorted(log_groups):
         parts = lg.split("/")
         service_name = parts[-1] if parts else lg
-        services.append({
-            "log_group": lg,
-            "service_name": service_name,
-            "is_cast": "cast" in lg.lower(),
-        })
+        services.append(
+            {
+                "log_group": lg,
+                "service_name": service_name,
+                "is_cast": "cast" in lg.lower(),
+            }
+        )
 
     return {
         "time_range": f"Last {hours_back} hour(s)",
@@ -162,11 +165,13 @@ def handle_get_recent_errors(
 
         if service not in errors_by_service:
             errors_by_service[service] = []
-        errors_by_service[service].append({
-            "message": log.get("message", ""),
-            "timestamp": log.get("timestamp"),
-            "logGroup": log_group,
-        })
+        errors_by_service[service].append(
+            {
+                "message": log.get("message", ""),
+                "timestamp": log.get("timestamp"),
+                "logGroup": log_group,
+            }
+        )
 
     return {
         "environment": environment,
@@ -273,13 +278,15 @@ def handle_get_service_health(service_name: str = "all", environment: str = "pro
         else:
             status = "HEALTHY"
 
-        health_results.append({
-            "service": service,
-            "status": status,
-            "log_count": total,
-            "error_count": errors,
-            "error_rate_percent": round(error_rate, 2),
-        })
+        health_results.append(
+            {
+                "service": service,
+                "status": status,
+                "log_count": total,
+                "error_count": errors,
+                "error_rate_percent": round(error_rate, 2),
+            }
+        )
 
     return {
         "environment": environment,

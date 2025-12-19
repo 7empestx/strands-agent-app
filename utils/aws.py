@@ -39,4 +39,3 @@ def get_secrets_manager():
 
     config = Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1})
     return get_session().client("secretsmanager", config=config)
-

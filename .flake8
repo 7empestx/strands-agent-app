@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 120
 exclude = venv,__pycache__,infra/node_modules,.git
-extend-ignore = E203,W503,E501,F541,F841,E302,E305
+extend-ignore = E203,W503,E501,F541,F841,E302,E305,E402

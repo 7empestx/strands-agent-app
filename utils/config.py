@@ -19,4 +19,3 @@ BITBUCKET_EMAIL = os.environ.get("BITBUCKET_EMAIL", "gstarkman@nex.io")
 
 # Secrets
 SECRETS_NAME = "mrrobot-ai-core/secrets"
-
