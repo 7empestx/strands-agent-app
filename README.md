@@ -44,7 +44,7 @@ Add to `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -57,7 +57,7 @@ Add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -68,33 +68,54 @@ Add to `~/.claude/settings.json`:
 
 | Resource | Value |
 |----------|-------|
-| EC2 Elastic IP | `34.202.219.55` |
-| Streamlit URL | http://ai-agent.mrrobot.dev:8501 |
-| MCP Server URL | http://mcp.mrrobot.dev:8080/sse |
+| **ECS Cluster** | `mrrobot-ai-core` |
+| Streamlit URL | http://ai-agent.mrrobot.dev |
+| MCP Server URL | https://mcp.mrrobot.dev/sse |
 | Knowledge Base ID | `SAJJWYFTNG` |
 | AWS Account | `720154970215` (dev) |
 | Region | `us-east-1` |
 
 ## Deployment
 
-### Deploy App to EC2
+### Automatic (Recommended)
+Push to `main` branch triggers automatic deployment:
 ```bash
-# Code only
-./scripts/deploy-to-ec2.sh
+git push origin main
+```
+This will:
+1. Run pre-commit checks and linting
+2. Build Docker images (Streamlit + MCP Server)
+3. Push to ECR
+4. Deploy to ECS Fargate
 
-# Code + restart services
-./scripts/deploy-to-ec2.sh --start
+### Manual Triggers (Bitbucket Pipelines)
+| Pipeline | Description |
+|----------|-------------|
+| `deploy-ecs` | Build images and deploy to ECS |
+| `deploy-ecs-images-only` | Build and push images only |
+| `deploy-infrastructure` | Deploy CDK stacks |
+| `full-deploy` | CDK + Docker + ECS |
+
+### Local Deployment
+```bash
+# Deploy to ECS from local machine
+./scripts/deploy-to-ecs.sh
+
+# Deploy CDK infrastructure
+cd infra && npm install
+AWS_PROFILE=dev npx cdk deploy StrandsAgentECSStack
 ```
 
-### Deploy Infrastructure (CDK)
+### Monitoring
 ```bash
-cd infra && npm install
+# View ECS logs
+aws logs tail /ecs/mrrobot-mcp-server --follow --region us-east-1 --profile dev
+aws logs tail /ecs/mrrobot-streamlit --follow --region us-east-1 --profile dev
 
-# EC2 stack
-AWS_PROFILE=dev npx cdk deploy StrandsAgentStack
-
-# Knowledge Base stack
-AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
+# Check service status
+aws ecs describe-services --cluster mrrobot-ai-core \
+  --services mrrobot-streamlit mrrobot-mcp-server \
+  --region us-east-1 --profile dev
 ```
 
 ## Project Structure
@@ -102,29 +123,26 @@ AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
 ```
 mrrobot-ai-core/
 ├── app.py                    # Streamlit frontend
+├── Dockerfile.streamlit      # Streamlit container
+├── Dockerfile.mcp            # MCP server container
 ├── agents/                   # AI agents
 │   ├── coralogix_agent.py    # Log analysis + PCI compliance
 │   ├── bitbucket_agent.py    # Repository management
 │   ├── cloudwatch_agent.py   # AWS logs/metrics
 │   ├── cve_agent.py          # CVE tracking
-│   ├── vulnerability_agent.py # Security scanning
-│   ├── database_agent.py     # Database queries
-│   ├── devops_agent.py       # DevOps assistance
-│   └── risk_agent.py         # Risk analysis
+│   └── ...
 ├── mcp-servers/
 │   └── bedrock-kb-server.py  # MCP server for KB search
 ├── infra/                    # AWS CDK (JavaScript)
-│   ├── bin/app.js
 │   └── lib/
-│       ├── strands-agent-stack.js    # EC2 infrastructure
+│       ├── ecs-fargate-stack.js      # ECS Fargate infrastructure
 │       ├── knowledge-base-stack.js   # Bedrock KB infrastructure
 │       └── constants/
-│           └── aws-accounts.js       # Shared AWS config
 ├── scripts/
-│   ├── deploy-to-ec2.sh      # Deploy app to EC2
-│   ├── sync-repos-to-s3.py   # Sync code to KB bucket
-│   └── create-opensearch-index.py
-└── data/                     # Sample data
+│   ├── deploy-to-ecs.sh      # Deploy to ECS Fargate
+│   └── sync-repos-to-s3.py   # Sync code to KB bucket
+├── bitbucket-pipelines.yml   # CI/CD pipeline
+└── requirements.txt          # Python dependencies
 ```
 
 ## Tech Stack
@@ -136,10 +154,14 @@ mrrobot-ai-core/
 | Vector Store | OpenSearch Serverless |
 | Knowledge Base | Amazon Bedrock KB |
 | Frontend | Streamlit |
+| Compute | ECS Fargate (ARM64/Graviton) |
 | Infrastructure | AWS CDK (JavaScript) |
+| CI/CD | Bitbucket Pipelines |
+| Container Registry | Amazon ECR |
 | MCP Transport | Server-Sent Events (SSE) |
 
 ## Documentation
 
+- [DEPLOYMENT-ECS.md](./DEPLOYMENT-ECS.md) - Full ECS deployment guide
 - [CLAUDE.md](./CLAUDE.md) - Project context for AI assistants
 - [DEMO.md](./DEMO.md) - Demo walkthrough and architecture

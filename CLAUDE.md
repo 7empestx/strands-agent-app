@@ -24,7 +24,7 @@
 
 | Service | Port | URL | DNS |
 |---------|------|-----|-----|
-| MCP Server | 8080 | `http://34.202.219.55:8080/sse` | `http://mcp.mrrobot.dev:8080/sse` |
+| MCP Server | 8080 | `http://34.202.219.55:8080/sse` | `https://mcp.mrrobot.dev/sse` |
 | Streamlit | 8501 | `http://34.202.219.55:8501` | `http://ai-agent.mrrobot.dev:8501` |
 
 ## MCP Server for AI IDEs
@@ -39,7 +39,7 @@ Add to `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -54,7 +54,7 @@ Add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }

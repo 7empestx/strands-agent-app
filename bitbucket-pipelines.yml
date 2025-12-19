@@ -1,5 +1,5 @@
 # Bitbucket Pipelines for MrRobot AI Core
-# Deploys to EC2 and manages CDK infrastructure
+# Deploys to ECS Fargate (primary) and EC2 (legacy)
 
 image:
   name: 246295362269.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-prod:latest
@@ -10,6 +10,11 @@ definitions:
   caches:
     pre-commit: ~/.cache/pre-commit
     pip: ~/.cache/pip
+    docker: ~/.docker
+
+  services:
+    docker:
+      memory: 2048
 
   steps:
     - step: &pre-commit
@@ -111,6 +116,60 @@ definitions:
           - npx cdk synth
           - npx cdk deploy --all --require-approval never
 
+    # ==========================================================================
+    # ECS FARGATE DEPLOYMENT
+    # ==========================================================================
+    - step: &build-docker-images
+        oidc: true
+        name: "Build & Push Docker Images"
+        services:
+          - docker
+        caches:
+          - docker
+        script:
+          - echo "Building Docker images for ECS Fargate..."
+          - export AWS_REGION="us-east-1"
+          - export AWS_ACCOUNT_ID="720154970215"
+          - export REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          # Authenticate with ECR
+          - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
+          # Build Streamlit image
+          - echo "Building Streamlit image..."
+          - docker build -f Dockerfile.streamlit -t $REGISTRY/mrrobot-streamlit:latest -t $REGISTRY/mrrobot-streamlit:$BITBUCKET_COMMIT .
+          # Build MCP Server image
+          - echo "Building MCP Server image..."
+          - docker build -f Dockerfile.mcp -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
+          # Verify Flask is installed (prevent the missing dependency issue)
+          - echo "Verifying Flask is in MCP image..."
+          - docker run --rm $REGISTRY/mrrobot-mcp-server:latest pip list | grep -i flask || (echo "ERROR: Flask not found in image!" && exit 1)
+          # Push images
+          - echo "Pushing images to ECR..."
+          - docker push $REGISTRY/mrrobot-streamlit:latest
+          - docker push $REGISTRY/mrrobot-streamlit:$BITBUCKET_COMMIT
+          - docker push $REGISTRY/mrrobot-mcp-server:latest
+          - docker push $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT
+          - echo "Docker images pushed successfully!"
+
+    - step: &deploy-ecs
+        oidc: true
+        name: "Deploy to ECS Fargate"
+        script:
+          - echo "Deploying to ECS Fargate..."
+          - export AWS_REGION="us-east-1"
+          - export CLUSTER_NAME="mrrobot-ai-core"
+          # Update Streamlit service
+          - echo "Updating Streamlit service..."
+          - aws ecs update-service --cluster $CLUSTER_NAME --service mrrobot-streamlit --force-new-deployment --region $AWS_REGION > /dev/null
+          # Update MCP Server service
+          - echo "Updating MCP Server service..."
+          - aws ecs update-service --cluster $CLUSTER_NAME --service mrrobot-mcp-server --force-new-deployment --region $AWS_REGION > /dev/null
+          - echo "ECS services updated! Waiting for deployment to stabilize..."
+          # Wait for services to stabilize (optional, adds ~2-3 min)
+          - aws ecs wait services-stable --cluster $CLUSTER_NAME --services mrrobot-streamlit mrrobot-mcp-server --region $AWS_REGION || echo "Warning: Services may still be deploying"
+          - echo "ECS deployment complete!"
+          - echo "  Streamlit: http://ai-agent.mrrobot.dev"
+          - echo "  MCP Server: https://mcp.mrrobot.dev/sse"
+
 options:
   size: 4x
   runtime:
@@ -125,25 +184,37 @@ pipelines:
           - step: *pre-commit
           - step: *python-lint
 
-    # Deploy to EC2 on main branch
+    # Deploy to ECS on main branch (primary deployment)
     main:
       - parallel:
           - step: *pre-commit
           - step: *python-lint
-      - step: *deploy-ec2
+      - step: *build-docker-images
+      - step: *deploy-ecs
 
   # Manual triggers
   custom:
+    # ECS Deployments (Primary)
+    deploy-ecs:
+      - step: *build-docker-images
+      - step: *deploy-ecs
+
+    deploy-ecs-images-only:
+      - step: *build-docker-images
+
+    # Infrastructure
     deploy-infrastructure:
       - step: *deploy-cdk
 
-    deploy-app-only:
+    # EC2 Deployments (Legacy)
+    deploy-ec2:
       - step: *deploy-ec2
 
-    deploy-mcp-server:
+    deploy-ec2-mcp:
       - step: *deploy-mcp
 
+    # Full deployment (Infrastructure + ECS)
     full-deploy:
       - step: *deploy-cdk
-      - step: *deploy-ec2
-      - step: *deploy-mcp
+      - step: *build-docker-images
+      - step: *deploy-ecs

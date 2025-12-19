@@ -31,7 +31,7 @@ We've deployed an MCP (Model Context Protocol) server that provides AI-powered c
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -50,7 +50,7 @@ We've deployed an MCP (Model Context Protocol) server that provides AI-powered c
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -63,7 +63,7 @@ We've deployed an MCP (Model Context Protocol) server that provides AI-powered c
 ### Other MCP-Compatible Tools
 
 Use these connection details:
-- **URL:** `http://mcp.mrrobot.dev:8080/sse`
+- **URL:** `https://mcp.mrrobot.dev/sse`
 - **Transport:** SSE (Server-Sent Events)
 
 ## How to Use
@@ -97,7 +97,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 ### "Connection Failed"
 
 1. Verify VPN is connected
-2. Test the endpoint: `curl http://mcp.mrrobot.dev:8080/sse`
+2. Test the endpoint: `curl https://mcp.mrrobot.dev/sse`
 3. Check if you can reach `mcp.mrrobot.dev` from your network
 
 ### "No Results Found"
@@ -136,7 +136,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 
 | Component | Value |
 |-----------|-------|
-| MCP Server URL | `http://mcp.mrrobot.dev:8080/sse` |
+| MCP Server URL | `https://mcp.mrrobot.dev/sse` |
 | EC2 Instance | `i-089292d2c5a6a055f` |
 | Knowledge Base ID | `SAJJWYFTNG` |
 | AWS Region | `us-east-1` |

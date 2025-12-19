@@ -15,7 +15,7 @@ We've deployed an MCP server that lets you search our entire codebase (254 repos
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -58,7 +58,7 @@ For **Cursor**, add to `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -70,7 +70,7 @@ For **Claude Code**, add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
@@ -103,7 +103,7 @@ We've deployed an MCP server that lets you search our entire codebase (254 repos
 {
   "mcpServers": {
     "mrrobot-code-kb": {
-      "url": "http://mcp.mrrobot.dev:8080/sse",
+      "url": "https://mcp.mrrobot.dev/sse",
       "transport": "sse"
     }
   }
