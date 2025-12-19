@@ -44,7 +44,7 @@ definitions:
           - docker
         script:
           - echo "Building Docker images for ECS Fargate..."
-          - pip3 install awscli
+          - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
           - export AWS_ACCOUNT_ID="720154970215"
           - export REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -68,7 +68,7 @@ definitions:
         name: "Deploy to ECS Fargate"
         script:
           - echo "Deploying to ECS Fargate..."
-          - pip3 install awscli
+          - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
           - export CLUSTER_NAME="mrrobot-ai-core"
           - export AWS_ACCESS_KEY_ID=$dev_AUTH_ACCESS_KEY
