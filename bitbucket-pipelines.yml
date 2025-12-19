@@ -110,7 +110,6 @@ pipelines:
       - parallel:
           - step: *pre-commit
           - step: *python-lint
-      - step: *deploy-cdk
       - step: *build-docker-images
       - step: *deploy-ecs
 
