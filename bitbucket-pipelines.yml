@@ -1,10 +1,10 @@
 # Bitbucket Pipelines for MrRobot AI Core
-# Deploys to ECS Fargate with CDK infrastructure
+# Deploys to ECS Fargate in dev account
 
 image:
-  name: 246295362269.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-prod:latest
+  name: 720154970215.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-dev:latest
   aws:
-    oidc-role: arn:aws:iam::246295362269:role/prod/mrrobot-ecs-prod
+    oidc-role: arn:aws:iam::720154970215:role/dev/mrrobot-ecs-dev
 
 definitions:
   caches:
