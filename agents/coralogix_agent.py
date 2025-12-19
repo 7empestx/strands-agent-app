@@ -1109,21 +1109,37 @@ def _explain_query(query: str) -> list:
     for segment in segments:
         segment = segment.strip()
         if segment.startswith("source"):
-            parts.append({"command": "source", "segment": segment, "explanation": "Specifies the data source (logs or spans)"})
+            parts.append(
+                {"command": "source", "segment": segment, "explanation": "Specifies the data source (logs or spans)"}
+            )
         elif segment.startswith("filter"):
             parts.append({"command": "filter", "segment": segment, "explanation": "Filters rows based on conditions"})
         elif segment.startswith("groupby"):
-            parts.append({"command": "groupby", "segment": segment, "explanation": "Groups results by specified field(s)"})
+            parts.append(
+                {"command": "groupby", "segment": segment, "explanation": "Groups results by specified field(s)"}
+            )
         elif segment.startswith("count"):
             parts.append({"command": "count", "segment": segment, "explanation": "Counts rows in each group"})
         elif segment.startswith("sort"):
-            parts.append({"command": "sort", "segment": segment, "explanation": "Sorts results (- for descending, + for ascending)"})
+            parts.append(
+                {
+                    "command": "sort",
+                    "segment": segment,
+                    "explanation": "Sorts results (- for descending, + for ascending)",
+                }
+            )
         elif segment.startswith("limit"):
-            parts.append({"command": "limit", "segment": segment, "explanation": "Limits the number of results returned"})
+            parts.append(
+                {"command": "limit", "segment": segment, "explanation": "Limits the number of results returned"}
+            )
         elif segment.startswith("distinct"):
-            parts.append({"command": "distinct", "segment": segment, "explanation": "Returns unique values for a field"})
+            parts.append(
+                {"command": "distinct", "segment": segment, "explanation": "Returns unique values for a field"}
+            )
         elif segment.startswith("extract"):
-            parts.append({"command": "extract", "segment": segment, "explanation": "Extracts data from a field using regex"})
+            parts.append(
+                {"command": "extract", "segment": segment, "explanation": "Extracts data from a field using regex"}
+            )
         elif segment.startswith("top"):
             parts.append({"command": "top", "segment": segment, "explanation": "Returns top N results"})
         else:

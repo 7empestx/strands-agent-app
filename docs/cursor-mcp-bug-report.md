@@ -106,4 +106,3 @@ async connectWithRetry(maxRetries = 3, baseDelay = 500) {
 **Post to**: https://github.com/getcursor/cursor/issues/new
 
 **Labels**: `bug`, `mcp`, `remote-server`
-
