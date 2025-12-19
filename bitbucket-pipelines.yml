@@ -10,7 +10,6 @@ definitions:
   caches:
     pre-commit: ~/.cache/pre-commit
     pip: ~/.cache/pip
-    docker: ~/.docker
     node: ~/.npm
 
   services:
@@ -57,8 +56,6 @@ definitions:
         oidc: true
         name: "Build & Push Docker Images"
         services:
-          - docker
-        caches:
           - docker
         script:
           - echo "Building Docker images for ECS Fargate..."
