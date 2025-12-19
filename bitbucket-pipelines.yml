@@ -1,10 +1,10 @@
 # Bitbucket Pipelines for MrRobot AI Core
-# Deploys to ECS Fargate in dev account
+# Deploys to ECS Fargate in dev account (720154970215)
 
-image:
-  name: 720154970215.dkr.ecr.us-east-1.amazonaws.com/mrrobot-pipelines-dev:latest
-  aws:
-    oidc-role: arn:aws:iam::720154970215:role/dev/mrrobot-ecs-dev
+image: atlassian/default-image:4
+
+clone:
+  depth: 1
 
 definitions:
   caches:
@@ -18,7 +18,6 @@ definitions:
 
   steps:
     - step: &pre-commit
-        oidc: true
         name: "Pre-commit Checks"
         image: python:3.11-slim
         caches:
@@ -30,7 +29,6 @@ definitions:
           - pre-commit run --all-files
 
     - step: &python-lint
-        oidc: true
         name: "Python Lint & Test"
         image: python:3.11-slim
         caches:
@@ -40,21 +38,9 @@ definitions:
           - pip install flake8 pytest
           - flake8 .
 
-    - step: &deploy-cdk
-        oidc: true
-        name: "Deploy CDK Infrastructure"
-        caches:
-          - node
-        script:
-          - cd infra
-          - npm ci
-          - npx cdk synth
-          - npx cdk deploy --all --require-approval never
-          - echo "CDK infrastructure deployed!"
-
     - step: &build-docker-images
-        oidc: true
         name: "Build & Push Docker Images"
+        oidc: true
         services:
           - docker
         script:
@@ -62,6 +48,7 @@ definitions:
           - export AWS_REGION="us-east-1"
           - export AWS_ACCOUNT_ID="720154970215"
           - export REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          - export AWS_ROLE_ARN="arn:aws:iam::720154970215:role/dev/mrrobot-ecs-dev"
           - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
           - echo "Building Streamlit image..."
           - docker build -f Dockerfile.streamlit -t $REGISTRY/mrrobot-streamlit:latest -t $REGISTRY/mrrobot-streamlit:$BITBUCKET_COMMIT .
@@ -77,12 +64,13 @@ definitions:
           - echo "Docker images pushed successfully!"
 
     - step: &deploy-ecs
-        oidc: true
         name: "Deploy to ECS Fargate"
+        oidc: true
         script:
           - echo "Deploying to ECS Fargate..."
           - export AWS_REGION="us-east-1"
           - export CLUSTER_NAME="mrrobot-ai-core"
+          - export AWS_ROLE_ARN="arn:aws:iam::720154970215:role/dev/mrrobot-ecs-dev"
           - echo "Updating Streamlit service..."
           - aws ecs update-service --cluster $CLUSTER_NAME --service mrrobot-streamlit --force-new-deployment --region $AWS_REGION > /dev/null
           - echo "Updating MCP Server service..."
@@ -94,10 +82,7 @@ definitions:
           - echo "MCP Server URL - https://mcp.mrrobot.dev/sse"
 
 options:
-  size: 4x
-  runtime:
-    cloud:
-      atlassian-ip-ranges: true
+  size: 2x
 
 pipelines:
   branches:
@@ -114,14 +99,6 @@ pipelines:
       - step: *deploy-ecs
 
   custom:
-    full-deploy:
-      - step: *deploy-cdk
-      - step: *build-docker-images
-      - step: *deploy-ecs
-
-    deploy-infrastructure:
-      - step: *deploy-cdk
-
     deploy-app:
       - step: *build-docker-images
       - step: *deploy-ecs
