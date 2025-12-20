@@ -18,9 +18,18 @@ from .atlassian import (
     handle_revoke_group_access,
     handle_suspend_user,
 )
+from .cloudwatch import (
+    get_alarm_history,
+    get_ecs_service_metrics,
+    get_lambda_metrics,
+    get_metric_statistics,
+    list_alarms,
+    list_log_groups,
+    query_logs,
+)
 
 # Export handler functions for use in server.py
-from .bedrock_kb import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
+from .code_search import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
 from .coralogix import (
     handle_discover_services,
     handle_get_recent_errors,
@@ -30,7 +39,7 @@ from .coralogix import (
 )
 
 __all__ = [
-    # Bedrock KB
+    # Code Search (Bedrock Knowledge Base)
     "search_knowledge_base",
     "get_file_from_bitbucket",
     "KNOWN_REPOS",
@@ -54,4 +63,12 @@ __all__ = [
     "handle_remove_user_from_group",
     "handle_grant_group_access",
     "handle_revoke_group_access",
+    # CloudWatch
+    "get_metric_statistics",
+    "list_alarms",
+    "get_alarm_history",
+    "list_log_groups",
+    "query_logs",
+    "get_ecs_service_metrics",
+    "get_lambda_metrics",
 ]

@@ -18,3 +18,7 @@ flask>=2.3.0
 
 # MCP Server SDK (official Anthropic SDK)
 mcp>=1.0.0
+
+# ASGI server for MCP HTTP transport
+uvicorn>=0.24.0
+starlette>=0.27.0

@@ -11,11 +11,13 @@ Tools available:
 - Code Search (Bedrock Knowledge Base)
 - Coralogix Log Analysis
 - Atlassian Admin (User/Group Management)
+- Bitbucket (PRs, Pipelines, Repos)
 """
 
 import argparse
 import os
 import sys
+from datetime import datetime, timezone
 
 from mcp.server.fastmcp import FastMCP
 
@@ -36,7 +38,16 @@ from tools.atlassian import (
     handle_revoke_group_access,
     handle_suspend_user,
 )
-from tools.bedrock_kb import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
+from tools.cloudwatch import (
+    get_alarm_history,
+    get_ecs_service_metrics,
+    get_lambda_metrics,
+    get_metric_statistics,
+    list_alarms,
+    list_log_groups,
+    query_logs,
+)
+from tools.code_search import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
 from tools.coralogix import (
     handle_discover_services,
     handle_get_recent_errors,
@@ -47,9 +58,8 @@ from tools.coralogix import (
 
 # Create FastMCP server
 mcp = FastMCP(
-    "mrrobot-mcp",
-    version="2.0.0",
-    description="MrRobot AI MCP Server - Code Search, Log Analysis, User Management",
+    name="mrrobot-mcp",
+    instructions="MrRobot AI MCP Server - Code Search, Log Analysis, User Management",
 )
 
 
@@ -382,8 +392,178 @@ bitbucket.register_tools(mcp)
 
 
 # ============================================================================
+# CLOUDWATCH TOOLS (Observability)
+# ============================================================================
+
+
+@mcp.tool()
+def cloudwatch_get_metrics(
+    namespace: str,
+    metric_name: str,
+    dimensions: list = None,
+    hours_back: int = 1,
+) -> dict:
+    """Get CloudWatch metric statistics.
+
+    Args:
+        namespace: CloudWatch namespace (e.g., 'AWS/ECS', 'AWS/Lambda', 'AWS/RDS')
+        metric_name: Metric name (e.g., 'CPUUtilization', 'Invocations')
+        dimensions: List of dimension dicts [{"Name": "...", "Value": "..."}]
+        hours_back: Hours of data to retrieve
+    """
+    return get_metric_statistics(namespace, metric_name, dimensions, hours_back=hours_back)
+
+
+@mcp.tool()
+def cloudwatch_list_alarms(state_value: str = None, alarm_prefix: str = None) -> dict:
+    """List CloudWatch alarms, optionally filtered by state.
+
+    Args:
+        state_value: Filter by state ('OK', 'ALARM', 'INSUFFICIENT_DATA')
+        alarm_prefix: Filter by alarm name prefix
+    """
+    return list_alarms(state_value, alarm_prefix)
+
+
+@mcp.tool()
+def cloudwatch_get_alarm_history(alarm_name: str, hours_back: int = 24) -> dict:
+    """Get state change history for a CloudWatch alarm.
+
+    Args:
+        alarm_name: Name of the alarm
+        hours_back: Hours of history to retrieve
+    """
+    return get_alarm_history(alarm_name, hours_back)
+
+
+@mcp.tool()
+def cloudwatch_list_log_groups(prefix: str = None, limit: int = 50) -> dict:
+    """List CloudWatch Log Groups.
+
+    Args:
+        prefix: Filter by log group name prefix (e.g., '/aws/lambda/', '/ecs/')
+        limit: Maximum log groups to return
+    """
+    return list_log_groups(prefix, limit)
+
+
+@mcp.tool()
+def cloudwatch_query_logs(
+    log_group: str,
+    query: str = "fields @timestamp, @message | sort @timestamp desc | limit 50",
+    hours_back: int = 1,
+) -> dict:
+    """Run a CloudWatch Logs Insights query.
+
+    Args:
+        log_group: Log group name
+        query: Logs Insights query (default: last 50 messages)
+        hours_back: Hours of logs to search
+    """
+    return query_logs(log_group, query, hours_back)
+
+
+@mcp.tool()
+def cloudwatch_ecs_metrics(cluster_name: str, service_name: str, hours_back: int = 1) -> dict:
+    """Get ECS service CPU and memory utilization.
+
+    Args:
+        cluster_name: ECS cluster name (e.g., 'mrrobot-ai-core')
+        service_name: ECS service name (e.g., 'mrrobot-mcp-server')
+        hours_back: Hours of data to retrieve
+    """
+    return get_ecs_service_metrics(cluster_name, service_name, hours_back)
+
+
+@mcp.tool()
+def cloudwatch_lambda_metrics(function_name: str, hours_back: int = 1) -> dict:
+    """Get Lambda function metrics (invocations, errors, duration).
+
+    Args:
+        function_name: Lambda function name
+        hours_back: Hours of data to retrieve
+    """
+    return get_lambda_metrics(function_name, hours_back)
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
+
+VERSION = "2.2.0"
+START_TIME = datetime.now(timezone.utc)
+
+
+def get_tool_count() -> int:
+    """Get the number of registered tools."""
+    try:
+        return len(mcp._tool_manager._tools)
+    except Exception:
+        return 30  # Fallback estimate
+
+
+def run_http_server(host: str, port: int):
+    """Run MCP server with HTTP transport and health endpoints."""
+    import uvicorn
+    from starlette.applications import Starlette
+    from starlette.responses import JSONResponse
+    from starlette.routing import Mount, Route
+
+    # Health check endpoint
+    async def health(request):
+        now = datetime.now(timezone.utc)
+        uptime = (now - START_TIME).total_seconds()
+        return JSONResponse(
+            {
+                "status": "healthy",
+                "version": VERSION,
+                "tools": get_tool_count(),
+                "uptime_seconds": round(uptime, 1),
+                "timestamp": now.isoformat().replace("+00:00", "Z"),
+            }
+        )
+
+    # Root endpoint - same as health for simplicity
+    async def root(request):
+        return JSONResponse(
+            {
+                "service": "MrRobot MCP Server",
+                "version": VERSION,
+                "status": "running",
+                "endpoints": {
+                    "/": "This info",
+                    "/health": "Health check",
+                    "/mcp": "MCP protocol (streamable-http)",
+                    "/sse": "MCP protocol (SSE)",
+                },
+                "tools": get_tool_count(),
+            }
+        )
+
+    # Get the MCP ASGI apps
+    mcp_http_app = mcp.streamable_http_app()
+    mcp_sse_app = mcp.sse_app()
+
+    # Create combined Starlette app with health routes + MCP
+    app = Starlette(
+        routes=[
+            Route("/", root, methods=["GET"]),
+            Route("/health", health, methods=["GET"]),
+            # Mount MCP apps
+            Mount("/mcp", app=mcp_http_app),
+            Mount("/sse", app=mcp_sse_app),
+        ]
+    )
+
+    print(f"[MCP] MrRobot MCP Server v{VERSION}")
+    print(f"[MCP] Tools registered: {get_tool_count()}")
+    print(f"[MCP] Starting HTTP server on http://{host}:{port}")
+    print(f"[MCP] Endpoints:")
+    print(f"[MCP]   - Health: http://{host}:{port}/health")
+    print(f"[MCP]   - MCP:    http://{host}:{port}/mcp")
+    print(f"[MCP]   - SSE:    http://{host}:{port}/sse")
+
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 def main():
@@ -393,22 +573,12 @@ def main():
     parser.add_argument("--port", type=int, default=8080, help="Port for HTTP server")
     args = parser.parse_args()
 
-    print(f"[MCP] MrRobot MCP Server v2.0.0")
-    print(f"[MCP] Tools registered: {len(mcp._tool_manager._tools)}")
-
     if args.http:
-        # Run with Streamable HTTP transport
-        print(f"[MCP] Starting HTTP server on http://{args.host}:{args.port}")
-        print(f"[MCP] Endpoint: http://{args.host}:{args.port}/mcp")
-
-        # Use FastMCP's built-in HTTP server
-        mcp.run(
-            transport="streamable-http",
-            host=args.host,
-            port=args.port,
-        )
+        run_http_server(args.host, args.port)
     else:
-        # Run with stdio transport
+        # Run with stdio transport (for local development)
+        print(f"[MCP] MrRobot MCP Server v{VERSION}")
+        print(f"[MCP] Tools registered: {get_tool_count()}")
         print("[MCP] Starting in stdio mode...")
         mcp.run(transport="stdio")
 

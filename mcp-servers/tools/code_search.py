@@ -1,4 +1,7 @@
-"""Bedrock Knowledge Base tools for code search."""
+"""Code Search tools using Amazon Bedrock Knowledge Base.
+
+Provides semantic search across 254 MrRobot repositories (17,169 documents).
+"""
 
 import os
 import sys
@@ -11,6 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from utils.aws import get_bedrock_agent_runtime
 from utils.config import BITBUCKET_EMAIL, BITBUCKET_WORKSPACE, KNOWLEDGE_BASE_ID
 from utils.secrets import get_secret
+
+# Alias for backward compatibility
+KB_ID = KNOWLEDGE_BASE_ID
 
 # Known repos list (sample)
 KNOWN_REPOS = [

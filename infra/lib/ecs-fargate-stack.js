@@ -278,26 +278,42 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ACM Certificate for HTTPS
     // ========================================================================
-    // Import existing certificate (created via AWS CLI)
-    // To recreate: aws acm request-certificate --domain-name mcp.mrrobot.dev --validation-method DNS
-    const mcpCertificate = acm.Certificate.fromCertificateArn(
-      this,
-      'McpCertificate',
-      'arn:aws:acm:us-east-1:720154970215:certificate/febd3527-ede0-49a4-b383-8429febfcf32'
-    );
+    // Import Route53 hosted zone for DNS validation
+    const hostedZone = route53.HostedZone.fromLookup(this, 'MrRobotDevZone', {
+      domainName: 'mrrobot.dev'
+    });
+
+    // Create wildcard certificate for all *.mrrobot.dev subdomains
+    const wildcardCertificate = new acm.Certificate(this, 'WildcardCertificate', {
+      domainName: '*.mrrobot.dev',
+      subjectAlternativeNames: ['mrrobot.dev'],  // Also cover root domain
+      validation: acm.CertificateValidation.fromDns(hostedZone),
+    });
 
     // ========================================================================
     // ALB Listeners & Rules
     // ========================================================================
-    // HTTP Listener - redirect to HTTPS for MCP, serve Streamlit directly
+    // HTTP Listener - redirect all traffic to HTTPS
     const httpListener = alb.addListener('HttpListener', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      defaultTargetGroups: [streamlitTargetGroup]
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: 'HTTPS',
+        port: '443',
+        permanent: true,
+      })
     });
 
-    // Route mcp.mrrobot.dev to MCP server (HTTP)
-    httpListener.addTargetGroups('McpHostRuleHttp', {
+    // HTTPS Listener - routes both MCP and Streamlit
+    const httpsListener = alb.addListener('HttpsListener', {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [wildcardCertificate],
+      defaultTargetGroups: [streamlitTargetGroup]  // Default to Streamlit
+    });
+
+    // Route mcp.mrrobot.dev to MCP server (HTTPS)
+    httpsListener.addTargetGroups('McpHostRuleHttps', {
       conditions: [
         elbv2.ListenerCondition.hostHeaders(['mcp.mrrobot.dev'])
       ],
@@ -305,16 +321,14 @@ class StrandsAgentECSStack extends cdk.Stack {
       priority: 1
     });
 
-    // HTTPS Listener for MCP server
-    const httpsListener = alb.addListener('HttpsListener', {
-      port: 443,
-      protocol: elbv2.ApplicationProtocol.HTTPS,
-      certificates: [mcpCertificate],
-      defaultTargetGroups: [mcpTargetGroup]  // Default to MCP for HTTPS
+    // Route ai-agent.mrrobot.dev to Streamlit (HTTPS)
+    httpsListener.addTargetGroups('StreamlitHostRuleHttps', {
+      conditions: [
+        elbv2.ListenerCondition.hostHeaders(['ai-agent.mrrobot.dev'])
+      ],
+      targetGroups: [streamlitTargetGroup],
+      priority: 2
     });
-
-    // Also route ai-agent.mrrobot.dev to Streamlit on HTTPS (if cert covers it)
-    // For now, HTTPS is primarily for MCP server
 
     // ========================================================================
     // ECS Services
@@ -414,8 +428,8 @@ class StrandsAgentECSStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'StreamlitURL', {
-      value: `http://ai-agent.${DNS_DOMAIN}`,
-      description: 'Streamlit URL'
+      value: `https://ai-agent.${DNS_DOMAIN}`,
+      description: 'Streamlit URL (HTTPS)'
     });
 
     new cdk.CfnOutput(this, 'MCPServerURL', {
