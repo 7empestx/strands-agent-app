@@ -18,8 +18,7 @@ import re
 import sys
 import threading
 import time
-from datetime import datetime
-from typing import Optional
+from datetime import datetime  # noqa: F401 - used in format_response
 
 import boto3
 
@@ -28,10 +27,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from src.lib.utils.secrets import get_secret
 
-
 # ============================================================================
 # METRICS & LOGGING
 # ============================================================================
+
 
 class ClippyMetrics:
     """Track metrics for monitoring and debugging."""
@@ -45,7 +44,9 @@ class ClippyMetrics:
         self.response_times = []
         self._lock = threading.Lock()
 
-    def record_request(self, duration_ms: float, tools_used: list, was_truncated: bool, hit_limit: bool, error: bool = False):
+    def record_request(
+        self, duration_ms: float, tools_used: list, was_truncated: bool, hit_limit: bool, error: bool = False
+    ):
         with self._lock:
             self.total_requests += 1
             self.response_times.append(duration_ms)
@@ -60,7 +61,9 @@ class ClippyMetrics:
 
     def get_stats(self) -> dict:
         with self._lock:
-            avg_response = sum(self.response_times[-100:]) / len(self.response_times[-100:]) if self.response_times else 0
+            avg_response = (
+                sum(self.response_times[-100:]) / len(self.response_times[-100:]) if self.response_times else 0
+            )
             return {
                 "total_requests": self.total_requests,
                 "truncations": self.truncations,
@@ -74,15 +77,18 @@ class ClippyMetrics:
 
     def log_summary(self):
         stats = self.get_stats()
-        print(f"[Clippy Metrics] Requests: {stats['total_requests']} | "
-              f"Truncations: {stats['truncations']} ({stats['truncation_rate']}) | "
-              f"Tool limits: {stats['tool_limit_hits']} ({stats['tool_limit_rate']}) | "
-              f"Errors: {stats['errors']} | "
-              f"Avg response: {stats['avg_response_ms']}ms")
+        print(
+            f"[Clippy Metrics] Requests: {stats['total_requests']} | "
+            f"Truncations: {stats['truncations']} ({stats['truncation_rate']}) | "
+            f"Tool limits: {stats['tool_limit_hits']} ({stats['tool_limit_rate']}) | "
+            f"Errors: {stats['errors']} | "
+            f"Avg response: {stats['avg_response_ms']}ms"
+        )
 
 
 # Global metrics instance
 _metrics = ClippyMetrics()
+
 
 def get_metrics() -> ClippyMetrics:
     return _metrics
@@ -94,6 +100,7 @@ def get_metrics() -> ClippyMetrics:
 
 # Bedrock client (reused across calls)
 _bedrock_client = None
+
 
 def get_bedrock_client():
     """Get or create Bedrock runtime client."""
@@ -114,21 +121,17 @@ CLIPPY_TOOLS = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Natural language search query (e.g., 'errors in cast-core prod', 'timeout issues in staging')"
+                    "description": "Natural language search query (e.g., 'errors in cast-core prod', 'timeout issues in staging')",
                 },
                 "hours_back": {
                     "type": "integer",
                     "description": "How many hours back to search (default: 4)",
-                    "default": 4
+                    "default": 4,
                 },
-                "limit": {
-                    "type": "integer",
-                    "description": "Max number of results (default: 50)",
-                    "default": 50
-                }
+                "limit": {"type": "integer", "description": "Max number of results (default: 50)", "default": 50},
             },
-            "required": ["query"]
-        }
+            "required": ["query"],
+        },
     },
     {
         "name": "get_recent_errors",
@@ -138,16 +141,16 @@ CLIPPY_TOOLS = [
             "properties": {
                 "service": {
                     "type": "string",
-                    "description": "Service name to filter (e.g., 'cast-core', 'emvio-dashboard-app') or 'all' for all services"
+                    "description": "Service name to filter (e.g., 'cast-core', 'emvio-dashboard-app') or 'all' for all services",
                 },
                 "hours_back": {
                     "type": "integer",
                     "description": "How many hours back to check (default: 4)",
-                    "default": 4
-                }
+                    "default": 4,
+                },
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "search_code",
@@ -157,16 +160,12 @@ CLIPPY_TOOLS = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "What to search for (e.g., 'CSP configuration', 'authentication middleware', 'S3 upload')"
+                    "description": "What to search for (e.g., 'CSP configuration', 'authentication middleware', 'S3 upload')",
                 },
-                "num_results": {
-                    "type": "integer",
-                    "description": "Number of results (default: 5)",
-                    "default": 5
-                }
+                "num_results": {"type": "integer", "description": "Number of results (default: 5)", "default": 5},
             },
-            "required": ["query"]
-        }
+            "required": ["query"],
+        },
     },
     {
         "name": "get_pipeline_status",
@@ -176,16 +175,12 @@ CLIPPY_TOOLS = [
             "properties": {
                 "repo": {
                     "type": "string",
-                    "description": "Repository/service name (e.g., 'emvio-dashboard-app', 'cast-core')"
+                    "description": "Repository/service name (e.g., 'emvio-dashboard-app', 'cast-core')",
                 },
-                "limit": {
-                    "type": "integer",
-                    "description": "Number of recent pipelines (default: 5)",
-                    "default": 5
-                }
+                "limit": {"type": "integer", "description": "Number of recent pipelines (default: 5)", "default": 5},
             },
-            "required": ["repo"]
-        }
+            "required": ["repo"],
+        },
     },
     {
         "name": "get_pipeline_details",
@@ -195,15 +190,12 @@ CLIPPY_TOOLS = [
             "properties": {
                 "repo": {
                     "type": "string",
-                    "description": "Repository/service name (e.g., 'emvio-underwriting-service')"
+                    "description": "Repository/service name (e.g., 'emvio-underwriting-service')",
                 },
-                "pipeline_id": {
-                    "type": "integer",
-                    "description": "Pipeline/build number (e.g., 2346)"
-                }
+                "pipeline_id": {"type": "integer", "description": "Pipeline/build number (e.g., 2346)"},
             },
-            "required": ["repo", "pipeline_id"]
-        }
+            "required": ["repo", "pipeline_id"],
+        },
     },
     {
         "name": "list_open_prs",
@@ -211,18 +203,11 @@ CLIPPY_TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository name (e.g., 'mrrobot-auth-rest', 'cast-core')"
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Max PRs to return (default: 5)",
-                    "default": 5
-                }
+                "repo": {"type": "string", "description": "Repository name (e.g., 'mrrobot-auth-rest', 'cast-core')"},
+                "limit": {"type": "integer", "description": "Max PRs to return (default: 5)", "default": 5},
             },
-            "required": ["repo"]
-        }
+            "required": ["repo"],
+        },
     },
     {
         "name": "get_pr_details",
@@ -232,15 +217,12 @@ CLIPPY_TOOLS = [
             "properties": {
                 "repo": {
                     "type": "string",
-                    "description": "Repository name extracted from URL (e.g., 'cforce-service' from .../cforce-service/pull-requests/...)"
+                    "description": "Repository name extracted from URL (e.g., 'cforce-service' from .../cforce-service/pull-requests/...)",
                 },
-                "pr_id": {
-                    "type": "integer",
-                    "description": "Pull request ID number from the URL"
-                }
+                "pr_id": {"type": "integer", "description": "Pull request ID number from the URL"},
             },
-            "required": ["repo", "pr_id"]
-        }
+            "required": ["repo", "pr_id"],
+        },
     },
     {
         "name": "list_alarms",
@@ -251,11 +233,11 @@ CLIPPY_TOOLS = [
                 "state": {
                     "type": "string",
                     "description": "Filter by state: 'ALARM', 'OK', 'INSUFFICIENT_DATA', or omit for all",
-                    "enum": ["ALARM", "OK", "INSUFFICIENT_DATA"]
+                    "enum": ["ALARM", "OK", "INSUFFICIENT_DATA"],
                 }
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "search_cloudwatch_logs",
@@ -265,20 +247,13 @@ CLIPPY_TOOLS = [
             "properties": {
                 "service": {
                     "type": "string",
-                    "description": "Service name (e.g., 'mrrobot-cast-core-staging', 'emvio-dashboard-app-dev')"
+                    "description": "Service name (e.g., 'mrrobot-cast-core-staging', 'emvio-dashboard-app-dev')",
                 },
-                "query": {
-                    "type": "string",
-                    "description": "What to search for (e.g., '504', 'error', 'syncAll')"
-                },
-                "hours_back": {
-                    "type": "integer",
-                    "description": "Hours of logs to search (default: 4)",
-                    "default": 4
-                }
+                "query": {"type": "string", "description": "What to search for (e.g., '504', 'error', 'syncAll')"},
+                "hours_back": {"type": "integer", "description": "Hours of logs to search (default: 4)", "default": 4},
             },
-            "required": ["service"]
-        }
+            "required": ["service"],
+        },
     },
     {
         "name": "get_ecs_metrics",
@@ -289,16 +264,16 @@ CLIPPY_TOOLS = [
                 "cluster": {
                     "type": "string",
                     "description": "ECS cluster name (default: 'mrrobot-ai-core')",
-                    "default": "mrrobot-ai-core"
+                    "default": "mrrobot-ai-core",
                 },
                 "service": {
                     "type": "string",
                     "description": "ECS service name (default: 'mrrobot-mcp-server')",
-                    "default": "mrrobot-mcp-server"
-                }
+                    "default": "mrrobot-mcp-server",
+                },
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "get_service_info",
@@ -308,11 +283,11 @@ CLIPPY_TOOLS = [
             "properties": {
                 "service_name": {
                     "type": "string",
-                    "description": "The service/repo name to look up (e.g., 'emvio-dashboard-app', 'cast-core')"
+                    "description": "The service/repo name to look up (e.g., 'emvio-dashboard-app', 'cast-core')",
                 }
             },
-            "required": ["service_name"]
-        }
+            "required": ["service_name"],
+        },
     },
     {
         "name": "investigate_issue",
@@ -322,20 +297,20 @@ CLIPPY_TOOLS = [
             "properties": {
                 "service": {
                     "type": "string",
-                    "description": "Service name to investigate (e.g., 'emvio-dashboard-app', 'cast-core')"
+                    "description": "Service name to investigate (e.g., 'emvio-dashboard-app', 'cast-core')",
                 },
                 "environment": {
                     "type": "string",
                     "description": "Environment to focus on (prod, staging, dev, sandbox)",
-                    "enum": ["prod", "staging", "dev", "sandbox"]
+                    "enum": ["prod", "staging", "dev", "sandbox"],
                 },
                 "description": {
                     "type": "string",
-                    "description": "User's description of the issue (what they're seeing, when it started)"
-                }
+                    "description": "User's description of the issue (what they're seeing, when it started)",
+                },
             },
-            "required": ["service"]
-        }
+            "required": ["service"],
+        },
     },
     {
         "name": "search_devops_history",
@@ -355,11 +330,11 @@ Returns past conversation snippets with resolutions - include relevant findings 
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "What to search for - use key error types, service names, or issue descriptions (e.g., '504 cast', 'SFTP user setup', 'lambda timeout')"
+                    "description": "What to search for - use key error types, service names, or issue descriptions (e.g., '504 cast', 'SFTP user setup', 'lambda timeout')",
                 }
             },
-            "required": ["query"]
-        }
+            "required": ["query"],
+        },
     },
     {
         "name": "aws_cli",
@@ -378,16 +353,12 @@ DO NOT include 'aws' prefix - just the service and command.""",
             "properties": {
                 "command": {
                     "type": "string",
-                    "description": "AWS CLI command without 'aws' prefix (e.g., 'elbv2 describe-load-balancers')"
+                    "description": "AWS CLI command without 'aws' prefix (e.g., 'elbv2 describe-load-balancers')",
                 },
-                "region": {
-                    "type": "string",
-                    "description": "AWS region (default: us-east-1)",
-                    "default": "us-east-1"
-                }
+                "region": {"type": "string", "description": "AWS region (default: us-east-1)", "default": "us-east-1"},
             },
-            "required": ["command"]
-        }
+            "required": ["command"],
+        },
     },
     {
         "name": "respond_directly",
@@ -395,14 +366,11 @@ DO NOT include 'aws' prefix - just the service and command.""",
         "input_schema": {
             "type": "object",
             "properties": {
-                "message": {
-                    "type": "string",
-                    "description": "Simple greeting or capability explanation only"
-                }
+                "message": {"type": "string", "description": "Simple greeting or capability explanation only"}
             },
-            "required": ["message"]
-        }
-    }
+            "required": ["message"],
+        },
+    },
 ]
 
 # System prompt for Clippy
@@ -497,10 +465,7 @@ THREAD CONTEXT & FOLLOW-UPS:
 
 
 def invoke_claude_with_tools(
-    message: str,
-    thread_context: list = None,
-    max_tokens: int = 600,
-    max_tool_calls: int = 10
+    message: str, thread_context: list = None, max_tokens: int = 600, max_tool_calls: int = 10
 ) -> dict:
     """Invoke Claude with tool definitions and handle tool calls.
 
@@ -516,7 +481,7 @@ def invoke_claude_with_tools(
     start_time = time.time()
     client = get_bedrock_client()
     any_truncated = False
-    
+
     # Build messages with optional thread context
     messages = []
     if thread_context:
@@ -532,13 +497,13 @@ def invoke_claude_with_tools(
             # Skip empty messages
             if content.strip():
                 messages.append({"role": role, "content": content})
-    
+
     # Add current message
     messages.append({"role": "user", "content": message})
-    
+
     tools_used = []
     tool_results = []
-    
+
     try:
         body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -547,20 +512,20 @@ def invoke_claude_with_tools(
             "messages": messages,
             "tools": CLIPPY_TOOLS,
         }
-        
+
         # Loop for multi-turn tool calling
         for turn in range(max_tool_calls + 1):
             response = client.invoke_model(
                 modelId="us.anthropic.claude-sonnet-4-20250514-v1:0",
                 body=json.dumps(body),
             )
-            
+
             result = json.loads(response["body"].read())
             stop_reason = result.get("stop_reason", "")
             content = result.get("content", [])
-            
+
             print(f"[Clippy] Turn {turn + 1} - stop_reason: {stop_reason}, content blocks: {len(content)}")
-            
+
             # If Claude is done (end_turn or max_tokens), extract final response
             if stop_reason != "tool_use":
                 final_text = ""
@@ -579,9 +544,9 @@ def invoke_claude_with_tools(
                     "tool_used": tools_used[-1] if tools_used else None,
                     "tool_result": tool_results[-1] if tool_results else None,
                     "all_tools_used": tools_used,
-                    "was_truncated": any_truncated
+                    "was_truncated": any_truncated,
                 }
-            
+
             # Claude wants to use tool(s) - may be multiple in parallel
             tool_use_blocks = [block for block in content if block.get("type") == "tool_use"]
 
@@ -594,7 +559,7 @@ def invoke_claude_with_tools(
                     return {
                         "response": tool_use.get("input", {}).get("message", "How can I help?"),
                         "tool_used": None,
-                        "tool_result": None
+                        "tool_result": None,
                     }
 
             # Execute all tools and collect results
@@ -617,25 +582,21 @@ def invoke_claude_with_tools(
                 if was_truncated:
                     any_truncated = True
                     print(f"[Clippy] WARNING: {tool_name} result truncated from {len(tool_result_str)} to 8000 chars")
-                    tool_result_str = tool_result_str[:7800] + '\n\n[WARNING: Results truncated. There may be additional data not shown. Ask user to narrow their query if needed.]'
+                    tool_result_str = (
+                        tool_result_str[:7800]
+                        + "\n\n[WARNING: Results truncated. There may be additional data not shown. Ask user to narrow their query if needed.]"
+                    )
 
-                tool_result_contents.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_id,
-                    "content": tool_result_str
-                })
+                tool_result_contents.append({"type": "tool_result", "tool_use_id": tool_id, "content": tool_result_str})
 
             # Add assistant's response and all tool results to messages
             messages.append({"role": "assistant", "content": content})
-            messages.append({
-                "role": "user",
-                "content": tool_result_contents
-            })
-            
+            messages.append({"role": "user", "content": tool_result_contents})
+
             # Update body for next turn
             body["messages"] = messages
             body["max_tokens"] = 1200  # More tokens for summaries
-        
+
         # If we hit max turns, return what we have
         print(f"[Clippy] WARNING: Hit max tool calls limit ({max_tool_calls}). Tools used: {tools_used}")
         duration_ms = (time.time() - start_time) * 1000
@@ -648,24 +609,25 @@ def invoke_claude_with_tools(
             "tool_result": tool_results[-1] if tool_results else None,
             "all_tools_used": tools_used,
             "was_truncated": any_truncated,
-            "hit_tool_limit": True
+            "hit_tool_limit": True,
         }
-        
+
         # No tool use - just return Claude's direct response
         text_response = ""
         for block in content:
             if block.get("type") == "text":
                 text_response += block.get("text", "")
-        
+
         return {
             "response": text_response or "I'm not sure how to help with that. Could you rephrase?",
             "tool_used": None,
-            "tool_result": None
+            "tool_result": None,
         }
-        
+
     except Exception as e:
         print(f"[Clippy] Error in invoke_claude_with_tools: {e}")
         import traceback
+
         traceback.print_exc()
 
         # Record error metrics
@@ -676,7 +638,7 @@ def invoke_claude_with_tools(
             "response": f"I encountered an error: {str(e)[:100]}. Please try again.",
             "tool_used": None,
             "tool_result": None,
-            "error": True
+            "error": True,
         }
 
 
@@ -792,90 +754,82 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
     try:
         if tool_name == "search_logs":
             from src.lib.coralogix import handle_search_logs
+
             return handle_search_logs(
                 query=tool_input.get("query", ""),
                 hours_back=tool_input.get("hours_back", 4),
-                limit=tool_input.get("limit", 50)
+                limit=tool_input.get("limit", 50),
             )
-        
+
         elif tool_name == "get_recent_errors":
             from src.lib.coralogix import handle_get_recent_errors
+
             return handle_get_recent_errors(
-                service_name=tool_input.get("service", "all"),
-                hours_back=tool_input.get("hours_back", 4),
-                limit=50
+                service_name=tool_input.get("service", "all"), hours_back=tool_input.get("hours_back", 4), limit=50
             )
-        
+
         elif tool_name == "search_code":
             from src.lib.code_search import search_knowledge_base
+
             return search_knowledge_base(
-                query=tool_input.get("query", ""),
-                num_results=tool_input.get("num_results", 5)
+                query=tool_input.get("query", ""), num_results=tool_input.get("num_results", 5)
             )
-        
+
         elif tool_name == "get_pipeline_status":
             from src.lib.bitbucket import get_pipeline_status
-            return get_pipeline_status(
-                repo_slug=tool_input.get("repo", ""),
-                limit=tool_input.get("limit", 5)
-            )
+
+            return get_pipeline_status(repo_slug=tool_input.get("repo", ""), limit=tool_input.get("limit", 5))
 
         elif tool_name == "get_pipeline_details":
             from src.lib.bitbucket import get_pipeline_details
+
             repo = tool_input.get("repo", "")
             if "/" in repo:
                 repo = repo.split("/")[-1]
-            return get_pipeline_details(
-                repo_slug=repo,
-                pipeline_id=tool_input.get("pipeline_id", 0)
-            )
+            return get_pipeline_details(repo_slug=repo, pipeline_id=tool_input.get("pipeline_id", 0))
 
         elif tool_name == "aws_cli":
             from src.lib.aws_cli import run_aws_command
-            return run_aws_command(
-                command=tool_input.get("command", ""),
-                region=tool_input.get("region", "us-east-1")
-            )
+
+            return run_aws_command(command=tool_input.get("command", ""), region=tool_input.get("region", "us-east-1"))
 
         elif tool_name == "list_open_prs":
             from src.lib.bitbucket import get_open_prs
-            return get_open_prs(
-                repo_slug=tool_input.get("repo", ""),
-                limit=tool_input.get("limit", 5)
-            )
-        
+
+            return get_open_prs(repo_slug=tool_input.get("repo", ""), limit=tool_input.get("limit", 5))
+
         elif tool_name == "get_pr_details":
             from src.lib.bitbucket import get_pr_details
+
             # Strip workspace prefix if Claude included it (e.g., "mrrobot-labs/repo" -> "repo")
             repo = tool_input.get("repo", "")
             if "/" in repo:
                 repo = repo.split("/")[-1]
-            return get_pr_details(
-                repo_slug=repo,
-                pr_id=tool_input.get("pr_id", 0)
-            )
-        
+            return get_pr_details(repo_slug=repo, pr_id=tool_input.get("pr_id", 0))
+
         elif tool_name == "list_alarms":
             from src.lib.cloudwatch import list_alarms
+
             return list_alarms(state_value=tool_input.get("state"))
-        
+
         elif tool_name == "search_cloudwatch_logs":
-            from src.lib.cloudwatch import query_logs, list_log_groups
+            from src.lib.cloudwatch import list_log_groups, query_logs
+
             service = tool_input.get("service", "")
             search_term = tool_input.get("query", "error")
             hours = tool_input.get("hours_back", 4)
-            
+
             # Try to find matching log group
             base_name = service.replace("-staging", "-dev").replace("-prod", "-dev")
             search_prefix = f"/aws/lambda/{base_name.split('-')[0]}" if not service.startswith("/") else service
-            
+
             # List available log groups matching the pattern
             available = list_log_groups(prefix=search_prefix)
             matching_groups = [g["name"] for g in available.get("log_groups", [])]
-            
+
             # Try exact match first, then partial
             log_group = f"/aws/lambda/{service}" if not service.startswith("/") else service
-            
+
             if log_group not in matching_groups:
                 # Try to find a close match
                 for g in matching_groups:
@@ -888,45 +842,47 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
                         "error": f"Log group not found: {log_group}",
                         "note": "This service may be in a different AWS account (staging/prod vs dev)",
                         "available_groups": matching_groups[:10],
-                        "suggestion": "Try checking Coralogix logs instead with search_logs"
+                        "suggestion": "Try checking Coralogix logs instead with search_logs",
                     }
-            
+
             # Build query
-            query = f"fields @timestamp, @message | filter @message like /{search_term}/ | sort @timestamp desc | limit 50"
-            
+            query = (
+                f"fields @timestamp, @message | filter @message like /{search_term}/ | sort @timestamp desc | limit 50"
+            )
+
             return query_logs(log_group=log_group, query=query, hours_back=hours)
-        
+
         elif tool_name == "get_ecs_metrics":
             from src.lib.cloudwatch import get_ecs_service_metrics
+
             return get_ecs_service_metrics(
                 cluster_name=tool_input.get("cluster", "mrrobot-ai-core"),
-                service_name=tool_input.get("service", "mrrobot-mcp-server")
+                service_name=tool_input.get("service", "mrrobot-mcp-server"),
             )
-        
+
         elif tool_name == "get_service_info":
             # Use KB to understand what type of service this is
             from src.lib.code_search import search_knowledge_base
+
             service_name = tool_input.get("service_name", "")
-            
+
             # Search for package.json, README, or main files to understand the service
             results = search_knowledge_base(
-                query=f"{service_name} package.json or README or main technology stack",
-                num_results=5
+                query=f"{service_name} package.json or README or main technology stack", num_results=5
             )
-            
+
             # Also search for what it might depend on
             deps_results = search_knowledge_base(
-                query=f"{service_name} API calls dependencies imports fetch axios",
-                num_results=3
+                query=f"{service_name} API calls dependencies imports fetch axios", num_results=3
             )
-            
+
             # Let Claude analyze the results
             files_found = [r.get("file", "") for r in results.get("results", [])]
-            
+
             # Determine type based on file patterns
             service_type = "unknown"
             tech_hints = []
-            
+
             for f in files_found:
                 if "package.json" in f:
                     if any(x in str(results) for x in ["react", "vue", "angular", "next"]):
@@ -940,65 +896,69 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
                     tech_hints.append("Python/Lambda service")
                 elif "Dockerfile" in f:
                     tech_hints.append("Containerized")
-            
+
             return {
                 "service_name": service_name,
                 "type": service_type,
                 "tech_hints": tech_hints,
                 "files_found": files_found[:5],
-                "suggestion": f"This appears to be a {service_type}. " + 
-                    ("For frontends, check deploys and API dependencies rather than logs." if service_type == "frontend" else
-                     "For backends, check both logs and recent deploys.")
+                "suggestion": f"This appears to be a {service_type}. "
+                + (
+                    "For frontends, check deploys and API dependencies rather than logs."
+                    if service_type == "frontend"
+                    else "For backends, check both logs and recent deploys."
+                ),
             }
-        
+
         elif tool_name == "search_devops_history":
             # Search Slack history in the Knowledge Base
             from src.lib.code_search import search_knowledge_base
+
             query = tool_input.get("query", "")
-            
+
             # Search with context that this is for past conversations
-            results = search_knowledge_base(
-                query=f"Slack conversation: {query}",
-                num_results=5
-            )
-            
+            results = search_knowledge_base(query=f"Slack conversation: {query}", num_results=5)
+
             # Filter to only slack-history results if possible
             slack_results = []
             for r in results.get("results", []):
                 # Include all results but flag which are from slack
                 is_slack = "slack-history" in r.get("full_path", "") or r.get("file", "").endswith(".txt")
-                slack_results.append({
-                    "source": "slack" if is_slack else "code",
-                    "content": r.get("content", "")[:500],
-                    "file": r.get("file", ""),
-                    "score": r.get("score", 0)
-                })
-            
+                slack_results.append(
+                    {
+                        "source": "slack" if is_slack else "code",
+                        "content": r.get("content", "")[:500],
+                        "file": r.get("file", ""),
+                        "score": r.get("score", 0),
+                    }
+                )
+
             if not slack_results:
                 return {
                     "found": False,
                     "message": "No past conversations found matching that query.",
-                    "suggestion": "Try a different search term or check if Slack history has been synced."
+                    "suggestion": "Try a different search term or check if Slack history has been synced.",
                 }
-            
+
             return {
                 "found": True,
                 "query": query,
                 "results": slack_results,
-                "message": f"Found {len(slack_results)} past conversation(s) that might be relevant."
+                "message": f"Found {len(slack_results)} past conversation(s) that might be relevant.",
             }
-        
+
         elif tool_name == "investigate_issue":
             from src.lib.investigation_agent import investigate_issue
+
             return investigate_issue(
                 service=tool_input.get("service", ""),
                 environment=tool_input.get("environment"),
-                description=tool_input.get("description")
+                description=tool_input.get("description"),
             )
-        
+
         else:
             return {"error": f"Unknown tool: {tool_name}"}
-    
+
     except Exception as e:
         print(f"[Clippy] Tool execution error: {e}")
         return {"error": str(e)}
@@ -1008,25 +968,26 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
 # LEGACY HELPERS (kept for compatibility, will be removed)
 # ============================================================================
 
+
 def call_claude(prompt: str, max_tokens: int = 500) -> str:
     """Call Claude via Bedrock for simple prompts (legacy).
-    
+
     For new code, use invoke_claude_with_tools() instead.
     """
     try:
         client = get_bedrock_client()
-        
+
         body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": prompt}],
         }
-        
+
         response = client.invoke_model(
             modelId="anthropic.claude-3-sonnet-20240229-v1:0",
             body=json.dumps(body),
         )
-        
+
         result = json.loads(response["body"].read())
         return result["content"][0]["text"]
     except Exception as e:
@@ -1044,7 +1005,7 @@ Respond in JSON only:
 {{
   "intent": "log_search|alert_triage|code_search|pr_review|deploy_check|cloudwatch|access_request|greeting|general",
   "service": "service-name or null",
-  "environment": "prod|staging|dev or null", 
+  "environment": "prod|staging|dev or null",
   "is_urgent": true/false,
   "is_vague": true/false,
   "summary": "one-line summary of what they want"
@@ -1067,10 +1028,10 @@ JSON only, no explanation:"""
     if result:
         try:
             # Extract JSON from response
-            json_match = re.search(r'\{[^{}]+\}', result, re.DOTALL)
+            json_match = re.search(r"\{[^{}]+\}", result, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
-        except:
+        except (json.JSONDecodeError, AttributeError):
             pass
     return None
 
@@ -1125,13 +1086,13 @@ def ai_generate_response(
     intent: str = None,
 ) -> str:
     """Use AI to generate a contextual response with thread history."""
-    
+
     # Build context from thread
     context_text = ""
     if thread_context:
         context_text = "\n".join(thread_context[-5:])  # Last 5 messages
         context_text = f"\nPREVIOUS CONVERSATION:\n{context_text}\n"
-    
+
     prompt = f"""You are Clippy, a friendly DevOps AI assistant in Slack.
 {context_text}
 CURRENT MESSAGE: "{message}"
@@ -1179,14 +1140,11 @@ def ai_summarize_logs(logs: list, query: str) -> str:
     """Use AI to summarize log results and provide insights."""
     if not logs:
         return None
-    
+
     # Take first 10 logs for context
     log_sample = logs[:10]
-    log_text = "\n".join([
-        f"- {log.get('message', str(log))[:200]}" 
-        for log in log_sample
-    ])
-    
+    log_text = "\n".join([f"- {log.get('message', str(log))[:200]}" for log in log_sample])
+
     prompt = f"""Analyze these log entries and provide a brief summary.
 
 QUERY: "{query}"
@@ -1211,11 +1169,8 @@ Analysis:"""
 def ai_review_pr(pr_details: dict) -> str:
     """Use AI to provide a brief PR review summary."""
     files = pr_details.get("files_changed", [])
-    files_text = "\n".join([
-        f"- {f['path']} (+{f['lines_added']}/-{f['lines_removed']})"
-        for f in files[:15]
-    ])
-    
+    files_text = "\n".join([f"- {f['path']} (+{f['lines_added']}/-{f['lines_removed']})" for f in files[:15]])
+
     prompt = f"""Review this Pull Request and provide a brief assessment.
 
 PR: {pr_details.get('title', '')}
@@ -1251,13 +1206,19 @@ def _redact_secrets(text: str) -> str:
     # Patterns that look like secrets
     patterns = [
         # PASSWORD='value' or PASSWORD="value" or PASSWORD=value
-        (r"(PASSWORD|PASS|PWD|SECRET|TOKEN|KEY|CREDENTIAL|API_KEY|APIKEY|AUTH)\s*[=:]\s*['\"]?([^'\"\s,\n]{6,})['\"]?", r"\1=***REDACTED***"),
+        (
+            r"(PASSWORD|PASS|PWD|SECRET|TOKEN|KEY|CREDENTIAL|API_KEY|APIKEY|AUTH)\s*[=:]\s*['\"]?([^'\"\s,\n]{6,})['\"]?",
+            r"\1=***REDACTED***",
+        ),
         # Bearer tokens
         (r"(Bearer\s+)([A-Za-z0-9_\-\.]{20,})", r"\1***REDACTED***"),
         # AWS keys
         (r"(AKIA[A-Z0-9]{16})", r"***AWS_KEY_REDACTED***"),
         # Generic long alphanumeric strings that look like secrets (after = or :)
-        (r"(['\"]?(?:password|secret|token|key|credential)['\"]?\s*[=:]\s*['\"]?)([A-Za-z0-9_\-\.]{12,})(['\"]?)", r"\1***REDACTED***\3"),
+        (
+            r"(['\"]?(?:password|secret|token|key|credential)['\"]?\s*[=:]\s*['\"]?)([A-Za-z0-9_\-\.]{12,})(['\"]?)",
+            r"\1***REDACTED***\3",
+        ),
     ]
 
     result = text
@@ -1335,18 +1296,38 @@ _💬 I only respond once per thread. Use `@Clippy-ai` to continue the conversat
 
 # Keywords that indicate a CLEAR, actionable request (auto-execute)
 CLEAR_ACTION_KEYWORDS = [
-    "search logs", "find logs", "show logs", "check logs", "get logs",
-    "search for", "show me the", "list",
-    "list alarms", "check alarms", "show alarms",
-    "what errors", "recent errors", "show errors",
+    "search logs",
+    "find logs",
+    "show logs",
+    "check logs",
+    "get logs",
+    "search for",
+    "show me the",
+    "list",
+    "list alarms",
+    "check alarms",
+    "show alarms",
+    "what errors",
+    "recent errors",
+    "show errors",
 ]
 
 # Keywords that indicate VAGUE/conversational request (ask first)
 VAGUE_KEYWORDS = [
-    "having an issue", "having a problem", "something's wrong",
-    "not working", "broken", "help me", "can you help",
-    "figure out", "investigate", "look into", "debug",
-    "can i get someone", "need help", "we need",
+    "having an issue",
+    "having a problem",
+    "something's wrong",
+    "not working",
+    "broken",
+    "help me",
+    "can you help",
+    "figure out",
+    "investigate",
+    "look into",
+    "debug",
+    "can i get someone",
+    "need help",
+    "we need",
 ]
 
 
@@ -1364,10 +1345,10 @@ def is_vague_request(message: str) -> bool:
 
 def ai_extract_entities(message: str) -> dict:
     """Use AI to extract service names, environments, and other entities from a message.
-    
+
     No hardcoded patterns - Claude understands context and variations.
     """
-    prompt = f"""Extract entities from this DevOps request. Be flexible with naming - 
+    prompt = f"""Extract entities from this DevOps request. Be flexible with naming -
 users might say "emvio dashboard" meaning "emvio-dashboard-app" or "cast core" meaning "cast-core".
 
 MESSAGE: "{message}"
@@ -1386,7 +1367,7 @@ JSON only, no explanation:"""
     result = call_claude(prompt, max_tokens=200)
     if result:
         try:
-            json_match = re.search(r'\{[^{}]+\}', result, re.DOTALL)
+            json_match = re.search(r"\{[^{}]+\}", result, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
         except Exception as e:
@@ -1396,17 +1377,17 @@ JSON only, no explanation:"""
 
 def build_clarifying_response(message: str, context: list = None) -> dict:
     """Use AI to generate a contextual, conversational clarifying response.
-    
+
     No hardcoded templates - Claude generates natural responses.
     """
     # First extract what we know
     entities = ai_extract_entities(message)
-    
+
     context_str = ""
     if context:
         context_str = f"\nPREVIOUS MESSAGES IN THREAD:\n" + "\n".join([f"- {m}" for m in context[-3:]])
-    
-    prompt = f"""You are Clippy, a helpful DevOps AI assistant. A user asked for help but their request 
+
+    prompt = f"""You are Clippy, a helpful DevOps AI assistant. A user asked for help but their request
 needs clarification before you can take action.
 
 USER MESSAGE: "{message}"
@@ -1418,7 +1399,7 @@ Generate a friendly, conversational response that:
 2. Asks 1-2 specific clarifying questions based on what's missing
 3. Offers 2-3 specific actions you could take immediately
 
-Keep it concise (under 150 words). Use Slack formatting (*bold*, `code`). 
+Keep it concise (under 150 words). Use Slack formatting (*bold*, `code`).
 Be warm and helpful, like a friendly colleague. Don't be robotic.
 
 Response:"""
@@ -1426,10 +1407,12 @@ Response:"""
     result = call_claude(prompt, max_tokens=300)
     if result:
         return {"response": f"🤔 {result}"}
-    
+
     # Fallback if AI fails
     service = entities.get("service", "your service")
-    return {"response": f"🤔 I'd like to help with `{service}`! Can you tell me:\n• What error or behavior are you seeing?\n• When did this start?\n\nOr I can start checking logs right away!"}
+    return {
+        "response": f"🤔 I'd like to help with `{service}`! Can you tell me:\n• What error or behavior are you seeing?\n• When did this start?\n\nOr I can start checking logs right away!"
+    }
 
 
 # ============================================================================
@@ -1505,16 +1488,16 @@ INTENT_PATTERNS = {
 
 def classify_intent(message: str, use_ai: bool = True) -> tuple:
     """Classify the intent of a Slack message.
-    
+
     Args:
         message: The user's message
         use_ai: Whether to use AI classification (slower but smarter)
-    
+
     Returns:
         tuple of (intent, ai_context) where ai_context contains extracted entities
     """
     ai_context = None
-    
+
     # Try AI classification first (for complex messages)
     if use_ai and len(message) > 20:
         ai_result = ai_classify_intent(message)
@@ -1526,7 +1509,7 @@ def classify_intent(message: str, use_ai: bool = True) -> tuple:
             if ai_result.get("is_vague") and not ai_result.get("is_urgent"):
                 return ("clarify", ai_context)
             return (intent, ai_context)
-    
+
     # Fallback to regex patterns
     message_lower = message.lower()
     for intent, patterns in INTENT_PATTERNS.items():
@@ -1551,20 +1534,16 @@ def route_to_tool(
     thread_context: list = None,
 ) -> dict:
     """Route a message to the appropriate MCP tool based on intent.
-    
+
     AI-powered approach:
     - Uses AI context for service/env extraction when available
     - Uses thread context for follow-up awareness
     - CLEAR requests → execute immediately
     - VAGUE requests → AI-generated clarifying questions
     """
-    from src.lib.cloudwatch import get_ecs_service_metrics, list_alarms, query_logs
+    from src.lib.cloudwatch import get_ecs_service_metrics, list_alarms
     from src.lib.code_search import search_knowledge_base
-    from src.lib.coralogix import (
-        handle_discover_services,
-        handle_get_recent_errors,
-        handle_search_logs,
-    )
+    from src.lib.coralogix import handle_get_recent_errors, handle_search_logs
 
     # Extract service/env from AI context if available
     service = ai_context.get("service") if ai_context else None
@@ -1575,37 +1554,35 @@ def route_to_tool(
         if intent == "clarify":
             print(f"[SlackBot] AI detected vague request, generating clarification")
             # Try AI-generated response with thread context
-            ai_response = ai_generate_response(
-                message, service, env, thread_context, intent
-            )
+            ai_response = ai_generate_response(message, service, env, thread_context, intent)
             if ai_response:
                 return {"response": ai_response}
             # Fallback to template
             return build_clarifying_response(message)
-        
+
         # Legacy vague detection (fallback if AI not used)
         if is_vague_request(message) and not is_clear_request(message) and not ai_context:
             print(f"[SlackBot] Vague request detected, asking clarifying questions")
             return build_clarifying_response(message)
-        
+
         if intent == "admin_toggle":
             # Toggle auto-reply on/off
             msg_lower = message.lower()
             if "on" in msg_lower or "enable" in msg_lower:
                 SlackBot._auto_reply_enabled = True
-                return {"response": "✅ Auto-reply is now *enabled*. I'll respond to all messages in designated channels."}
+                return {
+                    "response": "✅ Auto-reply is now *enabled*. I'll respond to all messages in designated channels."
+                }
             else:
                 SlackBot._auto_reply_enabled = False
                 return {"response": "🔇 Auto-reply is now *disabled*. I'll only respond when @mentioned."}
-        
+
         if intent == "greeting":
             return {"response": CLIPPY_INTRO}
 
         elif intent == "alert_triage":
             # Extract service name if mentioned
-            service_match = re.search(
-                r"(cast-\w+|emvio-\w+|mrrobot-\w+)", message.lower()
-            )
+            service_match = re.search(r"(cast-\w+|emvio-\w+|mrrobot-\w+)", message.lower())
             service = service_match.group(1) if service_match else "all"
             return handle_get_recent_errors(service, hours_back=4, limit=50)
 
@@ -1613,10 +1590,10 @@ def route_to_tool(
             # Extract service and environment for context
             service_match = re.search(r"(cast-\w+|emvio-\w+|mrrobot-\w+)", message.lower())
             env_match = re.search(r"(prod|production|staging|sandbox|dev)", message.lower())
-            
+
             service = service_match.group(1) if service_match else None
             env = env_match.group(1) if env_match else None
-            
+
             # Build acknowledgment
             context_parts = []
             if service:
@@ -1624,10 +1601,10 @@ def route_to_tool(
             if env:
                 context_parts.append(f"in *{env}*")
             context = " ".join(context_parts) if context_parts else "your query"
-            
+
             print(f"[SlackBot] Log search query: '{message}' (service={service}, env={env})")
             result = handle_search_logs(message, hours_back=4, limit=50)
-            
+
             # Add context to result
             if isinstance(result, dict):
                 result["_context"] = context
@@ -1642,15 +1619,16 @@ def route_to_tool(
 
         elif intent == "deploy_check":
             from src.lib.bitbucket import get_pipeline_status
+
             # Use AI to extract service name (handles variations like "emvio dashboard" -> "emvio-dashboard-app")
             entities = ai_extract_entities(message)
             repo = entities.get("service")
-            
+
             # Fallback: try simple regex if AI didn't find it
             if not repo:
                 service_match = re.search(r"([\w]+-[\w-]+)", message.lower())
                 repo = service_match.group(1) if service_match else None
-            
+
             if repo:
                 return get_pipeline_status(repo, limit=5)
             else:
@@ -1672,10 +1650,9 @@ def route_to_tool(
 
         elif intent == "pr_review":
             from src.lib.bitbucket import get_pr_details
+
             # Extract PR URL
-            pr_match = re.search(
-                r"bitbucket\.org/[^/]+/([^/]+)/pull-requests/(\d+)", message
-            )
+            pr_match = re.search(r"bitbucket\.org/[^/]+/([^/]+)/pull-requests/(\d+)", message)
             if pr_match:
                 repo, pr_id = pr_match.groups()
                 pr_details = get_pr_details(repo, int(pr_id))
@@ -1695,7 +1672,7 @@ def format_response(result: dict, intent: str) -> str:
     """Format a tool result for Slack display."""
     print(f"[SlackBot] Formatting response for intent: {intent}")
     print(f"[SlackBot] Result type: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
-    
+
     if "error" in result:
         print(f"[SlackBot] Error in result: {result['error']}")
         return f"❌ Error: {result['error']}{CLIPPY_FOOTER}"
@@ -1708,40 +1685,37 @@ def format_response(result: dict, intent: str) -> str:
         errors_by_service = result.get("errors_by_service", {})
         total_errors = result.get("total_errors", 0)
         time_range = result.get("time_range", "")
-        
+
         if not errors_by_service:
             return f"✅ No errors found in the last {time_range}."
 
         lines = [f"🚨 *Error Summary* ({total_errors} errors in {time_range}):"]
         lines.append("")
-        
+
         # Sort by error count
-        sorted_services = sorted(
-            errors_by_service.items(),
-            key=lambda x: len(x[1]),
-            reverse=True
-        )
-        
+        sorted_services = sorted(errors_by_service.items(), key=lambda x: len(x[1]), reverse=True)
+
         for service, errors in sorted_services[:5]:
             count = len(errors)
             lines.append(f"*`{service}`* - {count} errors")
-            
+
             # Show first error message (cleaned up)
             if errors:
                 first_error = errors[0].get("message", "")
                 # Try to extract the key error message
                 if "errorMessage" in first_error:
                     import re as re_mod
+
                     match = re_mod.search(r'"errorMessage":"([^"]+)"', first_error)
                     if match:
                         first_error = match.group(1)
                 first_error = first_error[:120]
                 lines.append(f"  └ _{first_error}..._")
             lines.append("")
-        
+
         if len(sorted_services) > 5:
             lines.append(f"_...and {len(sorted_services) - 5} more services with errors_")
-        
+
         return "\n".join(lines)
 
     if intent == "pr_review" and "pr_id" in result:
@@ -1753,57 +1727,57 @@ def format_response(result: dict, intent: str) -> str:
             f"📅 Created: {pr['created']}",
             "",
         ]
-        
+
         # Files changed summary
         lines.append(f"📁 *{pr['total_files']} files changed* (+{pr['total_additions']} / -{pr['total_deletions']})")
-        
+
         # Show file list (limited)
         for f in pr.get("files_changed", [])[:8]:
             status_emoji = {"added": "🟢", "removed": "🔴", "modified": "🟡"}.get(f["status"], "📄")
             lines.append(f"  {status_emoji} `{f['path']}` (+{f['lines_added']}/-{f['lines_removed']})")
-        
+
         if pr["total_files"] > 8:
             lines.append(f"  _...and {pr['total_files'] - 8} more files_")
-        
+
         # Approvals
         if pr.get("approvals"):
             lines.append("")
             lines.append("✅ *Approvals:*")
             for a in pr["approvals"]:
                 lines.append(f"  • {a['user']} ({a['date']})")
-        
+
         # Comments summary
         if pr.get("comments"):
             lines.append("")
             lines.append(f"💬 *{len(pr['comments'])} comment(s)*")
-        
+
         # AI-powered PR assessment
         ai_review = ai_review_pr(pr)
         if ai_review:
             lines.append("")
             lines.append("🤖 *AI Assessment:*")
             lines.append(ai_review)
-        
+
         # Action items
         lines.append("")
         lines.append(f"🔗 <{pr['url']}|View in Bitbucket>")
-        
+
         return "\n".join(lines)
 
     if intent == "deploy_check" and "pipelines" in result:
         pipelines = result.get("pipelines", [])
         repo = result.get("repo", "")
-        
+
         if not pipelines:
             return f"📦 No recent pipelines found for `{repo}`"
-        
+
         lines = [f"📦 *Recent Deploys for `{repo}`:*"]
         for pipe in pipelines[:5]:
             state = pipe.get("result", pipe.get("state", ""))
             branch = pipe.get("branch", "")
             created = pipe.get("created", "")
             url = pipe.get("url", "")
-            
+
             # Status emoji
             if state.upper() in ["SUCCESSFUL", "PASSED"]:
                 emoji = "✅"
@@ -1813,12 +1787,12 @@ def format_response(result: dict, intent: str) -> str:
                 emoji = "🔄"
             else:
                 emoji = "⚪"
-            
+
             if url:
                 lines.append(f"{emoji} <{url}|#{pipe.get('build_number', '?')}> `{branch}` - {created}")
             else:
                 lines.append(f"{emoji} #{pipe.get('build_number', '?')} `{branch}` - {created}")
-        
+
         return "\n".join(lines)
 
     if intent == "code_search" and "results" in result:
@@ -1867,8 +1841,14 @@ def format_response(result: dict, intent: str) -> str:
             no_results += "\n\n💡 Try:\n• Expanding the time range\n• Checking a different environment\n• Searching for a specific error message"
             return no_results
 
-        lines = [f"{header}📋 *Found {total} logs* for {context}:" if context else f"📋 *Log Search Results* ({total} found):"]
-        
+        lines = [
+            (
+                f"{header}📋 *Found {total} logs* for {context}:"
+                if context
+                else f"📋 *Log Search Results* ({total} found):"
+            )
+        ]
+
         for i, log in enumerate(logs[:5]):
             print(f"[SlackBot] Log {i} type: {type(log)}, value: {str(log)[:100]}")
             if isinstance(log, dict):
@@ -1877,16 +1857,15 @@ def format_response(result: dict, intent: str) -> str:
                 severity = log.get("severity", log.get("level", "INFO")).upper()
                 service = log.get("logGroup", log.get("service", ""))
                 ts = log.get("timestamp", "")
-                
+
                 # Parse timestamp (Unix ms or string)
                 if isinstance(ts, (int, float)) and ts > 1000000000000:
-                    from datetime import datetime
                     ts_str = datetime.fromtimestamp(ts / 1000).strftime("%H:%M:%S")
                 elif ts:
                     ts_str = str(ts)[11:19]  # Extract HH:MM:SS from ISO
                 else:
                     ts_str = ""
-                
+
                 # Severity emoji
                 if severity in ["ERROR", "FATAL", "CRITICAL"]:
                     emoji = "🔴"
@@ -1894,40 +1873,39 @@ def format_response(result: dict, intent: str) -> str:
                     emoji = "⚠️"
                 else:
                     emoji = "ℹ️"
-                
+
                 # Extract service name from logGroup
                 service_name = service.split("/")[-1] if "/" in service else service
                 service_name = service_name[:25] if service_name else ""
-                
+
                 # Clean up message - extract key error info
                 if msg.startswith("{"):
                     try:
-                        import json
                         msg_json = json.loads(msg)
                         msg = msg_json.get("errorMessage", msg_json.get("message", msg))[:150]
-                    except:
+                    except (json.JSONDecodeError, TypeError):
                         msg = msg[:150]
                 else:
                     msg = msg[:150]
-                
+
                 lines.append(f"{emoji} `{ts_str}` *{service_name}*: {msg}")
             else:
                 lines.append(f"ℹ️ {str(log)[:150]}")
-        
+
         if total > 5:
             lines.append(f"\n_...and {total - 5} more results_")
-        
+
         # AI-powered log analysis
         ai_summary = ai_summarize_logs(logs, query)
         if ai_summary:
             lines.append("")
             lines.append("🤖 *AI Analysis:*")
             lines.append(ai_summary)
-        
+
         # Add follow-up suggestions for troubleshooting
         if is_troubleshooting:
             lines.append(TROUBLESHOOTING_FOLLOWUP)
-        
+
         lines.append(f"\n_Query: `{dataprime[:80]}...`_")
         return "\n".join(lines)
 
@@ -1964,15 +1942,16 @@ class SlackBot:
 
     Auto-reply behavior:
     - Always responds to @mentions in any channel
-    - Auto-replies to all new messages (once per thread) in AUTO_REPLY_CHANNELS
+    - Auto-replies to all new messages (once per thread) in AUTO_REPLY_CHANNELS (when enabled)
     - Configure via SLACK_AUTO_REPLY_CHANNELS env var (comma-separated channel IDs)
+    - Toggle auto-reply via "@Clippy-ai auto-reply on/off"
     """
 
     # Channels where bot auto-replies to all messages (not just mentions)
     # Loaded from Secrets Manager or environment variable
     # Can be toggled at runtime via "@Clippy-ai auto-reply on/off"
-    _auto_reply_enabled = True  # Global toggle
-    
+    _auto_reply_enabled = False  # Global toggle - disabled by default, use @mention instead
+
     # Default channel for devops + any configured via secrets/env
     AUTO_REPLY_CHANNELS = {"C0A3RJA9LSJ"}  # Will be updated in __init__
 
@@ -1987,15 +1966,13 @@ class SlackBot:
         self.app_token = app_token or get_secret("SLACK_APP_TOKEN")
         self.app = None
         self.handler = None
-        
+
         # Load additional auto-reply channels from secrets/env
         channels_str = get_secret("SLACK_AUTO_REPLY_CHANNELS") or ""
         if not channels_str:
             channels_str = os.environ.get("SLACK_AUTO_REPLY_CHANNELS", "")
         if channels_str:
-            SlackBot.AUTO_REPLY_CHANNELS.update(
-                filter(None, channels_str.split(","))
-            )
+            SlackBot.AUTO_REPLY_CHANNELS.update(filter(None, channels_str.split(",")))
         self._thread = None
         self._responded_threads = set()  # Track threads we've already responded to
         self._bot_user_id = None  # Will be set on startup
@@ -2047,7 +2024,7 @@ class SlackBot:
 
             # Use Claude Tool Use - Claude decides what to do
             result = invoke_claude_with_tools(text, thread_context)
-            
+
             print(f"[Clippy] Tool used: {result.get('tool_used')}")
 
             # Format response with footer and redact any secrets
@@ -2078,13 +2055,13 @@ class SlackBot:
         @self.app.event("message")
         def handle_message(event, say, client):
             """Handle all messages - auto-reply once per thread in designated channels.
-            
+
             Uses Claude Tool Use for AI-powered responses.
             """
             channel = event.get("channel", "")
             text = event.get("text", "")[:200] if event.get("text") else ""
             subtype = event.get("subtype", "")
-            
+
             # Skip bot messages and message edits
             if subtype in ["bot_message", "message_changed", "message_deleted"]:
                 return
@@ -2277,4 +2254,3 @@ if __name__ == "__main__":
             print("Slack tokens not configured. Set SLACK_BOT_TOKEN and SLACK_APP_TOKEN.")
     else:
         parser.print_help()
-

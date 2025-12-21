@@ -10,12 +10,13 @@ from datetime import datetime
 import boto3
 import pandas as pd
 import plotly.express as px
-import streamlit as st
-
-from coralogix_agent import get_api_key as get_coralogix_key, run_coralogix_agent
+from coralogix_agent import get_api_key as get_coralogix_key
+from coralogix_agent import run_coralogix_agent
 from devops_agent import create_devops_agent
 from transaction_agent import DATASETS, run_agent
 from vulnerability_agent import VULNERABILITIES, run_vulnerability_agent
+
+import streamlit as st
 
 # Page config
 st.set_page_config(page_title="MrRobot DevOps Hub", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
@@ -746,11 +747,11 @@ def save_feedback_to_dynamodb(feedback_type: str, feedback_text: str, rating: in
     """Save feedback to DynamoDB."""
     import uuid
     from datetime import datetime
-    
+
     try:
         dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
         table = dynamodb.Table("mrrobot-ai-feedback")
-        
+
         item = {
             "id": str(uuid.uuid4()),
             "timestamp": datetime.now().isoformat(),
@@ -759,7 +760,7 @@ def save_feedback_to_dynamodb(feedback_type: str, feedback_text: str, rating: in
             "rating": rating,
             "source": "streamlit",
         }
-        
+
         table.put_item(Item=item)
         return True
     except Exception as e:
@@ -770,34 +771,33 @@ def save_feedback_to_dynamodb(feedback_type: str, feedback_text: str, rating: in
 def show_feedback():
     """Show feedback page for Clippy/DevOps Hub."""
     st.header("📝 Share Your Feedback")
-    
-    st.markdown("""
+
+    st.markdown(
+        """
     ### Help us improve Clippy and the DevOps Hub!
-    
+
     🚧 **Clippy is a work in progress** - your feedback helps us build the right features.
-    """)
-    
+    """
+    )
+
     st.divider()
-    
+
     # Feedback form
     with st.form("feedback_form"):
         st.subheader("What would you like to share?")
-        
+
         feedback_type = st.selectbox(
-            "Type of feedback",
-            ["Feature Request", "Bug Report", "General Feedback", "Question"]
+            "Type of feedback", ["Feature Request", "Bug Report", "General Feedback", "Question"]
         )
-        
+
         feedback_text = st.text_area(
-            "Your feedback",
-            placeholder="Tell us what's working, what's not, or what you'd like to see...",
-            height=150
+            "Your feedback", placeholder="Tell us what's working, what's not, or what you'd like to see...", height=150
         )
-        
+
         rating = st.slider("How useful is the DevOps Hub so far?", 1, 5, 3)
-        
+
         submitted = st.form_submit_button("Submit Feedback")
-        
+
         if submitted and feedback_text:
             if save_feedback_to_dynamodb(feedback_type, feedback_text, rating):
                 st.success("🙏 Thank you for your feedback! We'll review it soon.")
@@ -806,21 +806,21 @@ def show_feedback():
                 st.error("Failed to save feedback. Please try again.")
         elif submitted:
             st.warning("Please enter some feedback before submitting.")
-    
+
     st.divider()
-    
+
     # Quick links
     st.subheader("Quick Links")
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("**Clippy in Slack**")
         st.markdown("Use `@Clippy-ai` in Slack to get DevOps help")
-        
+
     with col2:
         st.markdown("**Documentation**")
         st.markdown("Coming soon!")
-    
+
     # Back to dashboard button
     st.divider()
     if st.button("← Back to Dashboard"):

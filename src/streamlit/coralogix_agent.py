@@ -42,6 +42,7 @@ def get_api_key():
         CORALOGIX_API_KEY = _get_coralogix_api_key()
     return CORALOGIX_API_KEY
 
+
 # Coralogix API endpoint (MrRobot uses cx498 region)
 CORALOGIX_ENDPOINT = "https://ng-api-http.cx498.coralogix.com"
 

@@ -5,8 +5,8 @@ This allows Clippy to query any AWS resource without needing individual tools.
 """
 
 import json
-import subprocess
 import shlex
+import subprocess
 
 # Allowed AWS CLI commands (read-only operations)
 ALLOWED_COMMANDS = [
@@ -134,12 +134,7 @@ def run_aws_command(command: str, region: str = "us-east-1", profile: str = None
     print(f"[AWS CLI] Running: {' '.join(full_command)}")
 
     try:
-        result = subprocess.run(
-            full_command,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
+        result = subprocess.run(full_command, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:
             error_msg = result.stderr.strip() or "Command failed"
@@ -183,15 +178,17 @@ def describe_load_balancers(name_filter: str = None) -> dict:
     # Simplify the output
     lbs = []
     for lb in result.get("output", {}).get("LoadBalancers", []):
-        lbs.append({
-            "name": lb.get("LoadBalancerName"),
-            "dns": lb.get("DNSName"),
-            "scheme": lb.get("Scheme"),  # "internal" or "internet-facing"
-            "type": lb.get("Type"),
-            "vpc": lb.get("VpcId"),
-            "state": lb.get("State", {}).get("Code"),
-            "arn": lb.get("LoadBalancerArn"),
-        })
+        lbs.append(
+            {
+                "name": lb.get("LoadBalancerName"),
+                "dns": lb.get("DNSName"),
+                "scheme": lb.get("Scheme"),  # "internal" or "internet-facing"
+                "type": lb.get("Type"),
+                "vpc": lb.get("VpcId"),
+                "state": lb.get("State", {}).get("Code"),
+                "arn": lb.get("LoadBalancerArn"),
+            }
+        )
 
     return {"load_balancers": lbs, "count": len(lbs)}
 

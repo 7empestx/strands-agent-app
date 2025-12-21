@@ -9,14 +9,7 @@ from .aws import (
     get_secrets_manager,
     get_session,
 )
-from .config import (
-    AWS_PROFILE,
-    AWS_REGION,
-    BITBUCKET_EMAIL,
-    BITBUCKET_WORKSPACE,
-    KNOWLEDGE_BASE_ID,
-    SECRETS_NAME,
-)
+from .config import AWS_PROFILE, AWS_REGION, BITBUCKET_EMAIL, BITBUCKET_WORKSPACE, KNOWLEDGE_BASE_ID, SECRETS_NAME
 from .secrets import get_secret
 
 __all__ = [

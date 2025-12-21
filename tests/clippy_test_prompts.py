@@ -12,9 +12,9 @@ Usage:
   python tests/clippy_test_prompts.py --list             # List all prompts
 """
 
-import sys
-import os
 import json
+import os
+import sys
 from datetime import datetime
 
 # Add mcp-servers to path
@@ -24,13 +24,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp-servers"))
 TEST_PROMPTS = {
     "troubleshooting": [
         ("504 Errors", "We're seeing 504 errors on Cast staging for syncAll endpoint. Can you check CloudWatch?"),
-        ("Permission Issues", "I'm having permissions issues uploading documents on dashboard-app in dev - works locally"),
+        (
+            "Permission Issues",
+            "I'm having permissions issues uploading documents on dashboard-app in dev - works locally",
+        ),
         ("CORS Errors", "Getting CORS errors on the S3 bucket for document uploads"),
         ("Lambda Timeout", "The payment webhook Lambda is timing out in prod"),
         ("Database Connection", "Getting connection refused errors to the RDS instance"),
     ],
     "pr_and_deploys": [
-        ("PR Approval", "Can I get an approval on this PR? https://bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/717"),
+        (
+            "PR Approval",
+            "Can I get an approval on this PR? https://bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/717",
+        ),
         ("Reenable Pipelines", "How do we reenable pipelines for emvio-api-documentation?"),
         ("Deploy Status", "What's the status of recent deploys to staging?"),
         ("Failed Build", "The latest build on mrrobot-auth-rest is failing, can you check?"),
@@ -88,18 +94,18 @@ class TestMetrics:
         self.results.append(result)
 
         # Track tool usage
-        tool = result.get('tool_used') or 'respond_directly'
+        tool = result.get("tool_used") or "respond_directly"
         self.tool_usage[tool] = self.tool_usage.get(tool, 0) + 1
 
         # Track all tools if multiple were used
-        for t in result.get('all_tools_used', []):
+        for t in result.get("all_tools_used", []):
             if t != tool:
                 self.tool_usage[t] = self.tool_usage.get(t, 0) + 1
 
         # Track truncations and limits
-        if result.get('was_truncated'):
+        if result.get("was_truncated"):
             self.truncations += 1
-        if result.get('hit_tool_limit'):
+        if result.get("hit_tool_limit"):
             self.max_tools_hit += 1
 
     def summary(self):
@@ -112,7 +118,7 @@ class TestMetrics:
         lines = [
             f"\n{'='*80}",
             "METRICS SUMMARY",
-            "="*80,
+            "=" * 80,
             f"Total tests: {total}",
             f"Passed: {passed} ({100*passed//total}%)",
             f"Failed: {total - passed}",
@@ -147,22 +153,22 @@ def run_tests(categories=None, verbose=True, save_results=False):
 
         print(f"\n{'='*80}")
         print(f"CATEGORY: {category.upper()}")
-        print("="*80)
+        print("=" * 80)
 
         for name, prompt in prompts:
             print(f"\n[{name}]")
             print(f"PROMPT: {prompt[:70]}{'...' if len(prompt) > 70 else ''}")
-            print("-"*60)
+            print("-" * 60)
 
             try:
                 result = invoke_claude_with_tools(prompt)
-                tool = result.get('tool_used') or 'respond_directly'
-                all_tools = result.get('all_tools_used', [])
-                response = result.get('response', 'No response')
+                tool = result.get("tool_used") or "respond_directly"
+                all_tools = result.get("all_tools_used", [])
+                response = result.get("response", "No response")
 
                 # Check for truncation warning in response
-                was_truncated = 'truncated' in response.lower() or result.get('was_truncated')
-                hit_limit = 'need more information' in response.lower()
+                was_truncated = "truncated" in response.lower() or result.get("was_truncated")
+                hit_limit = "need more information" in response.lower()
 
                 print(f"TOOL: {tool}")
                 if len(all_tools) > 1:
@@ -187,7 +193,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
                     "response": response,
                     "was_truncated": was_truncated,
                     "hit_tool_limit": hit_limit,
-                    "success": "error" not in response.lower() and "encountered an error" not in response.lower()
+                    "success": "error" not in response.lower() and "encountered an error" not in response.lower(),
                 }
 
                 results.append(result_record)
@@ -196,6 +202,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
             except Exception as e:
                 print(f"ERROR: {e}")
                 import traceback
+
                 traceback.print_exc()
 
                 result_record = {
@@ -204,7 +211,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
                     "prompt": prompt,
                     "tool_used": "error",
                     "response": str(e),
-                    "success": False
+                    "success": False,
                 }
                 results.append(result_record)
                 metrics.record(result_record)
@@ -213,7 +220,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
 
     if save_results:
         filename = f"test_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\nResults saved to {filename}")
 
@@ -227,12 +234,12 @@ def run_single_prompt(prompt: str, thread_context: list = None):
     print(f"\nPROMPT: {prompt}")
     if thread_context:
         print(f"CONTEXT: {len(thread_context)} previous messages")
-    print("="*60)
+    print("=" * 60)
 
     result = invoke_claude_with_tools(prompt, thread_context=thread_context)
-    tool = result.get('tool_used') or 'respond_directly'
-    all_tools = result.get('all_tools_used', [])
-    response = result.get('response', 'No response')
+    tool = result.get("tool_used") or "respond_directly"
+    all_tools = result.get("all_tools_used", [])
+    response = result.get("response", "No response")
 
     print(f"\nTOOL: {tool}")
     if len(all_tools) > 1:
@@ -249,9 +256,9 @@ def interactive_mode():
     """
     from slack_bot import invoke_claude_with_tools
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("CLIPPY INTERACTIVE TEST MODE")
-    print("="*60)
+    print("=" * 60)
     print("Commands:")
     print("  /quit or /q      - Exit")
     print("  /clear or /c     - Clear thread context")
@@ -259,7 +266,7 @@ def interactive_mode():
     print("  /rate <1-5>      - Rate last response quality")
     print("  /save            - Save session to file")
     print("  /help            - Show this help")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     thread_context = []
     session_log = []
@@ -305,7 +312,7 @@ def interactive_mode():
                 continue
             elif cmd == "/save":
                 filename = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                with open(filename, 'w') as f:
+                with open(filename, "w") as f:
                     json.dump(session_log, f, indent=2)
                 print(f"Session saved to {filename}")
                 continue
@@ -321,14 +328,14 @@ def interactive_mode():
 
         try:
             result = invoke_claude_with_tools(user_input, thread_context=thread_context)
-            response = result.get('response', 'No response')
-            tool = result.get('tool_used') or 'respond_directly'
-            all_tools = result.get('all_tools_used', [])
+            response = result.get("response", "No response")
+            tool = result.get("tool_used") or "respond_directly"
+            all_tools = result.get("all_tools_used", [])
 
             print(response)
 
-            if tool and tool != 'respond_directly':
-                tools_str = ' -> '.join(all_tools) if len(all_tools) > 1 else tool
+            if tool and tool != "respond_directly":
+                tools_str = " -> ".join(all_tools) if len(all_tools) > 1 else tool
                 print(f"\n[Tools: {tools_str}]")
 
             # Update thread context
@@ -337,26 +344,29 @@ def interactive_mode():
 
             # Log for session
             last_response = result
-            session_log.append({
-                "timestamp": datetime.now().isoformat(),
-                "prompt": user_input,
-                "tool": tool,
-                "all_tools": all_tools,
-                "response": response,
-                "context_size": len(thread_context)
-            })
+            session_log.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "prompt": user_input,
+                    "tool": tool,
+                    "all_tools": all_tools,
+                    "response": response,
+                    "context_size": len(thread_context),
+                }
+            )
 
         except Exception as e:
             print(f"Error: {e}")
             import traceback
+
             traceback.print_exc()
 
     # Offer to save on exit
     if session_log:
         save = input("\nSave session log? (y/n): ").lower().strip()
-        if save == 'y':
+        if save == "y":
             filename = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(filename, 'w') as f:
+            with open(filename, "w") as f:
                 json.dump(session_log, f, indent=2)
             print(f"Saved to {filename}")
 
@@ -365,9 +375,9 @@ def test_follow_up_scenario():
     """Test a multi-turn conversation scenario."""
     from slack_bot import invoke_claude_with_tools
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("FOLLOW-UP SCENARIO TEST")
-    print("="*60)
+    print("=" * 60)
 
     # Simulate a real conversation
     conversation = [
@@ -384,8 +394,8 @@ def test_follow_up_scenario():
         print(f"User: {prompt}")
 
         result = invoke_claude_with_tools(prompt, thread_context=thread_context)
-        response = result.get('response', 'No response')
-        tool = result.get('tool_used', 'none')
+        response = result.get("response", "No response")
+        tool = result.get("tool_used", "none")
 
         print(f"Tool: {tool}")
         print(f"Clippy: {response[:300]}...")

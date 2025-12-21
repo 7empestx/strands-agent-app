@@ -12,9 +12,7 @@ from datetime import datetime, timedelta
 import requests
 
 # Add project root to path to import shared utils
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.lib.utils.secrets import get_secret
 
 # Configuration
@@ -41,15 +39,66 @@ ENV_PATTERNS = {
     "stage": "-staging",
 }
 
-# Service name patterns
-SERVICE_PATTERNS = [
-    r"(cast-\w+)",
-    r"(emvio-\w+)",
-    r"(mrrobot-\w+)",
-    r"(lambda-\w+)",
-    r"([a-z]+-service)",
-    r"([a-z]+-api)",
-]
+
+def _extract_service_name(query: str) -> str | None:
+    """Extract service name from query using Knowledge Base lookup.
+
+    Uses AI-powered search to find matching service/repository names
+    from the MrRobot codebase rather than relying on hardcoded patterns.
+
+    Returns the service name without environment suffix.
+    """
+    query_lower = query.lower()
+
+    # Remove environment suffixes for matching
+    env_suffixes = ["-prod", "-dev", "-staging", "-sandbox", "-development", "-production"]
+
+    # First, try simple regex to extract hyphenated names from the query
+    # This catches explicit mentions like "cforce-service" or "cast-core"
+    service_pattern = r"\b([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\b"
+    matches = re.findall(service_pattern, query_lower)
+
+    for match in matches:
+        # Skip common non-service patterns
+        if match in [
+            "in-prod",
+            "in-dev",
+            "in-staging",
+            "for-prod",
+            "for-dev",
+            "hours-back",
+            "time-range",
+            "log-group",
+            "error-rate",
+        ]:
+            continue
+        # Remove environment suffix if present
+        service = match
+        for suffix in env_suffixes:
+            if service.endswith(suffix):
+                service = service[: -len(suffix)]
+                break
+        if service and len(service) > 2:
+            return service
+
+    # If no explicit service name found, use Knowledge Base to find relevant repos
+    # This handles queries like "show me errors from the payment processing service"
+    try:
+        from src.lib.code_search import search_knowledge_base
+
+        # Search for the query in the knowledge base
+        kb_results = search_knowledge_base(query, num_results=3)
+
+        if "results" in kb_results and kb_results["results"]:
+            # Get the top result's repo name - this is likely the service being asked about
+            top_repo = kb_results["results"][0].get("repo", "")
+            if top_repo:
+                print(f"[Coralogix] KB search found service: {top_repo}")
+                return top_repo
+    except Exception as e:
+        print(f"[Coralogix] KB lookup failed: {e}")
+
+    return None
 
 
 def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
@@ -81,14 +130,11 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
             explanation.append(f"Environment: {env_name}")
             break
 
-    # 3. Detect service names
-    for pattern in SERVICE_PATTERNS:
-        match = re.search(pattern, query_lower)
-        if match:
-            service = match.group(1)
-            filters.append(f"logGroup ~ '{service}'")
-            explanation.append(f"Service: {service}")
-            break
+    # 3. Detect service names - extract any hyphenated service name
+    service = _extract_service_name(query)
+    if service:
+        filters.append(f"logGroup ~ '{service}'")
+        explanation.append(f"Service: {service}")
 
     # 4. Detect specific search terms (quoted strings)
     quoted_terms = re.findall(r'"([^"]+)"', query)
@@ -97,21 +143,49 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
         explanation.append(f"Search term: '{term}'")
 
     # 5. Detect HTTP status codes (e.g., 504, 500, 403, 401, 200)
-    status_codes = re.findall(r'\b(5\d{2}|4\d{2}|[23]\d{2})\b', query)
+    status_codes = re.findall(r"\b(5\d{2}|4\d{2}|[23]\d{2})\b", query)
     for code in status_codes:
         message_filters.append(f"message ~ '{code}'")
         explanation.append(f"HTTP status: {code}")
 
     # 6. Detect specific technical terms that should be searched in message
     technical_terms = [
-        "timeout", "connection refused", "connection reset", "ECONNREFUSED",
-        "ETIMEDOUT", "ENOTFOUND", "socket hang up", "gateway", "upstream",
-        "lambda", "invocation", "cold start", "memory", "duration",
-        "unauthorized", "forbidden", "access denied", "permission",
-        "null", "undefined", "NaN", "stack trace", "stacktrace",
-        "deadlock", "out of memory", "OOM", "killed", "SIGKILL",
-        "CORS", "preflight", "content-type", "content-security-policy",
-        "syncAll", "webhook", "integrationJob", "sync"
+        "timeout",
+        "connection refused",
+        "connection reset",
+        "ECONNREFUSED",
+        "ETIMEDOUT",
+        "ENOTFOUND",
+        "socket hang up",
+        "gateway",
+        "upstream",
+        "lambda",
+        "invocation",
+        "cold start",
+        "memory",
+        "duration",
+        "unauthorized",
+        "forbidden",
+        "access denied",
+        "permission",
+        "null",
+        "undefined",
+        "NaN",
+        "stack trace",
+        "stacktrace",
+        "deadlock",
+        "out of memory",
+        "OOM",
+        "killed",
+        "SIGKILL",
+        "CORS",
+        "preflight",
+        "content-type",
+        "content-security-policy",
+        "syncAll",
+        "webhook",
+        "integrationJob",
+        "sync",
     ]
     for term in technical_terms:
         if term.lower() in query_lower:
@@ -119,14 +193,14 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
             explanation.append(f"Technical term: {term}")
 
     # 7. Detect UUIDs/orgIds in the query
-    uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+    uuid_pattern = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
     uuids = re.findall(uuid_pattern, query_lower)
     for uuid in uuids:
         message_filters.append(f"message ~ '{uuid}'")
         explanation.append(f"UUID/ID: {uuid}")
 
     # 8. Detect specific endpoints/paths
-    path_patterns = re.findall(r'(/[\w/]+(?:/\w+)*)', query)
+    path_patterns = re.findall(r"(/[\w/]+(?:/\w+)*)", query)
     for path in path_patterns:
         if len(path) > 3:  # Avoid matching just "/"
             message_filters.append(f"message ~ '{path}'")
@@ -150,9 +224,30 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
         dataprime = f"source logs | filter {filter_str}"
     else:
         # Default: search for significant words in the query
-        stopwords = ["show", "find", "search", "logs", "from", "with", "the",
-                     "for", "and", "check", "look", "get", "see", "any", "errors",
-                     "please", "can", "you", "help", "debug", "issue", "problem"]
+        stopwords = [
+            "show",
+            "find",
+            "search",
+            "logs",
+            "from",
+            "with",
+            "the",
+            "for",
+            "and",
+            "check",
+            "look",
+            "get",
+            "see",
+            "any",
+            "errors",
+            "please",
+            "can",
+            "you",
+            "help",
+            "debug",
+            "issue",
+            "problem",
+        ]
         words = [w for w in query_lower.split() if len(w) > 3 and w not in stopwords]
         if words:
             # Use the first 2 significant words
@@ -432,7 +527,7 @@ def handle_search_logs(query: str, hours_back: int = 4, limit: int = 100) -> dic
         dict with query info and results
     """
     print(f"[Coralogix] handle_search_logs called with query: '{query}'")
-    
+
     # Check if it's already a DataPrime query (starts with 'source')
     if query.strip().lower().startswith("source"):
         print("[Coralogix] Detected raw DataPrime query")

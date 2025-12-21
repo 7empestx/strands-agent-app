@@ -64,7 +64,9 @@ def _make_bitbucket_request(endpoint: str, params: dict = None) -> dict:
         if response.status_code == 404:
             return {"error": f"Not found: {endpoint}"}
         elif response.status_code == 403:
-            return {"error": "Bitbucket API returned 403 Forbidden. The mrrobot-labs workspace requires VPN access, and this server isn't on the VPN. PR details can't be fetched automatically - please use the Bitbucket link directly."}
+            return {
+                "error": "Bitbucket API returned 403 Forbidden. The mrrobot-labs workspace requires VPN access, and this server isn't on the VPN. PR details can't be fetched automatically - please use the Bitbucket link directly."
+            }
         elif response.status_code == 401:
             return {"error": "Bitbucket API error: 401 Unauthorized. Check BITBUCKET_TOKEN in Secrets Manager."}
         elif response.status_code != 200:
@@ -126,11 +128,11 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
 
 def get_open_prs(repo_slug: str, limit: int = 5) -> dict:
     """Get open pull requests for a repository (convenience wrapper).
-    
+
     Args:
         repo_slug: Repository slug (e.g., 'mrrobot-auth-rest')
         limit: Max PRs to return (default: 5)
-    
+
     Returns:
         dict with 'pull_requests' list
     """
@@ -169,12 +171,14 @@ def get_pr_details(repo_slug: str, pr_id: int) -> dict:
             lines_added = file.get("lines_added", 0)
             lines_removed = file.get("lines_removed", 0)
 
-            files_changed.append({
-                "path": new_path or old_path,
-                "status": status,
-                "lines_added": lines_added,
-                "lines_removed": lines_removed,
-            })
+            files_changed.append(
+                {
+                    "path": new_path or old_path,
+                    "status": status,
+                    "lines_added": lines_added,
+                    "lines_removed": lines_removed,
+                }
+            )
 
     # Get activity/comments
     activity_endpoint = f"{pr_endpoint}/activity"
@@ -186,17 +190,21 @@ def get_pr_details(repo_slug: str, pr_id: int) -> dict:
         for item in activity_data.get("values", []):
             if "comment" in item:
                 comment = item["comment"]
-                comments.append({
-                    "author": comment.get("user", {}).get("display_name", ""),
-                    "content": comment.get("content", {}).get("raw", "")[:200],
-                    "created": comment.get("created_on", "")[:16],
-                })
+                comments.append(
+                    {
+                        "author": comment.get("user", {}).get("display_name", ""),
+                        "content": comment.get("content", {}).get("raw", "")[:200],
+                        "created": comment.get("created_on", "")[:16],
+                    }
+                )
             if "approval" in item:
                 approval = item["approval"]
-                approvals.append({
-                    "user": approval.get("user", {}).get("display_name", ""),
-                    "date": approval.get("date", "")[:16],
-                })
+                approvals.append(
+                    {
+                        "user": approval.get("user", {}).get("display_name", ""),
+                        "date": approval.get("date", "")[:16],
+                    }
+                )
 
     return {
         "pr_id": pr_id,
@@ -322,9 +330,13 @@ def get_pipeline_details(repo_slug: str, pipeline_id: int) -> dict:
                         error_lines = []
                         for i, line in enumerate(log_lines):
                             line_lower = line.lower()
-                            if ("failed" in line_lower or "error" in line_lower or
-                                "exit code" in line_lower or "exception" in line_lower or
-                                "traceback" in line_lower):
+                            if (
+                                "failed" in line_lower
+                                or "error" in line_lower
+                                or "exit code" in line_lower
+                                or "exception" in line_lower
+                                or "traceback" in line_lower
+                            ):
                                 # Get context: 2 lines before, the error line, 2 lines after
                                 start = max(0, i - 2)
                                 end = min(len(log_lines), i + 3)
