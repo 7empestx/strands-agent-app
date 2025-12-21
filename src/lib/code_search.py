@@ -11,45 +11,31 @@ import requests
 # Add project root to path to import shared utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.aws import get_bedrock_agent_runtime
-from utils.config import BITBUCKET_EMAIL, BITBUCKET_WORKSPACE, KNOWLEDGE_BASE_ID
-from utils.secrets import get_secret
+from src.lib.utils.aws import get_bedrock_agent_runtime
+from src.lib.utils.config import BITBUCKET_EMAIL, BITBUCKET_WORKSPACE, KNOWLEDGE_BASE_ID
+from src.lib.utils.secrets import get_secret
 
 # Alias for backward compatibility
 KB_ID = KNOWLEDGE_BASE_ID
 
-# Known repos list (sample)
-KNOWN_REPOS = [
-    "cast-core",
-    "cast-quickbooks",
-    "cast-housecallpro",
-    "cast-jobber",
-    "cast-service-titan",
-    "cast-xero",
-    "cast-databases",
-    "cast-dashboard",
-    "mrrobot-auth-rest",
-    "mrrobot-rest-utils-npm",
-    "mrrobot-common-js-utils",
-    "mrrobot-sdk",
-    "mrrobot-connector-hub",
-    "mrrobot-risk-rest",
-    "mrrobot-ai-core",
-    "emvio-gateway",
-    "emvio-dashboard-app",
-    "emvio-payment-service",
-    "emvio-auth-service",
-    "emvio-transactions-service",
-    "emvio-webhook-service",
-    "aws-terraform",
-    "bitbucket-terraform",
-    "devops-scripts",
-]
+# Note: Repo list is dynamic - stored in S3 and indexed in OpenSearch.
+# Use the MCP mrrobot-code-kb list_repos tool to get the full list of 254 repos.
 
 
-def search_knowledge_base(query: str, num_results: int = 5) -> dict:
-    """Search the Bedrock Knowledge Base."""
+def search_knowledge_base(query: str, num_results: int = 10) -> dict:
+    """Search the Bedrock Knowledge Base for code across MrRobot repositories.
+
+    Args:
+        query: Natural language search query (e.g., 'payment processing logic')
+        num_results: Number of results to return (default: 10, max: 25)
+
+    Returns:
+        dict with results array containing repo, file, score, content snippet, and URLs
+    """
     client = get_bedrock_agent_runtime()
+
+    # Cap results at 25 to avoid overwhelming responses
+    num_results = min(num_results, 25)
 
     try:
         response = client.retrieve(
@@ -58,8 +44,10 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": num_results}},
         )
 
+        retrieval_results = response.get("retrievalResults", [])
         results = []
-        for item in response.get("retrievalResults", []):
+
+        for item in retrieval_results:
             location = item.get("location", {}).get("s3Location", {}).get("uri", "")
             if "/repos/" in location:
                 path = location.split("/repos/")[1]
@@ -69,20 +57,66 @@ def search_knowledge_base(query: str, num_results: int = 5) -> dict:
             repo_name = path.split("/")[0] if "/" in path else path
             file_path = "/".join(path.split("/")[1:]) if "/" in path else path
 
+            # Extract file extension
+            file_ext = ""
+            if "." in file_path:
+                file_ext = file_path.rsplit(".", 1)[-1]
+
+            # Get content with smarter truncation (try to end at newline)
+            raw_content = item.get("content", {}).get("text", "")
+            content = _smart_truncate(raw_content, max_length=2000)
+
+            score = item.get("score", 0)
+
             results.append(
                 {
                     "repo": repo_name,
                     "file": file_path,
+                    "file_type": file_ext,
                     "full_path": path,
-                    "score": round(item.get("score", 0), 3),
-                    "content": item.get("content", {}).get("text", "")[:1000],
+                    "score": round(score, 3),
+                    "relevance": _score_to_relevance(score),
+                    "content": content,
                     "bitbucket_url": f"https://bitbucket.org/mrrobot-labs/{repo_name}/src/master/{file_path}",
                 }
             )
 
-        return {"results": results, "query": query}
+        return {
+            "results": results,
+            "query": query,
+            "total_found": len(results),
+            "requested": num_results,
+        }
     except Exception as e:
         return {"error": str(e)}
+
+
+def _smart_truncate(text: str, max_length: int = 2000) -> str:
+    """Truncate text at a natural boundary (newline) if possible."""
+    if len(text) <= max_length:
+        return text
+
+    # Try to find a newline near the max_length to cut at
+    truncated = text[:max_length]
+    last_newline = truncated.rfind("\n")
+
+    # If we find a newline in the last 20% of the text, cut there
+    if last_newline > max_length * 0.8:
+        return truncated[:last_newline] + "\n... [truncated]"
+
+    return truncated + "\n... [truncated]"
+
+
+def _score_to_relevance(score: float) -> str:
+    """Convert numeric score to human-readable relevance."""
+    if score >= 0.8:
+        return "high"
+    elif score >= 0.6:
+        return "medium"
+    elif score >= 0.4:
+        return "low"
+    else:
+        return "weak"
 
 
 def get_file_from_bitbucket(repo: str, file_path: str, branch: str = "master") -> dict:

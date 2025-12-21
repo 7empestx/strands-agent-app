@@ -144,5 +144,9 @@
         ]
       }
     ]
+  },
+  "hosted-zone:account=720154970215:domainName=mrrobot.dev:region=us-east-1": {
+    "Id": "/hostedzone/Z00099541PMCE1WUL76PK",
+    "Name": "mrrobot.dev."
   }
 }

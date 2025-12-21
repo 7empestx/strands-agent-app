@@ -8,6 +8,7 @@ const logs = require('aws-cdk-lib/aws-logs');
 const route53 = require('aws-cdk-lib/aws-route53');
 const route53targets = require('aws-cdk-lib/aws-route53-targets');
 const acm = require('aws-cdk-lib/aws-certificatemanager');
+const dynamodb = require('aws-cdk-lib/aws-dynamodb');
 const { addOfficeIngressRules } = require('./constants/office-ips');
 
 // DNS Configuration
@@ -38,19 +39,11 @@ class StrandsAgentECSStack extends cdk.Stack {
       allowAllOutbound: true
     });
 
-    // ALB ingress - HTTP from anywhere
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      'Allow HTTP'
-    );
+    // ALB ingress - HTTP from office/VPN IPs only (redirects to HTTPS)
+    addOfficeIngressRules(albSecurityGroup, ec2.Port.tcp(80), 'HTTP redirect', ec2);
 
-    // ALB ingress - HTTPS from anywhere
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(443),
-      'Allow HTTPS'
-    );
+    // ALB ingress - HTTPS from office/VPN IPs only
+    addOfficeIngressRules(albSecurityGroup, ec2.Port.tcp(443), 'HTTPS', ec2);
 
     const ecsSecurityGroup = new ec2.SecurityGroup(this, 'ECSSecurityGroup', {
       vpc,
@@ -137,6 +130,21 @@ class StrandsAgentECSStack extends cdk.Stack {
       ],
       resources: ['*']
     }));
+
+    // ========================================================================
+    // DynamoDB - Feedback Table
+    // ========================================================================
+    const feedbackTable = new dynamodb.Table(this, 'FeedbackTable', {
+      tableName: 'mrrobot-ai-feedback',
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: true,
+    });
+
+    // Grant permissions to task role
+    feedbackTable.grantReadWriteData(taskRole);
 
     // ========================================================================
     // ECS Cluster
@@ -278,16 +286,18 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ACM Certificate for HTTPS
     // ========================================================================
-    // Import Route53 hosted zone for DNS validation
-    const hostedZone = route53.HostedZone.fromLookup(this, 'MrRobotDevZone', {
-      domainName: 'mrrobot.dev'
-    });
+    // Import existing wildcard certificate (created via AWS CLI)
+    // Covers *.mrrobot.dev and mrrobot.dev
+    const wildcardCertificate = acm.Certificate.fromCertificateArn(
+      this,
+      'WildcardCertificate',
+      'arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d'
+    );
 
-    // Create wildcard certificate for all *.mrrobot.dev subdomains
-    const wildcardCertificate = new acm.Certificate(this, 'WildcardCertificate', {
-      domainName: '*.mrrobot.dev',
-      subjectAlternativeNames: ['mrrobot.dev'],  // Also cover root domain
-      validation: acm.CertificateValidation.fromDns(hostedZone),
+    // Import Route53 hosted zone for DNS records
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'MrRobotDevZone', {
+      hostedZoneId: DNS_HOSTED_ZONE_ID,
+      zoneName: DNS_DOMAIN,
     });
 
     // ========================================================================
@@ -394,12 +404,8 @@ class StrandsAgentECSStack extends cdk.Stack {
     });
 
     // ========================================================================
-    // Route53 DNS
+    // Route53 DNS Records
     // ========================================================================
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
-      hostedZoneId: DNS_HOSTED_ZONE_ID,
-      zoneName: DNS_DOMAIN,
-    });
 
     // A record for Streamlit (via ALB)
     new route53.ARecord(this, 'StreamlitDnsRecord', {

@@ -1,9 +1,7 @@
-"""
-Shared AWS client factories.
-Centralizes boto3 session and client creation.
-"""
+"""Shared AWS client factories."""
 
 import boto3
+from botocore.config import Config
 
 from .config import AWS_PROFILE, AWS_REGION
 
@@ -15,17 +13,16 @@ def get_session():
     return boto3.Session(region_name=AWS_REGION)
 
 
+def get_bedrock_runtime():
+    """Get Bedrock runtime client for model invocation."""
+    config = Config(connect_timeout=30, read_timeout=60, retries={"max_attempts": 2})
+    return get_session().client("bedrock-runtime", config=config)
+
+
 def get_bedrock_agent_runtime():
     """Get Bedrock Agent Runtime client for Knowledge Base queries."""
-    from botocore.config import Config
-
     config = Config(connect_timeout=10, read_timeout=25, retries={"max_attempts": 1})
     return get_session().client("bedrock-agent-runtime", config=config)
-
-
-def get_bedrock_agent():
-    """Get Bedrock Agent client for KB management."""
-    return get_session().client("bedrock-agent")
 
 
 def get_s3_client():
@@ -35,7 +32,15 @@ def get_s3_client():
 
 def get_secrets_manager():
     """Get Secrets Manager client."""
-    from botocore.config import Config
-
     config = Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1})
     return get_session().client("secretsmanager", config=config)
+
+
+def get_logs_client():
+    """Get CloudWatch Logs client."""
+    return get_session().client("logs")
+
+
+def get_cloudwatch_client():
+    """Get CloudWatch client."""
+    return get_session().client("cloudwatch")

@@ -3,148 +3,158 @@
 ## Project Overview
 
 **Strands Agent App** is a DevOps AI assistant platform with:
-1. **Streamlit UI** - Web interface for merchant insights and code search
-2. **MCP Server** - Remote Model Context Protocol server for AI IDE integration
-3. **Bedrock Knowledge Base** - Vector search over 254 MrRobot repositories (17,169 documents)
+1. **Slack Bot (Clippy)** - AI assistant in #devops channel for logs, pipelines, PRs, AWS queries
+2. **MCP Server** - 30+ tools for AI IDEs (Cursor, Claude Code)
+3. **Streamlit Dashboard** - Web UI with specialized AI agents
+4. **Bedrock Knowledge Base** - Vector search over 254 MrRobot repositories (17,169 documents)
+
+## Architecture
+
+```
+src/
+├── mcp_server/           # Entry: server.py --http --port 8080 --slack
+│   ├── server.py         # FastMCP server with 30+ tools
+│   └── slack_bot.py      # Clippy - Claude Tool Use architecture
+├── streamlit/            # Entry: streamlit run app.py
+│   ├── app.py            # Main dashboard
+│   └── *_agent.py        # Strands agents (wrap lib/ functions)
+└── lib/                  # Shared handlers (framework-agnostic)
+    ├── coralogix.py      # Log search, DataPrime queries
+    ├── bitbucket.py      # PRs, pipelines, repos
+    ├── cloudwatch.py     # Metrics, alarms, logs
+    ├── code_search.py    # Bedrock KB search
+    ├── atlassian.py      # User/group management
+    ├── aws_cli.py        # Safe read-only AWS CLI wrapper
+    └── utils/            # AWS clients, config, secrets
+```
+
+**Key Pattern:** `lib/` contains raw API functions. `streamlit/*_agent.py` wraps them with Strands `@tool` decorators. `mcp_server/server.py` wraps them with FastMCP `@mcp.tool()` decorators.
 
 ## Infrastructure
 
 | Resource | Value |
 |----------|-------|
-| EC2 Instance | `i-089292d2c5a6a055f` |
-| Elastic IP | `34.202.219.55` |
+| ECS Cluster | `mrrobot-ai-core` |
+| MCP Server | `https://mcp.mrrobot.dev/sse` |
+| Streamlit | `https://ai-agent.mrrobot.dev` |
 | Knowledge Base ID | `SAJJWYFTNG` |
-| Data Source ID | `QZIIJTGQAR` |
-| S3 Bucket | `mrrobot-code-kb-dev-720154970215` |
-| OpenSearch Endpoint | `https://12rasdapmp78icp6swwa.us-east-1.aoss.amazonaws.com` |
 | AWS Account | `720154970215` (dev) |
 | Region | `us-east-1` |
 
-## Services Running on EC2
+## Slack Bot (Clippy)
 
-| Service | Port | URL | DNS |
-|---------|------|-----|-----|
-| MCP Server | 8080 | `http://34.202.219.55:8080/sse` | `https://mcp.mrrobot.dev/sse` |
-| Streamlit | 8501 | `http://34.202.219.55:8501` | `http://ai-agent.mrrobot.dev:8501` |
+Located at `src/mcp_server/slack_bot.py`. Uses **Claude Tool Use** architecture:
+- User message → Claude with tool definitions
+- Claude decides which tools to call (can call multiple in parallel)
+- Tools execute → Claude summarizes results
+- No hardcoded intent classification
 
-## MCP Server for AI IDEs
+**Key Features:**
+- Responds once per thread (avoids spam)
+- AI-generated acknowledgment messages
+- Secret redaction in responses
+- Slack formatting (`*bold*` not `**bold**`)
+- 600 token max for concise responses
 
-The MCP server provides code search capabilities via Bedrock Knowledge Base. It's accessible to Cursor, Claude Code, and other MCP-compatible tools.
+**Available Tools:**
+- `search_logs` - Coralogix log search
+- `get_recent_errors` - Error summary by service
+- `get_pipeline_status` - Bitbucket pipeline status
+- `get_pipeline_details` - Failure reasons from logs
+- `get_open_prs` / `get_pr_details` - PR information
+- `run_aws_command` - Read-only AWS CLI (allowlisted)
+- `list_alarms` - CloudWatch alarms
+- `search_code` - Bedrock KB search
+- `investigate_issue` - Multi-step investigation agent
 
-### Cursor Configuration
+## MCP Tools
 
-Add to `~/.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "mrrobot-code-kb": {
-      "url": "https://mcp.mrrobot.dev/sse",
-      "transport": "sse"
-    }
-  }
-}
-```
-
-### Claude Code Configuration
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "mrrobot-code-kb": {
-      "url": "https://mcp.mrrobot.dev/sse",
-      "transport": "sse"
-    }
-  }
-}
-```
-
-**Requirement:** Must be connected to VPN to access the MCP server.
-
-## Available MCP Tools
-
+### Code Search (Bedrock Knowledge Base)
 | Tool | Description |
 |------|-------------|
-| `search_code` | Search MrRobot codebase using natural language queries |
+| `search_mrrobot_repos` | Semantic search across all 254 repos |
+| `search_in_repo` | Search within a specific repository |
+| `find_similar_code` | Find similar code patterns |
+| `get_file_content` | Fetch full file from Bitbucket |
+| `search_by_file_type` | Search specific file types |
 
-Example queries:
-- "How does authentication work in the API?"
-- "Find Lambda functions that process payments"
-- "Show me database connection patterns"
+### Coralogix (Log Analysis)
+| Tool | Description |
+|------|-------------|
+| `coralogix_search_logs` | Natural language → DataPrime query |
+| `coralogix_get_recent_errors` | Errors grouped by service |
+| `coralogix_get_service_logs` | Logs for specific service |
+| `coralogix_get_service_health` | Health overview |
 
-## Project Structure
+### Bitbucket
+| Tool | Description |
+|------|-------------|
+| `bitbucket_list_prs` | List pull requests |
+| `bitbucket_pipeline_status` | CI/CD pipeline status |
+| `bitbucket_get_pr_details` | PR diff and comments |
 
-```
-mrrobot-ai-core/
-├── app.py                  # Streamlit frontend
-├── agent.py                # Merchant insights agent
-├── mcp-servers/
-│   └── bedrock-kb-server.py  # MCP server for KB search
-├── infra/                  # AWS CDK (JavaScript)
-│   ├── bin/app.js
-│   └── lib/
-│       ├── strands-agent-stack.js    # EC2 infrastructure
-│       ├── knowledge-base-stack.js   # Bedrock KB infrastructure
-│       └── constants/
-│           └── aws-accounts.js       # Shared AWS config
-├── scripts/
-│   ├── deploy-to-ec2.sh    # Deploy app to EC2
-│   ├── sync-repos-to-s3.py # Sync code to KB bucket
-│   └── create-opensearch-index.py
-└── data/                   # Sample merchant data
-```
+### CloudWatch
+| Tool | Description |
+|------|-------------|
+| `cloudwatch_list_alarms` | List alarms by state |
+| `cloudwatch_query_logs` | CloudWatch Logs Insights |
+| `cloudwatch_ecs_metrics` | ECS CPU/memory metrics |
+
+### AWS CLI (Read-Only)
+Allowlisted commands only. Blocked: delete, terminate, create, get-secret-value.
 
 ## Common Commands
 
-### Deploy to EC2
-
+### Deploy to ECS
 ```bash
-# Deploy code only
-./scripts/deploy-to-ec2.sh
+./scripts/deploy-to-ecs.sh
+```
 
-# Deploy and restart services
-./scripts/deploy-to-ec2.sh --start
+### View Logs
+```bash
+# MCP Server + Slack Bot
+AWS_PROFILE=dev aws logs tail /ecs/mrrobot-mcp-server --follow --region us-east-1
+
+# Streamlit
+AWS_PROFILE=dev aws logs tail /ecs/mrrobot-streamlit --follow --region us-east-1
+```
+
+### Test Slack Bot Locally
+```bash
+python tests/clippy_test_prompts.py -i  # Interactive mode
+python tests/clippy_test_prompts.py -s  # Run all prompts
 ```
 
 ### Deploy Infrastructure
-
 ```bash
 cd infra
-
-# EC2 stack
-AWS_PROFILE=dev npx cdk deploy StrandsAgentStack
-
-# Knowledge Base stack (two phases)
-SKIP_KB=true AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
-# Wait 10 min, then create index
-AWS_PROFILE=dev python scripts/create-opensearch-index.py --endpoint <endpoint>
-# Final deploy
+AWS_PROFILE=dev npx cdk deploy StrandsAgentECSStack
 AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
-```
-
-### SSH to EC2
-
-```bash
-ssh -i ~/.ssh/streamlit-key.pem ec2-user@34.202.219.55
-```
-
-### Check Services on EC2
-
-```bash
-ssh -i ~/.ssh/streamlit-key.pem ec2-user@34.202.219.55 \
-  "sudo systemctl status mcp-server streamlit"
 ```
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| AI Agent | Strands SDK |
 | LLM | Claude Sonnet 4 (Bedrock) |
+| AI Agents | Strands SDK |
+| MCP Server | FastMCP (Anthropic SDK) |
 | Vector Store | OpenSearch Serverless |
 | Knowledge Base | Amazon Bedrock KB |
 | Frontend | Streamlit |
+| Compute | ECS Fargate (ARM64/Graviton) |
 | Infrastructure | AWS CDK (JavaScript) |
-| Hosting | EC2 with Elastic IP |
+
+## File Locations
+
+| What | Where |
+|------|-------|
+| Slack bot | `src/mcp_server/slack_bot.py` |
+| MCP server | `src/mcp_server/server.py` |
+| Streamlit app | `src/streamlit/app.py` |
+| Coralogix handlers | `src/lib/coralogix.py` |
+| Bitbucket handlers | `src/lib/bitbucket.py` |
+| AWS CLI wrapper | `src/lib/aws_cli.py` |
+| KB search | `src/lib/code_search.py` |
+| ECS infrastructure | `infra/lib/ecs-fargate-stack.js` |
+| Deploy script | `scripts/deploy-to-ecs.sh` |

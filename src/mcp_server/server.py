@@ -21,10 +21,10 @@ from datetime import datetime, timezone
 
 from mcp.server.fastmcp import FastMCP
 
-# Add project root to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tools import bitbucket
-from tools.atlassian import (
+# Add project root to path for imports (go up from src/mcp_server to project root)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from src.lib import bitbucket
+from src.lib.atlassian import (
     handle_add_user_to_group,
     handle_create_group,
     handle_delete_group,
@@ -38,7 +38,7 @@ from tools.atlassian import (
     handle_revoke_group_access,
     handle_suspend_user,
 )
-from tools.cloudwatch import (
+from src.lib.cloudwatch import (
     get_alarm_history,
     get_ecs_service_metrics,
     get_lambda_metrics,
@@ -47,8 +47,8 @@ from tools.cloudwatch import (
     list_log_groups,
     query_logs,
 )
-from tools.code_search import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
-from tools.coralogix import (
+from src.lib.code_search import KB_ID, get_file_from_bitbucket, search_knowledge_base
+from src.lib.coralogix import (
     handle_discover_services,
     handle_get_recent_errors,
     handle_get_service_health,
@@ -69,30 +69,32 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def search_mrrobot_repos(query: str, num_results: int = 5) -> dict:
+def search_mrrobot_repos(query: str, num_results: int = 10) -> dict:
     """Search ALL 254 MrRobot Bitbucket repositories using AI semantic search.
 
     Use for CSP, CORS, auth, Lambda, S3, APIs, dashboard code, cast-core,
     emvio services, payment processing, or any MrRobot infrastructure code.
 
+    Returns results with file_type, relevance rating (high/medium/low/weak), and more context.
+
     Args:
         query: Natural language search query
-        num_results: Number of results (default: 5, max: 10)
+        num_results: Number of results (default: 10, max: 25)
     """
-    return search_knowledge_base(query, min(num_results, 10))
+    return search_knowledge_base(query, min(num_results, 25))
 
 
 @mcp.tool()
-def search_in_repo(query: str, repo_name: str, num_results: int = 5) -> dict:
+def search_in_repo(query: str, repo_name: str, num_results: int = 10) -> dict:
     """Search within a SPECIFIC MrRobot repository.
 
     Args:
         query: Search query
         repo_name: Repository name (e.g., 'cast-core', 'emvio-gateway')
-        num_results: Number of results
+        num_results: Number of results (default: 10)
     """
     combined_query = f"{query} in {repo_name}"
-    result = search_knowledge_base(combined_query, min(num_results * 3, 15))
+    result = search_knowledge_base(combined_query, min(num_results * 2, 25))
     if "results" in result:
         filtered = [r for r in result["results"] if repo_name.lower() in r.get("repo", "").lower()]
         result["results"] = filtered[:num_results]
@@ -101,14 +103,14 @@ def search_in_repo(query: str, repo_name: str, num_results: int = 5) -> dict:
 
 
 @mcp.tool()
-def find_similar_code(code_snippet: str, num_results: int = 5) -> dict:
+def find_similar_code(code_snippet: str, num_results: int = 10) -> dict:
     """Find code similar to a given snippet across all repositories.
 
     Args:
         code_snippet: Code snippet to find similar patterns for
-        num_results: Number of results
+        num_results: Number of results (default: 10)
     """
-    result = search_knowledge_base(code_snippet, min(num_results, 10))
+    result = search_knowledge_base(code_snippet, min(num_results, 25))
     result["search_type"] = "similar_code"
     return result
 
@@ -142,32 +144,18 @@ def get_file_content(repo: str, file_path: str, branch: str = "master") -> dict:
     return get_file_from_bitbucket(repo, file_path, branch)
 
 
-@mcp.tool()
-def list_repos(filter: str = "") -> dict:
-    """List all MrRobot repositories in the knowledge base.
-
-    Args:
-        filter: Optional filter pattern (e.g., 'cast', 'emvio')
-    """
-    repos = KNOWN_REPOS
-    if filter:
-        repos = [r for r in repos if filter.lower() in r.lower()]
-    return {
-        "total_indexed": 254,
-        "matching_repos": repos,
-        "count": len(repos),
-        "filter": filter or "none",
-    }
+# Note: list_repos is available via the mrrobot-code-kb MCP server
+# which queries the actual S3/OpenSearch index of 254 repos.
 
 
 @mcp.tool()
-def search_by_file_type(query: str, file_type: str, num_results: int = 5) -> dict:
+def search_by_file_type(query: str, file_type: str, num_results: int = 10) -> dict:
     """Search for code patterns in specific file types.
 
     Args:
         query: Search query
         file_type: File extension or type (e.g., 'serverless.yml', '.tf')
-        num_results: Number of results
+        num_results: Number of results (default: 10)
     """
     enhanced_query = f"file:{file_type} {query}"
     result = search_knowledge_base(enhanced_query, num_results)
@@ -571,7 +559,25 @@ def main():
     parser.add_argument("--http", "--sse", action="store_true", help="Run as HTTP server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8080, help="Port for HTTP server")
+    parser.add_argument("--slack", action="store_true", help="Also start Slack bot")
     args = parser.parse_args()
+
+    # Optionally start Slack bot in background
+    slack_bot = None
+    if args.slack:
+        try:
+            from slack_bot import SlackBot
+
+            slack_bot = SlackBot()
+            if slack_bot.is_configured():
+                slack_bot.start(blocking=False)
+                print("[Slack] Bot started in background")
+            else:
+                print("[Slack] Tokens not configured, skipping bot")
+        except ImportError as e:
+            print(f"[Slack] Could not import slack_bot: {e}")
+        except Exception as e:
+            print(f"[Slack] Error starting bot: {e}")
 
     if args.http:
         run_http_server(args.host, args.port)

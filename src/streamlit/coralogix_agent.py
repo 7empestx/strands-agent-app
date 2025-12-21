@@ -5,43 +5,45 @@ Uses Strands SDK with Claude Sonnet on Amazon Bedrock
 
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 
 import boto3
 import requests
 from strands import Agent, tool
 
+# Add project root to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from src.lib.utils.secrets import get_secret
+
 # Configuration
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-CORALOGIX_API_KEY = os.environ.get("CORALOGIX_AGENT_KEY", "")
-CORALOGIX_REGION = os.environ.get("CORALOGIX_REGION", "us2")  # MrRobot is on US2 (cx498)
 
-# Coralogix API endpoints by region
-CORALOGIX_ENDPOINTS = {
-    "us1": "https://ng-api-http.us1.coralogix.com",
-    "us2": "https://ng-api-http.cx498.coralogix.com",  # MrRobot's region
-    "eu1": "https://ng-api-http.eu1.coralogix.com",
-    "eu2": "https://ng-api-http.eu2.coralogix.com",
-    "ap1": "https://ng-api-http.app.coralogix.in",
-    "ap2": "https://ng-api-http.coralogixsg.com",
-}
 
-# For backwards compatibility with app.py
-KNOWN_SERVICES = {
-    "cast-core": {"logGroup": "mrrobot-cast-core", "description": "Core Cast service"},
-    "cast-quickbooks": {"logGroup": "mrrobot-cast-quickbooks", "description": "QuickBooks integration"},
-    "cast-housecallpro": {"logGroup": "mrrobot-cast-housecallpro", "description": "HouseCall Pro integration"},
-    "cast-jobber": {"logGroup": "mrrobot-cast-jobber", "description": "Jobber integration"},
-    "cast-service-titan": {"logGroup": "mrrobot-cast-service-titan", "description": "Service Titan integration"},
-    "cast-mhelpdesk": {"logGroup": "mrrobot-cast-mhelpdesk", "description": "mHelpDesk integration"},
-    "cast-xero": {"logGroup": "mrrobot-cast-xero", "description": "Xero accounting integration"},
-    "payment-service": {"logGroup": "emvio-payment-service", "description": "Payment processing service"},
-    "auth-service": {"logGroup": "emvio-auth-service", "description": "Authentication service"},
-    "user-service": {"logGroup": "emvio-user-mgt-service", "description": "User management service"},
-    "transactions-service": {"logGroup": "emvio-transactions-service", "description": "Transaction processing"},
-    "dashboard": {"logGroup": "emvio-dashboard-app", "description": "Dashboard application"},
-    "webhook-service": {"logGroup": "emvio-webhook-service", "description": "Webhook handling"},
-}
+def _get_coralogix_api_key():
+    """Get Coralogix API key from Secrets Manager or environment."""
+    # Try environment first (for local dev)
+    key = os.environ.get("CORALOGIX_AGENT_KEY", "")
+    if key:
+        return key
+    # Fall back to Secrets Manager
+    return get_secret("CORALOGIX_AGENT_KEY") or ""
+
+
+# Lazy-loaded API key
+CORALOGIX_API_KEY = None
+
+
+def get_api_key():
+    """Get the Coralogix API key (lazy loaded)."""
+    global CORALOGIX_API_KEY
+    if CORALOGIX_API_KEY is None:
+        CORALOGIX_API_KEY = _get_coralogix_api_key()
+    return CORALOGIX_API_KEY
+
+# Coralogix API endpoint (MrRobot uses cx498 region)
+CORALOGIX_ENDPOINT = "https://ng-api-http.cx498.coralogix.com"
 
 # =============================================================================
 # DATAPRIME QUERY KNOWLEDGE STORE
@@ -460,20 +462,21 @@ def validate_dataprime_query(query: str) -> dict:
 
 
 def get_coralogix_endpoint():
-    """Get the Coralogix API endpoint for the configured region."""
-    return CORALOGIX_ENDPOINTS.get(CORALOGIX_REGION, CORALOGIX_ENDPOINTS["us1"])
+    """Get the Coralogix API endpoint."""
+    return CORALOGIX_ENDPOINT
 
 
 def make_coralogix_request(query: str, start_time: datetime, end_time: datetime, limit: int = 100):
     """Make a request to the Coralogix Logs Query API."""
-    if not CORALOGIX_API_KEY:
-        return {"error": "CORALOGIX_API_KEY environment variable not set"}
+    api_key = get_api_key()
+    if not api_key:
+        return {"error": "CORALOGIX_API_KEY not configured (check Secrets Manager or env var)"}
 
     endpoint = get_coralogix_endpoint()
     url = f"{endpoint}/api/v1/dataprime/query"
 
     headers = {
-        "Authorization": f"Bearer {CORALOGIX_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
@@ -1610,8 +1613,8 @@ coralogix_agent = create_coralogix_agent()
 
 def run_coralogix_agent(prompt: str) -> str:
     """Run the agent with a given prompt."""
-    if not CORALOGIX_API_KEY:
-        return "Error: CORALOGIX_API_KEY environment variable not set. Please set it to your Coralogix API key."
+    if not get_api_key():
+        return "Error: CORALOGIX_API_KEY not configured. Check AWS Secrets Manager or set CORALOGIX_AGENT_KEY env var."
 
     try:
         response = coralogix_agent(prompt)
@@ -1624,9 +1627,9 @@ if __name__ == "__main__":
     print("Testing Coralogix Agent...")
     print("-" * 50)
 
-    if not CORALOGIX_API_KEY:
+    if not get_api_key():
         print("WARNING: CORALOGIX_API_KEY not set")
-        print("Export it with: export CORALOGIX_API_KEY='your-api-key'")
+        print("Set via: AWS Secrets Manager or export CORALOGIX_AGENT_KEY='your-key'")
     else:
         test_prompt = "How are the Cast services doing? Any errors in prod?"
         print(f"Prompt: {test_prompt}\n")

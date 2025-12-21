@@ -1,38 +1,41 @@
 # MrRobot AI Core
 
-AI-powered platform for DevOps, log analysis, code search, and employee onboarding/offboarding using **Strands SDK** + **Claude Sonnet on Amazon Bedrock**.
+AI-powered DevOps platform with **Slack Bot (Clippy)**, **MCP Server**, and **Streamlit Dashboard** using **Strands SDK** + **Claude Sonnet 4 on Amazon Bedrock**.
 
 ## Features
 
-### MCP Server (30 Tools)
+### Slack Bot (Clippy)
+AI assistant in `#devops` Slack channel that can:
+- Search logs in Coralogix
+- Check pipeline/deploy status in Bitbucket
+- Review PRs and explain failures
+- Query AWS infrastructure (ALBs, WAF, ECS)
+- Check CloudWatch alarms
+- Search code across 254 repositories
+
+### MCP Server (30+ Tools)
 Universal AI tool server for Cursor, Claude Code, and other MCP-compatible IDEs:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| **Code Search** | 7 | Semantic search across 254 repos (17,169 docs) via Bedrock KB |
+| **Code Search** | 7 | Semantic search across 254 repos via Bedrock KB |
 | **Coralogix** | 5 | Log analysis, error tracking, service health |
 | **Atlassian** | 12 | User/group management for onboarding/offboarding |
 | **Bitbucket** | 6 | PRs, pipelines, repos, branches, commits |
+| **CloudWatch** | 7 | Metrics, alarms, logs |
+| **AWS CLI** | 1 | Read-only AWS queries (WAF, ALB, ECS, etc.) |
 
-### AI Agents (Streamlit Dashboard)
-Specialized agents for different operational needs:
+### Streamlit Dashboard
+Web interface with specialized AI agents:
 
 | Agent | Description |
 |-------|-------------|
-| **DevOps** | Orchestrator for observability + onboarding/offboarding |
-| **Coralogix** | Log analysis with AI-powered search, PCI compliance checks |
-| **Bitbucket** | Repository management, PR reviews, pipeline status |
-| **CVE/Vulnerability** | Security vulnerability scanning and CVE tracking |
+| **DevOps** | Orchestrator for observability + user management |
+| **Coralogix** | Log analysis with AI-powered search |
+| **Bitbucket** | Repository management, PR reviews |
+| **CVE/Vulnerability** | Security vulnerability tracking |
 
 ## Quick Start
-
-### Local Development
-```bash
-cd ~/Mine/mrrobot-ai-core
-source venv/bin/activate
-AWS_PROFILE=dev streamlit run app.py
-```
-Open http://localhost:8501
 
 ### Connect AI IDE to MCP Server
 
@@ -64,139 +67,107 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-## MCP Tools Reference
+### Local Development
 
-### Code Search (Bedrock Knowledge Base)
-| Tool | Description |
-|------|-------------|
-| `search_mrrobot_repos` | Semantic search across all 254 repos |
-| `search_in_repo` | Search within a specific repository |
-| `find_similar_code` | Find similar code patterns |
-| `get_file_content` | Fetch full file from Bitbucket |
-| `list_repos` | List indexed repositories |
-| `search_by_file_type` | Search specific file types (serverless.yml, .tf) |
-| `get_kb_info` | Knowledge base stats and tips |
+```bash
+# MCP Server + Slack Bot
+cd src/mcp_server
+python server.py --http --port 8080 --slack
 
-### Coralogix (Log Analysis)
-| Tool | Description |
-|------|-------------|
-| `coralogix_discover_services` | Discover available log groups |
-| `coralogix_get_recent_errors` | Get recent errors by service |
-| `coralogix_get_service_logs` | Get logs for a specific service |
-| `coralogix_search_logs` | Execute custom DataPrime queries |
-| `coralogix_get_service_health` | Service health overview |
+# Streamlit Dashboard
+cd src/streamlit
+AWS_PROFILE=dev streamlit run app.py
+```
 
-### Atlassian (User/Group Management)
-| Tool | Description |
-|------|-------------|
-| `atlassian_list_users` | List all users |
-| `atlassian_suspend_user` | Suspend user (offboarding) |
-| `atlassian_restore_user` | Restore suspended user |
-| `atlassian_remove_user` | Remove user from directory |
-| `atlassian_list_groups` | List all groups |
-| `atlassian_create_group` | Create new group |
-| `atlassian_delete_group` | Delete group |
-| `atlassian_add_user_to_group` | Add user to group (onboarding) |
-| `atlassian_remove_user_from_group` | Remove from group (offboarding) |
-| `atlassian_grant_group_access` | Grant product access |
-| `atlassian_revoke_group_access` | Revoke product access |
-| `atlassian_get_directories` | Get organization directories |
+### Test Slack Bot Locally
 
-### Bitbucket (Repository & CI/CD)
-| Tool | Description |
-|------|-------------|
-| `bitbucket_list_prs` | List pull requests |
-| `bitbucket_pipeline_status` | Get CI/CD pipeline status |
-| `bitbucket_repo_info` | Repository details |
-| `bitbucket_list_repos` | List all repositories |
-| `bitbucket_commit_info` | Get commit details |
-| `bitbucket_list_branches` | List branches in a repo |
+```bash
+# Interactive mode
+python tests/clippy_test_prompts.py -i
+
+# Run all test prompts
+python tests/clippy_test_prompts.py -s
+```
+
+## Project Structure
+
+```
+strands-agent-app/
+├── src/
+│   ├── mcp_server/              # MCP Server + Slack Bot
+│   │   ├── server.py            # FastMCP server (30+ tools)
+│   │   └── slack_bot.py         # Slack bot (Clippy)
+│   ├── streamlit/               # Streamlit UI + Agents
+│   │   ├── app.py               # Main dashboard
+│   │   ├── devops_agent.py      # DevOps orchestrator
+│   │   ├── coralogix_agent.py   # Log analysis agent
+│   │   ├── bitbucket_agent.py   # Repo management agent
+│   │   └── ...                  # Other specialized agents
+│   └── lib/                     # Shared libraries (no framework deps)
+│       ├── coralogix.py         # Coralogix API handlers
+│       ├── bitbucket.py         # Bitbucket API handlers
+│       ├── cloudwatch.py        # CloudWatch handlers
+│       ├── code_search.py       # Bedrock KB search
+│       ├── atlassian.py         # Atlassian Admin API
+│       ├── aws_cli.py           # Safe AWS CLI wrapper
+│       └── utils/               # AWS clients, config, secrets
+├── infra/                       # AWS CDK (JavaScript)
+│   └── lib/
+│       ├── ecs-fargate-stack.js     # ECS infrastructure
+│       └── knowledge-base-stack.js  # Bedrock KB
+├── scripts/
+│   ├── deploy-to-ecs.sh         # Deploy to ECS Fargate
+│   └── sync-repos-to-s3.py      # Sync code to KB bucket
+├── tests/
+│   └── clippy_test_prompts.py   # Slack bot test harness
+├── Dockerfile.mcp               # MCP Server container
+├── Dockerfile.streamlit         # Streamlit container
+└── bitbucket-pipelines.yml      # CI/CD pipeline
+```
 
 ## Infrastructure
 
 | Resource | Value |
 |----------|-------|
 | **ECS Cluster** | `mrrobot-ai-core` |
-| Streamlit URL | http://ai-agent.mrrobot.dev |
-| MCP Server URL | https://mcp.mrrobot.dev/sse |
-| Knowledge Base ID | `SAJJWYFTNG` |
-| AWS Account | `720154970215` (dev) |
-| Region | `us-east-1` |
+| **MCP Server** | https://mcp.mrrobot.dev/sse |
+| **Streamlit** | https://ai-agent.mrrobot.dev |
+| **Knowledge Base ID** | `SAJJWYFTNG` |
+| **AWS Account** | `720154970215` (dev) |
+| **Region** | `us-east-1` |
 
 ## Deployment
 
 ### Automatic (Recommended)
-Push to `main` branch triggers automatic deployment:
+Push to `main` branch triggers automatic deployment via Bitbucket Pipelines:
 ```bash
 git push origin main
 ```
-This will:
-1. Run pre-commit checks and linting
-2. Build Docker images (Streamlit + MCP Server)
-3. Push to ECR
-4. Deploy to ECS Fargate
 
-### Manual Triggers (Bitbucket Pipelines)
-| Pipeline | Description |
-|----------|-------------|
-| `deploy-ecs` | Build images and deploy to ECS |
-| `deploy-ecs-images-only` | Build and push images only |
-| `deploy-infrastructure` | Deploy CDK stacks |
-| `full-deploy` | CDK + Docker + ECS |
-
-### Monitoring
+### Manual Deploy
 ```bash
-# View ECS logs
-aws logs tail /ecs/mrrobot-mcp-server --follow --region us-east-1 --profile dev
-aws logs tail /ecs/mrrobot-streamlit --follow --region us-east-1 --profile dev
+# Build and deploy to ECS
+./scripts/deploy-to-ecs.sh
 
-# Check service status
-aws ecs describe-services --cluster mrrobot-ai-core \
-  --services mrrobot-streamlit mrrobot-mcp-server \
-  --region us-east-1 --profile dev
+# Full deploy (includes CDK infrastructure)
+./scripts/deploy-to-ecs.sh --full
 ```
 
-## Project Structure
+### View Logs
+```bash
+# MCP Server + Slack Bot logs
+AWS_PROFILE=dev aws logs tail /ecs/mrrobot-mcp-server --follow --region us-east-1
 
-```
-mrrobot-ai-core/
-├── app.py                    # Streamlit frontend
-├── Dockerfile.streamlit      # Streamlit container
-├── Dockerfile.mcp            # MCP server container
-├── agents/                   # AI agents (Strands SDK)
-│   ├── devops_agent.py       # Orchestrator agent
-│   ├── bitbucket_agent.py    # Repository management
-│   ├── coralogix_agent.py    # Log analysis
-│   ├── cve_agent.py          # CVE tracking
-│   └── ...
-├── mcp-servers/
-│   ├── server.py             # Main MCP server (FastMCP)
-│   └── tools/                # MCP tool implementations
-│       ├── bedrock_kb.py     # Code search tools
-│       ├── coralogix.py      # Log analysis tools
-│       ├── atlassian.py      # User/group management
-│       └── bitbucket.py      # Bitbucket API tools
-├── utils/                    # Shared utilities
-│   ├── config.py             # Centralized configuration
-│   ├── aws.py                # AWS client factories
-│   └── secrets.py            # Secrets Manager access
-├── infra/                    # AWS CDK (JavaScript)
-│   └── lib/
-│       ├── ecs-fargate-stack.js      # ECS infrastructure
-│       └── knowledge-base-stack.js   # Bedrock KB
-├── scripts/
-│   ├── deploy-to-ecs.sh      # Deploy to ECS Fargate
-│   └── sync-repos-to-s3.py   # Sync code to KB bucket
-├── bitbucket-pipelines.yml   # CI/CD pipeline
-└── requirements.txt          # Python dependencies
+# Streamlit logs
+AWS_PROFILE=dev aws logs tail /ecs/mrrobot-streamlit --follow --region us-east-1
 ```
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| AI Agent | Strands SDK |
 | LLM | Claude Sonnet 4 (Bedrock) |
+| AI Agents | Strands SDK |
 | MCP Server | FastMCP (Anthropic SDK) |
 | Vector Store | OpenSearch Serverless |
 | Knowledge Base | Amazon Bedrock KB |
@@ -204,10 +175,42 @@ mrrobot-ai-core/
 | Compute | ECS Fargate (ARM64/Graviton) |
 | Infrastructure | AWS CDK (JavaScript) |
 | CI/CD | Bitbucket Pipelines |
-| Container Registry | Amazon ECR |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ECS Fargate                              │
+│  ┌─────────────────────────┐  ┌─────────────────────────────┐   │
+│  │   MCP Server Container   │  │   Streamlit Container       │   │
+│  │  ┌───────────────────┐   │  │  ┌─────────────────────┐   │   │
+│  │  │   server.py       │   │  │  │      app.py         │   │   │
+│  │  │   (FastMCP)       │   │  │  │   (Dashboard)       │   │   │
+│  │  └───────────────────┘   │  │  └─────────────────────┘   │   │
+│  │  ┌───────────────────┐   │  │  ┌─────────────────────┐   │   │
+│  │  │   slack_bot.py    │   │  │  │   *_agent.py        │   │   │
+│  │  │   (Clippy)        │   │  │  │   (Strands Agents)  │   │   │
+│  │  └───────────────────┘   │  │  └─────────────────────┘   │   │
+│  └───────────┬──────────────┘  └──────────────┬─────────────┘   │
+│              │                                 │                  │
+│              └────────────┬───────────────────┘                  │
+│                           │                                       │
+│                    ┌──────▼──────┐                               │
+│                    │   src/lib   │                               │
+│                    │  (shared)   │                               │
+│                    └──────┬──────┘                               │
+└───────────────────────────┼─────────────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐  ┌───────────────┐  ┌───────────────┐
+│   Coralogix   │  │   Bitbucket   │  │  Bedrock KB   │
+│     API       │  │     API       │  │  (254 repos)  │
+└───────────────┘  └───────────────┘  └───────────────┘
+```
 
 ## Documentation
 
-- [DEPLOYMENT-ECS.md](./DEPLOYMENT-ECS.md) - Full ECS deployment guide
 - [CLAUDE.md](./CLAUDE.md) - Project context for AI assistants
-- [DEMO.md](./DEMO.md) - Demo walkthrough and architecture
+- [DEPLOYMENT-ECS.md](./DEPLOYMENT-ECS.md) - Full ECS deployment guide

@@ -13,7 +13,7 @@ import sys
 from strands import Agent, tool
 from strands.models import BedrockModel
 
-# Add parent directory to path to import agents
+# Add src directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ============================================================================
@@ -39,7 +39,7 @@ def get_bitbucket_agent():
     """Get or create the Bitbucket/Code Search agent."""
     if "bitbucket" not in _agents:
         try:
-            from agents.bitbucket_agent import create_bitbucket_agent
+            from bitbucket_agent import create_bitbucket_agent
 
             _agents["bitbucket"] = create_bitbucket_agent()
         except Exception as e:

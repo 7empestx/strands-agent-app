@@ -29,20 +29,21 @@ from .cloudwatch import (
 )
 
 # Export handler functions for use in server.py
-from .code_search import KB_ID, KNOWN_REPOS, get_file_from_bitbucket, search_knowledge_base
+from .code_search import KB_ID, get_file_from_bitbucket, search_knowledge_base
 from .coralogix import (
+    execute_natural_language_query,
     handle_discover_services,
     handle_get_recent_errors,
     handle_get_service_health,
     handle_get_service_logs,
     handle_search_logs,
+    natural_language_to_dataprime,
 )
 
 __all__ = [
     # Code Search (Bedrock Knowledge Base)
     "search_knowledge_base",
     "get_file_from_bitbucket",
-    "KNOWN_REPOS",
     "KB_ID",
     # Coralogix
     "handle_discover_services",
@@ -50,6 +51,8 @@ __all__ = [
     "handle_get_service_logs",
     "handle_search_logs",
     "handle_get_service_health",
+    "natural_language_to_dataprime",
+    "execute_natural_language_query",
     # Atlassian
     "handle_get_directories",
     "handle_list_users",

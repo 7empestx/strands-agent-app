@@ -108,7 +108,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 
 ### "Server Unavailable"
 
-1. The EC2 instance may be restarting
+1. The ECS service may be restarting
 2. Contact DevOps to check service status
 
 ## Architecture
@@ -116,7 +116,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Your IDE      │────▶│   MCP Server    │────▶│  Bedrock KB     │
-│ (Cursor/Claude) │ SSE │  (EC2:8080)     │     │  (SAJJWYFTNG)   │
+│ (Cursor/Claude) │ SSE │  (ECS Fargate)  │     │  (SAJJWYFTNG)   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                                                         │
                                                         ▼
@@ -137,7 +137,7 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 | Component | Value |
 |-----------|-------|
 | MCP Server URL | `https://mcp.mrrobot.dev/sse` |
-| EC2 Instance | `i-089292d2c5a6a055f` |
+| ECS Cluster | `mrrobot-ai-core` |
 | Knowledge Base ID | `SAJJWYFTNG` |
 | AWS Region | `us-east-1` |
 | Embedding Model | `amazon.titan-embed-text-v2:0` |

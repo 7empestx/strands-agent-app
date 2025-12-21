@@ -11,18 +11,18 @@ from pathlib import Path
 from strands import Agent, tool
 from strands.models import BedrockModel
 
-# Add mcp-servers to path for shared tool functions
-_project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(_project_root / "mcp-servers"))
+# Add project root to path for imports
+_project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(_project_root))
 
-# Import the underlying Bitbucket API functions from MCP tools
+# Import the underlying Bitbucket API functions from lib
 # ruff: noqa: E402
-from tools.bitbucket import get_commit_info as _get_commit  # noqa: E402
-from tools.bitbucket import get_pipeline_status as _get_pipelines
-from tools.bitbucket import get_repository_info as _get_repo
-from tools.bitbucket import list_branches as _list_branches
-from tools.bitbucket import list_pull_requests as _list_prs
-from tools.bitbucket import list_repositories as _list_repos
+from src.lib.bitbucket import get_commit_info as _get_commit  # noqa: E402
+from src.lib.bitbucket import get_pipeline_status as _get_pipelines
+from src.lib.bitbucket import get_repository_info as _get_repo
+from src.lib.bitbucket import list_branches as _list_branches
+from src.lib.bitbucket import list_pull_requests as _list_prs
+from src.lib.bitbucket import list_repositories as _list_repos
 
 # ============================================================================
 # STRANDS TOOL WRAPPERS

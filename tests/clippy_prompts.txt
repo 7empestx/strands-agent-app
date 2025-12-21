@@ -1,0 +1,48 @@
+TROUBLESHOOTING
+===============
+We're seeing 504 errors on Cast staging for syncAll endpoint. Can you check CloudWatch?
+I'm having permissions issues uploading documents on dashboard-app in dev - works locally
+Getting CORS errors on the S3 bucket for document uploads
+The payment webhook Lambda is timing out in prod
+Getting connection refused errors to the RDS instance
+
+PR & DEPLOYS
+============
+Can I get an approval on this PR? https://bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/717
+How do we reenable pipelines for emvio-api-documentation?
+What's the status of recent deploys to staging?
+The latest build on mrrobot-auth-rest is failing, can you check?
+Can you review this PR? https://bitbucket.org/mrrobot-labs/emvio-gateway/pull-requests/123
+
+HISTORY & PRECEDENT
+===================
+How did we handle the 504 errors on Cast before?
+Have we seen S3 permission issues on dashboard-app before?
+What was the resolution for the readme.com authentication issue?
+Have we had this type of outage before?
+How did we fix the CORS issue last time?
+
+ACCESS REQUESTS
+===============
+Can someone set up an SFTP user with root access for a new merchant?
+Can we get a new AWS IAM user for the contractor?
+I need VPN access for a new team member
+I accidentally overwrote my SSH key, can someone help?
+Need API credentials for the new integration
+
+CODE SEARCH
+===========
+Where is the S3 bucket configuration for document uploads?
+How does authentication work in mrrobot-auth-rest?
+Find the Lambda handler for payment webhooks
+Where are the database migrations for the user table?
+Where is the syncAll endpoint defined in cast-core?
+
+CONVERSATIONAL
+==============
+Hi Clippy!
+What can you help me with?
+Thanks for the help!
+There's an issue
+Can you tell me more about that?
+

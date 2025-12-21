@@ -7,16 +7,15 @@ Powered by Strands Agent + Claude Sonnet on Bedrock
 import os
 from datetime import datetime
 
+import boto3
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from agents.coralogix_agent import CORALOGIX_API_KEY, KNOWN_SERVICES, run_coralogix_agent
-from agents.devops_agent import create_devops_agent
-
-# Import the agents
-from agents.transaction_agent import DATASETS, run_agent
-from agents.vulnerability_agent import VULNERABILITIES, run_vulnerability_agent
+from coralogix_agent import get_api_key as get_coralogix_key, run_coralogix_agent
+from devops_agent import create_devops_agent
+from transaction_agent import DATASETS, run_agent
+from vulnerability_agent import VULNERABILITIES, run_vulnerability_agent
 
 # Page config
 st.set_page_config(page_title="MrRobot DevOps Hub", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
@@ -462,27 +461,21 @@ def show_coralogix_agent():
         st.session_state.coralogix_chat_history = []
 
     # Check for API key
-    if not CORALOGIX_API_KEY:
-        st.error("CORALOGIX_AGENT_KEY environment variable not set")
-        st.info("Set it with: `export CORALOGIX_AGENT_KEY='your-api-key'`")
+    if not get_coralogix_key():
+        st.error("Coralogix API key not configured")
+        st.info("Configure in AWS Secrets Manager (mrrobot-ai-core/secrets) or set CORALOGIX_AGENT_KEY env var")
         st.write("You need a Personal Key with DataQuerying permission from Coralogix Settings > API Keys")
         return
 
-    # Show known services
-    with st.expander("Known Services (auto-detected from logs)"):
-        st.write("The agent can discover all services automatically. Known patterns include:")
-        cast_services = [k for k, v in KNOWN_SERVICES.items() if "cast" in k]
-        other_services = [k for k, v in KNOWN_SERVICES.items() if "cast" not in k]
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**Cast Services:**")
-            for svc in cast_services:
-                st.write(f"- {svc}")
-        with col2:
-            st.write("**Other Services:**")
-            for svc in other_services:
-                st.write(f"- {svc}")
+    # Show service discovery info
+    with st.expander("Service Discovery"):
+        st.write("The agent **automatically discovers services** from your logs.")
+        st.write("Try asking: *'What services are logging?'* or *'Discover services in prod'*")
+        st.write("")
+        st.write("**Common patterns detected:**")
+        st.write("- `cast-*` - Cast integration services")
+        st.write("- `emvio-*` - Core Emvio services")
+        st.write("- `mrrobot-*` - MrRobot platform services")
 
     # Example prompts
     st.write("**Try asking:**")
@@ -689,19 +682,28 @@ def main():
 
     st.sidebar.divider()
 
+    # Check for query parameter to auto-select page (e.g., ?page=feedback)
+    query_params = st.query_params
+    default_page = "DevOps Agent"
+    if query_params.get("page") == "feedback":
+        default_page = "📝 Feedback"
+
     # Navigation with sections
     st.sidebar.subheader("Operations")
+    pages = [
+        "DevOps Agent",
+        "Log Analysis",
+        "Security Vulnerabilities",
+        "Security Assistant",
+        "Transaction Dashboard",
+        "Business Insights",
+        "Settlements",
+        "📝 Feedback",
+    ]
     page = st.sidebar.radio(
         "Navigate",
-        [
-            "DevOps Agent",
-            "Log Analysis",
-            "Security Vulnerabilities",
-            "Security Assistant",
-            "Transaction Dashboard",
-            "Business Insights",
-            "Settlements",
-        ],
+        pages,
+        index=pages.index(default_page),
         label_visibility="collapsed",
     )
 
@@ -714,7 +716,7 @@ def main():
         st.sidebar.error("Agent offline")
 
     # Coralogix status
-    if CORALOGIX_API_KEY:
+    if get_coralogix_key():
         st.sidebar.success("Coralogix")
     else:
         st.sidebar.warning("Coralogix: No API Key")
@@ -736,6 +738,94 @@ def main():
         show_insights_agent()
     elif page == "Settlements":
         show_settlements()
+    elif page == "📝 Feedback":
+        show_feedback()
+
+
+def save_feedback_to_dynamodb(feedback_type: str, feedback_text: str, rating: int) -> bool:
+    """Save feedback to DynamoDB."""
+    import uuid
+    from datetime import datetime
+    
+    try:
+        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+        table = dynamodb.Table("mrrobot-ai-feedback")
+        
+        item = {
+            "id": str(uuid.uuid4()),
+            "timestamp": datetime.now().isoformat(),
+            "type": feedback_type,
+            "feedback": feedback_text,
+            "rating": rating,
+            "source": "streamlit",
+        }
+        
+        table.put_item(Item=item)
+        return True
+    except Exception as e:
+        print(f"Error saving feedback: {e}")
+        return False
+
+
+def show_feedback():
+    """Show feedback page for Clippy/DevOps Hub."""
+    st.header("📝 Share Your Feedback")
+    
+    st.markdown("""
+    ### Help us improve Clippy and the DevOps Hub!
+    
+    🚧 **Clippy is a work in progress** - your feedback helps us build the right features.
+    """)
+    
+    st.divider()
+    
+    # Feedback form
+    with st.form("feedback_form"):
+        st.subheader("What would you like to share?")
+        
+        feedback_type = st.selectbox(
+            "Type of feedback",
+            ["Feature Request", "Bug Report", "General Feedback", "Question"]
+        )
+        
+        feedback_text = st.text_area(
+            "Your feedback",
+            placeholder="Tell us what's working, what's not, or what you'd like to see...",
+            height=150
+        )
+        
+        rating = st.slider("How useful is the DevOps Hub so far?", 1, 5, 3)
+        
+        submitted = st.form_submit_button("Submit Feedback")
+        
+        if submitted and feedback_text:
+            if save_feedback_to_dynamodb(feedback_type, feedback_text, rating):
+                st.success("🙏 Thank you for your feedback! We'll review it soon.")
+                st.balloons()
+            else:
+                st.error("Failed to save feedback. Please try again.")
+        elif submitted:
+            st.warning("Please enter some feedback before submitting.")
+    
+    st.divider()
+    
+    # Quick links
+    st.subheader("Quick Links")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Clippy in Slack**")
+        st.markdown("Use `@Clippy-ai` in Slack to get DevOps help")
+        
+    with col2:
+        st.markdown("**Documentation**")
+        st.markdown("Coming soon!")
+    
+    # Back to dashboard button
+    st.divider()
+    if st.button("← Back to Dashboard"):
+        st.session_state["page"] = "DevOps Agent"
+        st.rerun()
 
 
 if __name__ == "__main__":

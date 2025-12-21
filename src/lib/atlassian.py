@@ -11,7 +11,7 @@ import requests
 
 # Add project root to path to import shared utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from utils.secrets import get_secret
+from src.lib.utils.secrets import get_secret
 
 # Atlassian Admin API base URL
 ATLASSIAN_ADMIN_API = "https://api.atlassian.com"

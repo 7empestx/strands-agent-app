@@ -1,4 +1,4 @@
-"""Secrets management for MrRobot AI Core.
+"""Secrets management.
 
 Provides centralized access to secrets from AWS Secrets Manager.
 Falls back to environment variables when Secrets Manager is unavailable.
@@ -25,7 +25,6 @@ def get_secrets() -> dict:
         return _secrets_cache
 
     try:
-        # Import here to avoid circular imports
         from .aws import get_secrets_manager
 
         client = get_secrets_manager()

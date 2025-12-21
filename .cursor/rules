@@ -1,0 +1,27 @@
+# Cursor Rules
+
+## Forbidden Actions
+- NEVER run git commit, git push, or any deployment commands
+- NEVER execute scripts in the /scripts folder without explicit user confirmation
+- NEVER modify production configuration files
+- NEVER run npm publish, docker push, or any release commands
+- NEVER delete files without asking first
+
+## Restricted Commands
+Do not execute these commands:
+- git commit
+- git push
+- git merge
+- ./scripts/deploy*.sh
+- aws deploy
+- cdk deploy
+- docker push
+- npm publish
+- make deploy
+
+## Safe Mode
+Always ask for confirmation before:
+- Running any shell commands
+- Modifying .env files
+- Changing infrastructure code (CDK, Terraform)
+- Altering database schemas

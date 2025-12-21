@@ -228,9 +228,9 @@ class KnowledgeBaseStack extends cdk.Stack {
       knowledgeBase.node.addDependency(vectorCollection);
 
       // ========================================================================
-      // Bedrock Data Source (S3)
+      // Bedrock Data Source - Code Repos (S3)
       // ========================================================================
-      const dataSource = new bedrock.CfnDataSource(this, 'CodeDataSource', {
+      const codeDataSource = new bedrock.CfnDataSource(this, 'CodeDataSource', {
         name: `${projectName}-code-source`,
         knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
         dataDeletionPolicy: 'RETAIN',
@@ -238,6 +238,7 @@ class KnowledgeBaseStack extends cdk.Stack {
           type: 'S3',
           s3Configuration: {
             bucketArn: codeBucket.bucketArn,
+            inclusionPrefixes: ['repos/'],
           },
         },
         vectorIngestionConfiguration: {
@@ -252,6 +253,31 @@ class KnowledgeBaseStack extends cdk.Stack {
         },
       });
 
+      // ========================================================================
+      // Bedrock Data Source - Slack History (S3)
+      // ========================================================================
+      const slackDataSource = new bedrock.CfnDataSource(this, 'SlackDataSource', {
+        name: `${projectName}-slack-history`,
+        knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+        dataDeletionPolicy: 'RETAIN',
+        dataSourceConfiguration: {
+          type: 'S3',
+          s3Configuration: {
+            bucketArn: codeBucket.bucketArn,
+            inclusionPrefixes: ['slack-history/'],
+          },
+        },
+        vectorIngestionConfiguration: {
+          chunkingConfiguration: {
+            chunkingStrategy: 'FIXED_SIZE',
+            fixedSizeChunkingConfiguration: {
+              maxTokens: 500,
+              overlapPercentage: 20,
+            },
+          },
+        },
+      });
+
       // Additional outputs for KB
       new cdk.CfnOutput(this, 'KnowledgeBaseId', {
         value: knowledgeBase.attrKnowledgeBaseId,
@@ -259,10 +285,16 @@ class KnowledgeBaseStack extends cdk.Stack {
         exportName: `${projectName}-kb-id`,
       });
 
-      new cdk.CfnOutput(this, 'DataSourceId', {
-        value: dataSource.attrDataSourceId,
-        description: 'Bedrock Data Source ID',
-        exportName: `${projectName}-ds-id`,
+      new cdk.CfnOutput(this, 'CodeDataSourceId', {
+        value: codeDataSource.attrDataSourceId,
+        description: 'Bedrock Data Source ID for code repos',
+        exportName: `${projectName}-code-ds-id`,
+      });
+
+      new cdk.CfnOutput(this, 'SlackDataSourceId', {
+        value: slackDataSource.attrDataSourceId,
+        description: 'Bedrock Data Source ID for Slack history',
+        exportName: `${projectName}-slack-ds-id`,
       });
 
       // Export for easy env var setup

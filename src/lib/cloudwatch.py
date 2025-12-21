@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 # Add project root to path to import shared utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.aws import get_session
+from src.lib.utils.aws import get_session
 
 
 def _get_cloudwatch_client():
@@ -73,14 +73,16 @@ def get_metric_statistics(
 
         datapoints = []
         for dp in sorted(response.get("Datapoints", []), key=lambda x: x["Timestamp"]):
-            datapoints.append({
-                "timestamp": dp["Timestamp"].isoformat(),
-                "average": dp.get("Average"),
-                "maximum": dp.get("Maximum"),
-                "minimum": dp.get("Minimum"),
-                "sum": dp.get("Sum"),
-                "unit": dp.get("Unit"),
-            })
+            datapoints.append(
+                {
+                    "timestamp": dp["Timestamp"].isoformat(),
+                    "average": dp.get("Average"),
+                    "maximum": dp.get("Maximum"),
+                    "minimum": dp.get("Minimum"),
+                    "sum": dp.get("Sum"),
+                    "unit": dp.get("Unit"),
+                }
+            )
 
         return {
             "namespace": namespace,
@@ -117,16 +119,22 @@ def list_alarms(state_value: str = None, alarm_name_prefix: str = None) -> dict:
 
         alarms = []
         for alarm in response.get("MetricAlarms", []):
-            alarms.append({
-                "name": alarm.get("AlarmName"),
-                "state": alarm.get("StateValue"),
-                "state_reason": alarm.get("StateReason", "")[:200],
-                "metric": alarm.get("MetricName"),
-                "namespace": alarm.get("Namespace"),
-                "threshold": alarm.get("Threshold"),
-                "comparison": alarm.get("ComparisonOperator"),
-                "updated": alarm.get("StateUpdatedTimestamp", "").isoformat() if alarm.get("StateUpdatedTimestamp") else None,
-            })
+            alarms.append(
+                {
+                    "name": alarm.get("AlarmName"),
+                    "state": alarm.get("StateValue"),
+                    "state_reason": alarm.get("StateReason", "")[:200],
+                    "metric": alarm.get("MetricName"),
+                    "namespace": alarm.get("Namespace"),
+                    "threshold": alarm.get("Threshold"),
+                    "comparison": alarm.get("ComparisonOperator"),
+                    "updated": (
+                        alarm.get("StateUpdatedTimestamp", "").isoformat()
+                        if alarm.get("StateUpdatedTimestamp")
+                        else None
+                    ),
+                }
+            )
 
         return {
             "alarms": alarms,
@@ -163,11 +171,13 @@ def get_alarm_history(alarm_name: str, hours_back: int = 24) -> dict:
 
         history = []
         for item in response.get("AlarmHistoryItems", []):
-            history.append({
-                "timestamp": item.get("Timestamp", "").isoformat() if item.get("Timestamp") else None,
-                "type": item.get("HistoryItemType"),
-                "summary": item.get("HistorySummary"),
-            })
+            history.append(
+                {
+                    "timestamp": item.get("Timestamp", "").isoformat() if item.get("Timestamp") else None,
+                    "type": item.get("HistoryItemType"),
+                    "summary": item.get("HistorySummary"),
+                }
+            )
 
         return {
             "alarm_name": alarm_name,
@@ -204,14 +214,18 @@ def list_log_groups(prefix: str = None, limit: int = 50) -> dict:
 
         groups = []
         for group in response.get("logGroups", []):
-            groups.append({
-                "name": group.get("logGroupName"),
-                "stored_bytes": group.get("storedBytes", 0),
-                "retention_days": group.get("retentionInDays"),
-                "created": datetime.fromtimestamp(
-                    group.get("creationTime", 0) / 1000, tz=timezone.utc
-                ).isoformat() if group.get("creationTime") else None,
-            })
+            groups.append(
+                {
+                    "name": group.get("logGroupName"),
+                    "stored_bytes": group.get("storedBytes", 0),
+                    "retention_days": group.get("retentionInDays"),
+                    "created": (
+                        datetime.fromtimestamp(group.get("creationTime", 0) / 1000, tz=timezone.utc).isoformat()
+                        if group.get("creationTime")
+                        else None
+                    ),
+                }
+            )
 
         return {
             "log_groups": groups,
@@ -254,6 +268,7 @@ def query_logs(
 
         # Wait for query to complete (with timeout)
         import time
+
         for _ in range(30):  # Max 30 seconds
             result = client.get_query_results(queryId=query_id)
             status = result.get("status")
@@ -362,4 +377,3 @@ def get_lambda_metrics(function_name: str, hours_back: int = 1) -> dict:
         "errors": errors,
         "duration": duration,
     }
-
