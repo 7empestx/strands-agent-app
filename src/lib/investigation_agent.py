@@ -55,17 +55,18 @@ def check_recent_deploys(service: str, limit: int = 5) -> dict:
 
 
 @tool
-def get_error_summary(service: str = "all", hours_back: int = 4) -> dict:
+def get_error_summary(service: str = "all", hours_back: int = 4, environment: str = "all") -> dict:
     """Get a summary of recent errors across services.
 
     Args:
         service: Service name to filter, or 'all' for all services
         hours_back: How many hours back to check
+        environment: Environment to check - 'prod', 'staging', 'dev', or 'all'
 
     Returns:
         dict with errors_by_service breakdown
     """
-    return handle_get_recent_errors(service, hours_back=hours_back, limit=50)
+    return handle_get_recent_errors(service, hours_back=hours_back, limit=50, environment=environment)
 
 
 @tool
@@ -101,26 +102,33 @@ def check_ecs_health(cluster: str = "mrrobot-ai-core", service: str = "mrrobot-m
 
 INVESTIGATION_SYSTEM_PROMPT = """You are an expert DevOps investigation agent. Your job is to thoroughly investigate issues and provide actionable insights.
 
+CRITICAL: STAY FOCUSED ON THE SPECIFIED ENVIRONMENT
+- If the user asks about "staging", ONLY search staging logs
+- If the user asks about "prod", ONLY search prod logs
+- NEVER switch to a different environment unless explicitly asked
+- Always include the environment in your search queries (e.g., "errors in cast-core staging")
+- If a search returns no results for the specified environment, say "no errors found in [env]" - don't search other environments
+
 When investigating an issue:
 
 1. **Gather Evidence**
-   - Search logs for errors in the affected service/environment
+   - Search logs for errors in the SPECIFIED service/environment ONLY
    - Check recent deployments that might have caused the issue
    - Look for CloudWatch alarms that might be related
 
 2. **Analyze Patterns**
    - Look for error patterns (repeated errors, error spikes)
    - Correlate timing with deployments
-   - Compare environments if relevant (staging vs prod)
+   - Only compare environments if the user explicitly asks
 
 3. **Provide Clear Output**
    Format your findings as:
 
    ## 🔍 Investigation Summary
-   [One sentence summary of what you found]
+   [One sentence summary of what you found IN THE SPECIFIED ENVIRONMENT]
 
    ## 📋 Evidence Found
-   - Key errors discovered
+   - Key errors discovered (environment: [env])
    - Relevant deployment info
    - Alarm status
 
@@ -133,7 +141,7 @@ When investigating an issue:
    3. [Third action]
 
 Be thorough but concise. Focus on actionable insights, not just data dumps.
-If you can't find evidence, say so clearly and suggest what else to check.
+If you can't find evidence IN THE SPECIFIED ENVIRONMENT, say so clearly - don't search other environments.
 """
 
 
@@ -179,18 +187,25 @@ def investigate_issue(service: str, environment: str = None, description: str = 
         prompt_parts = [f"Investigate issues with the service: **{service}**"]
 
         if environment:
-            prompt_parts.append(f"Environment: **{environment}**")
+            prompt_parts.append(
+                f"Environment: **{environment}** (ONLY search this environment - do NOT check other environments)"
+            )
+        else:
+            prompt_parts.append("Environment: Not specified - ask the user which environment to check")
 
         if description:
             prompt_parts.append(f'User reported: "{description}"')
 
+        env_context = f" in {environment}" if environment else ""
         prompt_parts.append(
-            """
+            f"""
 Please:
-1. Search for recent errors in this service
-2. Check recent deployments
+1. Search for recent errors in {service}{env_context} (include environment in your search query)
+2. Check recent deployments for {service}
 3. Look for any active alarms
 4. Analyze what you find and provide recommendations
+
+IMPORTANT: Only report findings for the specified environment. If no environment was specified, ask the user which environment to check.
 """
         )
 

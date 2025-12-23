@@ -47,7 +47,7 @@ def alert_error(error_type: str, message: str, details: dict = None):
         message: Human-readable error message
         details: Optional dict with additional context
     """
-    global _slack_client
+    # Note: _slack_client is a module-level global set in SlackBot._setup_app()
     if not _slack_client:
         print(f"[Clippy Alert] {error_type}: {message} (no Slack client)")
         return
