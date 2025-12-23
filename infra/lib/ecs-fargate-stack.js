@@ -131,6 +131,19 @@ class StrandsAgentECSStack extends cdk.Stack {
       resources: ['*']
     }));
 
+    // S3 permissions for Clippy config (system prompt, service registry)
+    taskRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:GetObject',
+        's3:ListBucket'
+      ],
+      resources: [
+        'arn:aws:s3:::mrrobot-code-kb-dev-720154970215',
+        'arn:aws:s3:::mrrobot-code-kb-dev-720154970215/clippy-config/*'
+      ]
+    }));
+
     // ========================================================================
     // DynamoDB - Feedback Table
     // ========================================================================

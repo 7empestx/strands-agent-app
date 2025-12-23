@@ -145,6 +145,78 @@ AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
 | Compute | ECS Fargate (ARM64/Graviton) |
 | Infrastructure | AWS CDK (JavaScript) |
 
+## External API Authentication
+
+### Bitbucket API (API Tokens - NOT App Passwords)
+
+As of September 2025, Bitbucket deprecated App Passwords in favor of API Tokens.
+
+**Creating a new token:**
+1. Go to: https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token with scopes"
+3. Name: `clippy-bitbucket`, Expiry: 1 year, App: `Bitbucket`
+4. Permissions: `Repositories: Read`
+5. Update `BITBUCKET_TOKEN` in AWS Secrets Manager (`mrrobot-ai-core/secrets`)
+
+**Authentication:**
+- REST API: Use Atlassian email + API token (Basic Auth)
+- Git CLI: Use username `x-bitbucket-api-token-auth` + API token
+
+**Timeline:** App passwords stop working June 9, 2026.
+
+### Jira API (Classic API Tokens)
+
+Uses Classic API Tokens (NOT OAuth 2.0 app tokens).
+
+**Creating a new token:**
+1. Go to: https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token" (the classic one, not scoped)
+3. Update `JIRA_API_TOKEN` in AWS Secrets Manager
+
+**Authentication:** Basic Auth with `email:token` base64 encoded.
+
+### PagerDuty API
+
+Uses REST API v2 with token authentication.
+
+**Creating a new token:**
+1. Go to: PagerDuty → Integrations → API Access Keys
+2. Create a read-only API key
+3. Update `PAGERDUTY_API_TOKEN` in AWS Secrets Manager
+
+### Coralogix API
+
+Uses API key for DataPrime queries.
+
+**Token location:** Coralogix → Settings → API Keys → Logs Query Key
+**Secret:** `CORALOGIX_AGENT_KEY` in AWS Secrets Manager
+
+## Dynamic Configuration (S3)
+
+Clippy loads configuration from S3 (no redeploy needed to update):
+
+```
+s3://mrrobot-code-kb-dev-720154970215/clippy-config/
+├── services.json      # Service registry with aliases, types, tech stacks
+├── env_mappings.json  # Environment name mappings (prod, staging, etc.)
+└── system_prompt.txt  # Clippy's system prompt
+```
+
+**Cache TTL:** 5 minutes. Changes take effect automatically.
+
+**To update:**
+```bash
+# Download, edit, upload
+aws s3 cp s3://mrrobot-code-kb-dev-720154970215/clippy-config/services.json ./
+# ... edit ...
+aws s3 cp ./services.json s3://mrrobot-code-kb-dev-720154970215/clippy-config/
+```
+
+**Auto-generate service registry:**
+```bash
+AWS_PROFILE=dev python scripts/generate-service-registry.py --upload
+```
+
 ## File Locations
 
 | What | Where |
@@ -158,3 +230,13 @@ AWS_PROFILE=dev npx cdk deploy CodeKnowledgeBaseStack
 | KB search | `src/lib/code_search.py` |
 | ECS infrastructure | `infra/lib/ecs-fargate-stack.js` |
 | Deploy script | `scripts/deploy-to-ecs.sh` |
+
+## TODO
+
+- [ ] **Cron Lambda for S3 Repo Sync** - Create a Lambda function (EventBridge scheduled) to automatically sync Bitbucket repos to S3 (`s3://mrrobot-code-kb-dev-720154970215/repos/`). Currently done manually via `scripts/sync-repos-to-s3.py`. Should run daily/weekly to keep Knowledge Base up-to-date.
+
+- [ ] **Cron Lambda for Service Registry** - After repo sync, run `scripts/generate-service-registry.py --upload` to regenerate the service registry from the updated S3 repos.
+
+- [ ] **Slack Slash Command for Agent Tasks** - Add a `/schedule` command to schedule agent tasks (e.g., "run investigation at 9am", "check deploys every hour").
+
+- [ ] **Clippy Feedback & AI Prompt Tuning** - Add 👍/👎 reaction buttons after Clippy responses to collect feedback. Log to S3/DynamoDB. Use feedback patterns to improve the system prompt over time (manual review first, then potentially AI-assisted prompt evolution).

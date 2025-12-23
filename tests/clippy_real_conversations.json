@@ -1,0 +1,152 @@
+[
+  {
+    "query": "what is cast-core-service?",
+    "response": "*cast-core-service* is a backend service that handles core Cast functionality. \n\n\u2022 *Tech Stack:* Node.js/Express with DynamoDB and MySQL\n\u2022 *Type:* Backend service\n\u2022 *Repo:* cast-core-service\n\u2022 *Also called:* cast-core, core-service, or just \"core\"\n\nFor troubleshooting, I'd check logs first, then recent deployments. Need help with something specific on cast-core?",
+    "tools_used": [
+      "get_service_info"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "what is cast-connections-util?",
+    "response": "*cast-connections-util* is a shared Node.js library that provides utilities for CAST connections and core services. \n\n*Key details:*\n\u2022 *Type:* Shared library/utility package\n\u2022 *Tech:* Node.js, MySQL, AWS SDK\n\u2022 *Purpose:* Common utilities used by other CAST services\n\u2022 *Dependencies:* Since it's a library, issues here could affect multiple services that depend on it\n\nIf you're seeing issues, I'd need to check which services use this library and investigate from there.",
+    "tools_used": [
+      "get_service_info"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "what is mrrobot-auth-rest?",
+    "response": "*mrrobot-auth-rest* is MrRobot's current/primary authentication service. Here's what I know about it:\n\n\u2022 *Type:* Backend service\n\u2022 *Tech Stack:* Express, Node.js, AWS SDK  \n\u2022 *Purpose:* Handles authentication for MrRobot systems\n\u2022 *Repository:* mrrobot-auth-rest\n\nThis is a critical backend service that manages user authentication across MrRobot's systems. Since it's a backend service, if you're having issues with it, I'd typically check logs first, then recent deployments.\n\nIs there something specific you need help with regarding this service?",
+    "tools_used": [
+      "get_service_info"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "what is cast-support-portal-app?",
+    "response": "Found it! *cast-support-portal-app* is:\n\n\u2022 *React-based web application for Cast Support Reps*\n\u2022 Frontend app that runs on port 3010 locally \n\u2022 Production URL appears to be `backoffice.trycast.com`\n\u2022 Has a corresponding backend service called `cast-support-portal-service` (runs on port 5999 locally)\n\u2022 Used by support representatives to manage Cast-related support tasks\n\nThe app connects to various services including Cast core, auth services, and the dashboard. Based on the Slack history, it looks like there may have been some deployment issues getting it to production.",
+    "tools_used": [
+      "get_service_info",
+      "search_code"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "check errors in cast-core prod",
+    "response": "The cast-core service is throwing *50 errors* in the last 4 hours - all from the `mrrobot-cast-core-devopslocal` Lambda:\n\n*Main issue:*\n\u2022 Configuration error: `env was not a recognized value: devopslocal`\n\u2022 Error originates from `@mrrobot/emvio-config` package\n\u2022 Happening repeatedly (every few seconds/minutes)\n\n*Root cause:*\n\u2022 Lambda environment variable is set to \"devopslocal\" \n\u2022 But the config package only recognizes standard envs (prod, staging, dev, sandbox)\n\u2022 This suggests a deployment or configuration issue\n\nThe Lambda appears to be misconfigured with an invalid environment name. A DevOps engineer should check:\n\u2022 Environment variables in the Lambda configuration\n\u2022 Recent deployments that might have set the wrong env value\n\u2022 Whether this should be \"dev\" or another valid environment",
+    "tools_used": [
+      "get_recent_errors"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "show me errors in mrrobot-connector-hub staging last 24 hours",
+    "response": "Found *23 errors* in mrrobot-connector-hub in the past 24 hours, but these are in *prod* and *dev* environments - not staging:\n\n*Prod errors (21):*\n\u2022 CBCal transfer failures due to missing `CBCAL_CONNECTOR_ID` environment variable\n\u2022 Repeating every ~2 hours\n\n*Dev errors (2):*\n\u2022 CBCal file retrieval failing with \"NoSuchKey: The specified key does not exist\"\n\u2022 S3 key missing issue\n\n*Staging is clean* - no errors found in the past 24 hours.\n\nThe prod CBCal issue looks like a configuration problem that needs DevOps attention.",
+    "tools_used": [
+      "search_logs",
+      "get_recent_errors"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "find 504 errors in connector-hub prod",
+    "response": "No 504 errors found in connector-hub prod in the last 24 hours. The current errors are:\n\n\u2022 *21 errors* in connector-hub prod - all about missing `CBCAL_CONNECTOR_ID` environment variable\n\u2022 *2 errors* in connector-hub dev - S3 key not found during CBCal file retrieval\n\nFound one past case from October where 504s were seen in Cast staging (different service), but no recent 504s in connector-hub specifically.\n\nAre you seeing 504s in a specific connector or endpoint? Or do you need me to check a longer time period?",
+    "tools_used": [
+      "search_logs",
+      "search_logs",
+      "search_devops_history",
+      "get_recent_errors"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "show me errors in payment-service",
+    "response": "Good news - *no active errors* in payment-service right now:\n\n\u2022 No recent errors in the last 4 hours\n\u2022 No error logs found when searching (though I need to know which environment)\n\u2022 History shows some past CVC/payment processing issues but nothing current\n\n*Which environment* are you checking? I can search more specifically in:\n\u2022 `prod`\n\u2022 `staging` \n\u2022 `dev`\n\u2022 `sandbox`\n\nAlso, what exactly are you seeing that makes you think there are errors? Any specific error messages or failed transactions?",
+    "tools_used": [
+      "get_recent_errors",
+      "search_logs",
+      "search_devops_history"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "how does authentication work in mrrobot-auth-rest?",
+    "response": "Based on the code I found, here's how authentication works in `mrrobot-auth-rest`:\n\n## *Authentication Flow*\n\n\u2022 *JWT-based system* with multiple token types (regular, refresh, MFA, challenge tokens)\n\u2022 *Login endpoint* validates username/password against DynamoDB user table (emailIndex)\n\u2022 *Environment-specific secrets* stored in AWS Secrets Manager (e.g., `mrrobot-auth-rest-prod`)\n\n## *Token Types & Secrets*\n\u2022 *Regular tokens*: `mrrobot-auth-rest-${environment}` secret\n\u2022 *Refresh tokens*: `mrrobot-auth-rest-refresh-token-${environment}`\n\u2022 *MFA tokens*: `mrrobot-auth-rest-mfa-${environment}`  \n\u2022 *Challenge tokens*: `mrrobot-auth-rest-challenges-${environment}`\n\n## *Authentication Middleware*\nThe authenticate middleware (`/service/src/tools/middleware/authenticate.js`):\n\u2022 Checks for `Authorization` header\n\u2022 Calls `authorizeJWT()` to validate token\n\u2022 Supports permission-based authorization\n\u2022 Logs comprehensive auth events with region/timestamp info\n\n## *JWT Verification Process*\n\u2022 Strips \"Bearer\" prefix from token\n\u2022 Decodes JWT to determine token type\n\u2022 Selects appropriate secret from Secrets Manager\n\u2022 Validates signature and expiration\n\u2022 Returns user data and permissions if valid\n\nThe service integrates with the MrRobot SDK for external auth verification and uses the `@mrrobot/rest-utils` authenticate middleware for standardized auth across services.\n\nWant me to look into any specific part of the auth flow?",
+    "tools_used": [
+      "get_service_info",
+      "search_code",
+      "search_code"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "find webhook handling code",
+    "response": "Found more specific webhook handling implementations:\n\n\u2022 *cast-core-service* - Main webhook endpoints:\n  - `webhooks.controller.js` - Routes for `/api/v1/webhooks/` endpoints\n  - `paymentsWebhookHandler.js` - Payment webhook processing  \n  - `connectionWebhookHandler.js` - Connection status webhooks\n  - `emailEventWebhookHandler.js` - Email event webhooks\n\n\u2022 *emvio-webhook-service* - Core webhook processing:\n  - `handleWebhookFromSns.js` - SNS-triggered webhook handling\n  - `brokerWebhookLogCreate.js` - Webhook logging and broker integration\n\nKey webhook handling patterns:\n1. *Route registration* - Express routes in controllers\n2. *Handler functions* - Specific logic for each webhook type\n3. *Signature verification* - Security validation\n4. *Event processing* - Transform and forward webhook data\n5. *Logging* - Track webhook delivery and processing\n\nWould you like me to dive deeper into any specific webhook type or service?",
+    "tools_used": [
+      "search_code",
+      "search_code"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "how does cast-core connect to quickbooks?",
+    "response": "Based on the code search results, here's how *cast-core* connects to QuickBooks:\n\n*Architecture Overview:*\n\u2022 *cast-core-service* handles OAuth authentication & token management\n\u2022 *cast-quickbooks-service* handles actual data integration & API calls  \n\u2022 Uses Intuit's official `intuit-oauth` client library\n\n*OAuth Flow (cast-core):*\n\u2022 `/api/v1/oauth/quickbooks/redirect` - generates QuickBooks auth URL\n\u2022 `/api/v1/oauth/quickbooks/callback` - handles callback & saves tokens\n\u2022 Uses Intuit Client ID/Secret from AWS Secrets Manager\n\u2022 Environment-aware: `prod` vs `sandbox` mode\n\n*Key Components:*\n```javascript\n// cast-core OAuth setup\nconst params = {\n    clientId: secrets.intuitClientId,\n    clientSecret: secrets.intuitClientSecret,\n    environment: process.env.environment === 'prod' ? 'production' : 'sandbox'\n}\n```\n\n*Integration Service:*\n\u2022 *cast-quickbooks-service* uses same OAuth client for API calls\n\u2022 Supports data collection: customers, invoices, accounts, payment methods\n\u2022 Has legacy Puppeteer scraping (being deprecated)\n\n*Frontend Connection:*\n\u2022 *cast-app* shows QuickBooks in connections page\n\u2022 Initiates OAuth flow via `getQBOAuthUri` API call\n\nThe connection uses standard QuickBooks Online OAuth 2.0 with Intuit's SDK, storing encrypted tokens for ongoing API access.",
+    "tools_used": [
+      "search_code",
+      "search_code"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "Running into an issue with trying to run cast-core-service locally",
+    "response": "Found the issue! The error shows *\"env was not a recognized value: devopslocal\"* - this is happening because the `@mrrobot/emvio-config` module doesn't recognize `devopslocal` as a valid environment.\n\nLooking at the code, cast-core expects specific environment values. Here's what I found:\n\n*Root Cause:*\n\u2022 The `@mrrobot/emvio-config` package is rejecting `devopslocal` as an environment\n\u2022 Cast-core config expects standard envs like `dev`, `staging`, `prod`\n\u2022 The `devopslocal` value isn't configured in the environment mappings\n\n*Quick Fix:*\nTry setting your environment variable to `dev` instead:\n```\nexport environment=dev\n# or \nNODE_ENV=dev npm start\n```\n\n*Alternative:*\nIf you need to keep `devopslocal`, you might need to:\n\u2022 Check if there's a local config override in cast-core-service\n\u2022 Look at the `@mrrobot/emvio-config` package to see valid environment values\n\u2022 Use `dev` or `local` as the environment value\n\nWhat's your current setup? Are you running this via Docker, npm scripts, or directly with Node? This will help me give you the exact command to use.",
+    "tools_used": [
+      "get_recent_errors",
+      "search_devops_history",
+      "search_code"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "We are seeing 504 errors on Cast staging for syncAll endpoint",
+    "response": "*Here's what I found:*\n\n\u2022 *Same exact issue* happened on Oct 7th - 504 errors on Cast staging for syncAll endpoint\n\u2022 Errors only showing up in *devopslocal environment*, not staging proper\n\u2022 No current 504 errors found in staging CloudWatch logs\n\u2022 Previous case showed sync was still successful despite 504s\n\n*From the Oct 7th incident:*\n\u2022 The sync appeared successful for QBO despite 504s\n\u2022 DevOps team had to check CloudWatch specifically for the orgId\n\u2022 Issue was specific to one account: `c89580ba-8244-4f09-92ee-c0a9878741b2`\n\n*What I'm seeing now:*\n\u2022 Cast-core devopslocal having config issues (`env was not a recognized value: devopslocal`)\n\u2022 No 504 errors in actual staging environment logs\n\n*Quick questions:*\n\u2022 What's the specific orgId experiencing 504s?\n\u2022 Is the sync actually completing successfully despite the 504?\n\u2022 Are you seeing this in the browser dev tools or server logs?\n\nThe pattern matches the previous incident - likely a gateway timeout issue rather than a functional problem.",
+    "tools_used": [
+      "investigate_issue",
+      "search_logs",
+      "search_logs",
+      "get_recent_errors",
+      "search_cloudwatch_logs",
+      "get_pipeline_status",
+      "search_devops_history"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "I'm getting an error when deploying emvio-underwriting-service",
+    "response": "Here's what I found investigating the deployment issue:\n\n\u2022 *Pipeline status*: I hit an API error checking recent builds\n\u2022 *Service logs*: No recent error logs in the past 4 hours \n\u2022 *DevOps history*: Found recent activity - there was a failed pipeline on Dec 18th and recent PRs needing approval\n\n*What I need to help you further:*\n\u2022 What specific error are you seeing during deployment?\n\u2022 Which environment (prod/staging/dev/sandbox)?\n\u2022 Is this from a pipeline build or manual deployment?\n\nThe history shows there was recent work on WAF changes and PR #817 was just approved. Can you share the exact error message or pipeline link?",
+    "tools_used": [
+      "get_pipeline_status",
+      "get_recent_errors",
+      "search_devops_history",
+      "search_logs"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "what's the latest pipeline status for cast-core?",
+    "response": "I hit an error checking the pipeline status - looks like there's an authentication issue with the Bitbucket API. \n\nA DevOps engineer will need to check the pipeline status directly in Bitbucket or fix the API token. You can check the latest builds at: https://bitbucket.org/mrrobot-labs/cast-core/pipelines/",
+    "tools_used": [
+      "get_pipeline_status"
+    ],
+    "status": "success"
+  },
+  {
+    "query": "check recent deploys for mrrobot-connector-hub",
+    "response": "I hit an error checking the deployment pipeline for mrrobot-connector-hub. The Bitbucket API token needs to be refreshed.\n\nA DevOps engineer will need to check the recent deployments manually. In the meantime, you could:\n\n\u2022 Check the #deployments channel for recent activity\n\u2022 Look at the Bitbucket pipeline history directly\n\u2022 Check if there are any related errors in the logs if you're troubleshooting an issue\n\nIs there a specific issue you're investigating that I could help check logs or metrics for?",
+    "tools_used": [
+      "get_pipeline_status"
+    ],
+    "status": "success"
+  }
+]

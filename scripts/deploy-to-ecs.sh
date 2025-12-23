@@ -106,6 +106,63 @@ echo "✓ ECS services updated"
 echo ""
 
 # =========================================================================
+# Step 6: Verify deployment
+# =========================================================================
+echo "[6/6] Verifying deployment..."
+
+# Get the digest we just pushed
+PUSHED_DIGEST=$(aws ecr describe-images \
+  --repository-name mrrobot-mcp-server \
+  --image-ids imageTag=latest \
+  --region "$AWS_REGION" \
+  --profile "$AWS_PROFILE" \
+  --query 'imageDetails[0].imageDigest' \
+  --output text)
+echo "  → Pushed image digest: ${PUSHED_DIGEST:0:20}..."
+
+# Wait for ECS to start new tasks with the new image
+echo "  → Waiting for ECS to deploy new tasks (up to 120s)..."
+MAX_WAIT=120
+WAITED=0
+while [ $WAITED -lt $MAX_WAIT ]; do
+  # Get running task's image digest
+  TASK_ARN=$(aws ecs list-tasks \
+    --cluster "$CLUSTER_NAME" \
+    --service-name "$MCP_SERVICE" \
+    --region "$AWS_REGION" \
+    --profile "$AWS_PROFILE" \
+    --query 'taskArns[0]' \
+    --output text 2>/dev/null)
+
+  if [ -n "$TASK_ARN" ] && [ "$TASK_ARN" != "None" ]; then
+    RUNNING_DIGEST=$(aws ecs describe-tasks \
+      --cluster "$CLUSTER_NAME" \
+      --tasks "$TASK_ARN" \
+      --region "$AWS_REGION" \
+      --profile "$AWS_PROFILE" \
+      --query 'tasks[0].containers[0].imageDigest' \
+      --output text 2>/dev/null)
+
+    if [ "$RUNNING_DIGEST" == "$PUSHED_DIGEST" ]; then
+      echo "  ✓ New image is running!"
+      break
+    fi
+  fi
+
+  sleep 10
+  WAITED=$((WAITED + 10))
+  echo "    ... still waiting (${WAITED}s)"
+done
+
+if [ $WAITED -ge $MAX_WAIT ]; then
+  echo "  ⚠ Timeout waiting for new tasks. Check ECS console."
+  echo "    Pushed:  $PUSHED_DIGEST"
+  echo "    Running: $RUNNING_DIGEST"
+fi
+
+echo ""
+
+# =========================================================================
 # Summary
 # =========================================================================
 echo "=========================================================================="
@@ -115,12 +172,8 @@ echo ""
 echo "Streamlit URL: http://ai-agent.mrrobot.dev:8501"
 echo "MCP Server URL: https://mcp.mrrobot.dev/sse"
 echo ""
-echo "To check deployment status:"
-echo "  aws ecs describe-services \\
-    --cluster $CLUSTER_NAME \\
-    --services $STREAMLIT_SERVICE $MCP_SERVICE \\
-    --region $AWS_REGION \\
-    --profile $AWS_PROFILE"
+echo "Pushed image:  ${PUSHED_DIGEST:0:30}..."
+echo "Running image: ${RUNNING_DIGEST:0:30}..."
 echo ""
 echo "To view logs:"
 echo "  Streamlit: aws logs tail /ecs/mrrobot-streamlit --follow --region $AWS_REGION --profile $AWS_PROFILE"

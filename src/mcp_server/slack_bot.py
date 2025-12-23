@@ -25,7 +25,48 @@ import boto3
 # Add project root to path (go up from src/mcp_server to project root)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from src.lib.config_loader import get_env_mappings, get_service_registry, get_system_prompt
 from src.lib.utils.secrets import get_secret
+from src.mcp_server.clippy_tools import CLIPPY_TOOLS
+
+# ============================================================================
+# ERROR ALERTING
+# ============================================================================
+
+# Channel for Clippy error alerts
+CLIPPY_DEV_CHANNEL = "C0A3RJA9LSJ"  # #clippy-ai-dev
+
+_slack_client = None  # Will be set when SlackBot initializes
+
+
+def alert_error(error_type: str, message: str, details: dict = None):
+    """Post an error alert to #clippy-ai-dev channel.
+
+    Args:
+        error_type: Short error type (e.g., "Tool Failure", "API Error")
+        message: Human-readable error message
+        details: Optional dict with additional context
+    """
+    global _slack_client
+    if not _slack_client:
+        print(f"[Clippy Alert] {error_type}: {message} (no Slack client)")
+        return
+
+    try:
+        blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"⚠️ *Clippy Error: {error_type}*\n{message}"}}]
+
+        if details:
+            detail_text = "\n".join([f"• *{k}*: `{v}`" for k, v in details.items()])
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": detail_text}})
+
+        _slack_client.chat_postMessage(
+            channel=CLIPPY_DEV_CHANNEL,
+            text=f"⚠️ Clippy Error: {error_type} - {message}",
+            blocks=blocks,
+        )
+    except Exception as e:
+        print(f"[Clippy Alert] Failed to send alert: {e}")
+
 
 # ============================================================================
 # METRICS & LOGGING
@@ -110,358 +151,252 @@ def get_bedrock_client():
     return _bedrock_client
 
 
-# Tool definitions for Claude Tool Use
-# Claude will decide which tool(s) to call based on user message
-CLIPPY_TOOLS = [
-    {
-        "name": "search_logs",
-        "description": "Search application logs in Coralogix. Use for troubleshooting errors, investigating issues, or finding specific log patterns. Accepts natural language queries.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Natural language search query (e.g., 'errors in cast-core prod', 'timeout issues in staging')",
-                },
-                "hours_back": {
-                    "type": "integer",
-                    "description": "How many hours back to search (default: 4)",
-                    "default": 4,
-                },
-                "limit": {"type": "integer", "description": "Max number of results (default: 50)", "default": 50},
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "get_recent_errors",
-        "description": "Get a summary of recent errors across services. Use for alert triage, health checks, or when user asks 'what's broken' or 'any issues'.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "service": {
-                    "type": "string",
-                    "description": "Service name to filter (e.g., 'cast-core', 'emvio-dashboard-app') or 'all' for all services",
-                },
-                "hours_back": {
-                    "type": "integer",
-                    "description": "How many hours back to check (default: 4)",
-                    "default": 4,
-                },
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "search_code",
-        "description": "Search the codebase using semantic search. Use for finding implementations, configurations, or understanding how things work.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "What to search for (e.g., 'CSP configuration', 'authentication middleware', 'S3 upload')",
-                },
-                "num_results": {"type": "integer", "description": "Number of results (default: 5)", "default": 5},
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "get_pipeline_status",
-        "description": "Check recent deployments/pipelines for a service. Use when user asks about deploys, builds, or what changed.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository/service name (e.g., 'emvio-dashboard-app', 'cast-core')",
-                },
-                "limit": {"type": "integer", "description": "Number of recent pipelines (default: 5)", "default": 5},
-            },
-            "required": ["repo"],
-        },
-    },
-    {
-        "name": "get_pipeline_details",
-        "description": "Get detailed info about a specific pipeline/build including failure reason and logs. Use when user shares a pipeline URL or asks why a specific build failed.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository/service name (e.g., 'emvio-underwriting-service')",
-                },
-                "pipeline_id": {"type": "integer", "description": "Pipeline/build number (e.g., 2346)"},
-            },
-            "required": ["repo", "pipeline_id"],
-        },
-    },
-    {
-        "name": "list_open_prs",
-        "description": "List open pull requests for a repository. Use when user mentions a PR but doesn't provide a PR number or URL. Shows title, author, and PR ID for each open PR.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {"type": "string", "description": "Repository name (e.g., 'mrrobot-auth-rest', 'cast-core')"},
-                "limit": {"type": "integer", "description": "Max PRs to return (default: 5)", "default": 5},
-            },
-            "required": ["repo"],
-        },
-    },
-    {
-        "name": "get_pr_details",
-        "description": "Get full details about a pull request. ALWAYS use this when given a Bitbucket PR URL. Extract repo and pr_id from URL like: bitbucket.org/mrrobot-labs/REPO_NAME/pull-requests/PR_ID",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository name extracted from URL (e.g., 'cforce-service' from .../cforce-service/pull-requests/...)",
-                },
-                "pr_id": {"type": "integer", "description": "Pull request ID number from the URL"},
-            },
-            "required": ["repo", "pr_id"],
-        },
-    },
-    {
-        "name": "list_alarms",
-        "description": "List CloudWatch alarms and their current state. Use for monitoring/alerting questions.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "description": "Filter by state: 'ALARM', 'OK', 'INSUFFICIENT_DATA', or omit for all",
-                    "enum": ["ALARM", "OK", "INSUFFICIENT_DATA"],
+# CLIPPY_TOOLS is now imported from clippy_tools.py
+# System prompt, service registry, and env mappings are loaded from S3 via config_loader
+
+# ============================================================================
+# PROMPT ENHANCEMENT
+# ============================================================================
+
+
+def _detect_suspicious_request(message: str) -> dict | None:
+    """Detect potentially suspicious requests that need security escalation.
+
+    Returns dict with warning info if suspicious, None otherwise.
+    """
+    import re
+
+    message_lower = message.lower()
+
+    # Suspicious keywords and patterns
+    suspicious_patterns = [
+        # Legal/subpoena related
+        (r"\b(subpoena|court\s*order|legal\s*request|warrant|discovery)\b", "legal_request"),
+        # Data export/extraction
+        (r"\b(export|dump|extract|download)\b.*(customer|user|merchant|pii|data|records)", "data_export"),
+        (r"\b(customer|user|merchant)\b.*(export|dump|extract|download|list|all)", "data_export"),
+        # Bulk access
+        (r"\b(all|bulk|mass|every)\b.*(customer|user|merchant|transaction|payment)", "bulk_access"),
+        # Credentials/access bypass
+        (r"\b(bypass|circumvent|override|skip)\b.*(auth|security|access|permission)", "security_bypass"),
+        # Social engineering red flags
+        (r"(urgent|immediately|right\s*now|asap).*(access|data|export|credentials)", "urgency_pressure"),
+        (r"(ceo|cfo|executive|boss)\s*(asked|wants|needs|said)", "authority_pressure"),
+        # Database access
+        (r"\b(database|db)\b.*(dump|export|backup|access|query)", "database_access"),
+        # PII/sensitive data
+        (r"\b(ssn|social\s*security|credit\s*card|bank\s*account|password)", "pii_access"),
+    ]
+
+    for pattern, category in suspicious_patterns:
+        if re.search(pattern, message_lower):
+            return {
+                "category": category,
+                "warning": f"⚠️ SECURITY: This request appears to involve {category.replace('_', ' ')}. "
+                "Clippy should escalate to proper channels rather than assist directly.",
+            }
+
+    return None
+
+
+def enhance_prompt_with_ai(message: str) -> str:
+    """Use Claude Haiku to extract structured context from user message.
+
+    Extracts:
+    - Intent (what the user wants to do)
+    - Services mentioned (with full names)
+    - Environment (prod/staging/dev)
+    - Time range (if any)
+    - Urgency level
+    - Key entities (ticket IDs, PR numbers, incident IDs, etc.)
+    - Security concerns (suspicious requests)
+
+    Returns the original message with AI-extracted context appended.
+    """
+    from datetime import datetime
+
+    # Check for suspicious requests first
+    suspicious = _detect_suspicious_request(message)
+    if suspicious:
+        print(f"[Clippy] SECURITY: Suspicious request detected - {suspicious['category']}")
+        return f"{message}\n\n---\n{suspicious['warning']}"
+
+    # Get current date context for the AI
+    now = datetime.now()
+    date_context = f"Today is {now.strftime('%A, %B %d, %Y')}. Current time: {now.strftime('%H:%M')}."
+
+    # Build the extraction prompt
+    extraction_prompt = f"""Extract structured information from this DevOps Slack message.
+
+{date_context}
+
+Known services and their aliases:
+- cast-core-service (aliases: cast, cast-core, castcore) - Lambda: mrrobot-cast-core-[env]
+- cast-app (aliases: cast-app, castapp)
+- emvio-dashboard-app (aliases: dashboard, emvio-dashboard)
+- emvio-gateway (aliases: gateway, emvio-gateway)
+- cforce-service (aliases: cforce, c-force)
+- mrrobot-auth-rest (aliases: auth, mrrobot-auth, auth-rest) - Lambda: mrrobot-auth-[env]
+- emvio-underwriting-service (aliases: underwriting)
+- emvio-retail-iframe-app (aliases: retail-iframe, retail iframe)
+
+Environments: prod/production, staging/stage, dev/development, sandbox, devopslocal
+
+USER MESSAGE:
+{message}
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{{
+  "intent": "brief description of what user wants",
+  "services": ["full-service-name-1"],
+  "environment": "production|staging|development|sandbox|null",
+  "time_range": {{
+    "description": "human readable (e.g., 'past 4 hours', 'this week')",
+    "hours_back": number or null
+  }},
+  "urgency": "high|medium|low",
+  "entities": {{
+    "ticket_ids": ["DEVOPS-123"],
+    "pr_ids": [123],
+    "incident_ids": ["P123ABC"],
+    "urls": ["any relevant URLs"]
+  }},
+  "clarifications_needed": ["any ambiguities that might need clarifying"]
+}}"""
+
+    try:
+        client = get_bedrock_client()
+
+        response = client.invoke_model(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 500,
+                    "messages": [{"role": "user", "content": extraction_prompt}],
                 }
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "search_cloudwatch_logs",
-        "description": "Search CloudWatch logs for a Lambda or service. Use when user asks to 'check CloudWatch' or for AWS-specific log searches. For Lambda: /aws/lambda/SERVICE-NAME",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "service": {
-                    "type": "string",
-                    "description": "Service name (e.g., 'mrrobot-cast-core-staging', 'emvio-dashboard-app-dev')",
-                },
-                "query": {"type": "string", "description": "What to search for (e.g., '504', 'error', 'syncAll')"},
-                "hours_back": {"type": "integer", "description": "Hours of logs to search (default: 4)", "default": 4},
-            },
-            "required": ["service"],
-        },
-    },
-    {
-        "name": "get_ecs_metrics",
-        "description": "Get ECS service metrics (CPU, memory). Use for performance/capacity questions.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "cluster": {
-                    "type": "string",
-                    "description": "ECS cluster name (default: 'mrrobot-ai-core')",
-                    "default": "mrrobot-ai-core",
-                },
-                "service": {
-                    "type": "string",
-                    "description": "ECS service name (default: 'mrrobot-mcp-server')",
-                    "default": "mrrobot-mcp-server",
-                },
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "get_service_info",
-        "description": "Look up information about a service from the codebase. Use this FIRST when you're unsure what type of service something is. Returns whether it's a frontend (React/Vue), backend (Node/Python/Lambda), the tech stack, and what other services it might depend on.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "service_name": {
-                    "type": "string",
-                    "description": "The service/repo name to look up (e.g., 'emvio-dashboard-app', 'cast-core')",
-                }
-            },
-            "required": ["service_name"],
-        },
-    },
-    {
-        "name": "investigate_issue",
-        "description": "Run a thorough, multi-step investigation on a service issue. Use this for complex problems like 'something is broken', 'help me debug', or 'why is X not working'. The agent will autonomously check logs, deploys, alarms, and provide a detailed report with root cause analysis and recommendations.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "service": {
-                    "type": "string",
-                    "description": "Service name to investigate (e.g., 'emvio-dashboard-app', 'cast-core')",
-                },
-                "environment": {
-                    "type": "string",
-                    "description": "Environment to focus on (prod, staging, dev, sandbox)",
-                    "enum": ["prod", "staging", "dev", "sandbox"],
-                },
-                "description": {
-                    "type": "string",
-                    "description": "User's description of the issue (what they're seeing, when it started)",
-                },
-            },
-            "required": ["service"],
-        },
-    },
-    {
-        "name": "search_devops_history",
-        "description": """Search past DevOps Slack conversations for precedent and context.
+            ),
+        )
 
-PROACTIVELY USE THIS when investigating any issue to find similar past problems and their resolutions. This helps both the developer AND the DevOps engineer who will follow up.
+        result = json.loads(response["body"].read())
+        ai_response = result.get("content", [{}])[0].get("text", "{}")
 
-USE FOR:
-- ANY troubleshooting - always check if we've seen this before
-- "504 errors on cast" → search "504 cast" or "504 timeout"
-- "deployment failed" → search "deployment failed [service]"
-- Finding previous solutions so we don't reinvent the wheel
+        # Parse the JSON response
+        try:
+            extracted = json.loads(ai_response)
+        except json.JSONDecodeError:
+            # Try to extract JSON from the response if it has extra text
+            import re
 
-Returns past conversation snippets with resolutions - include relevant findings in your response.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "What to search for - use key error types, service names, or issue descriptions (e.g., '504 cast', 'SFTP user setup', 'lambda timeout')",
-                }
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "aws_cli",
-        "description": """Run AWS CLI commands to query infrastructure. READ-ONLY operations only.
+            json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
+            if json_match:
+                extracted = json.loads(json_match.group())
+            else:
+                print(f"[Clippy] AI enhancement failed to parse: {ai_response[:200]}")
+                return message
 
-Use this to check AWS resources like:
-- Load balancers: "elbv2 describe-load-balancers"
-- WAF: "wafv2 list-web-acls --scope REGIONAL"
-- ECS services: "ecs describe-services --cluster mrrobot-ai-core --services my-service"
-- Security groups: "ec2 describe-security-groups --group-ids sg-xxx"
-- VPCs, subnets, NAT gateways, Lambda, RDS, etc.
+        # Build context string from extracted info
+        context_parts = []
 
-DO NOT include 'aws' prefix - just the service and command.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "description": "AWS CLI command without 'aws' prefix (e.g., 'elbv2 describe-load-balancers')",
-                },
-                "region": {"type": "string", "description": "AWS region (default: us-east-1)", "default": "us-east-1"},
-            },
-            "required": ["command"],
-        },
-    },
-    {
-        "name": "respond_directly",
-        "description": "ONLY use for simple greetings ('hi', 'hello', 'thanks') or when user asks 'what can you do'. For ANY issue, problem, error, or request - even vague ones - ALWAYS investigate first using tools, then ask clarifying questions WITH your findings.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "message": {"type": "string", "description": "Simple greeting or capability explanation only"}
-            },
-            "required": ["message"],
-        },
-    },
-]
+        if extracted.get("intent"):
+            context_parts.append(f"Intent: {extracted['intent']}")
 
-# System prompt for Clippy
-CLIPPY_SYSTEM_PROMPT = """You are Clippy, a friendly DevOps assistant in Slack.
+        if extracted.get("services"):
+            context_parts.append(f"Services: {', '.join(extracted['services'])}")
 
-COMMUNICATION STYLE:
-- DON'T start with filler words: "Sure!", "Of course!", "Absolutely!", "Great question!"
-- DON'T explain what you're going to do - just do it
-- Be direct and helpful, not preachy
-- BE CONCISE - aim for 3-5 short bullet points, not paragraphs
-- Skip obvious context the user already knows
-- Don't repeat what the user just told you
-- One clear recommendation, not a list of possibilities
-- If you found something actionable, lead with that
+        if extracted.get("environment"):
+            context_parts.append(f"Environment: {extracted['environment']}")
 
-SLACK FORMATTING (use these instead of markdown):
-- Bold: *text* (NOT **text**)
-- Italic: _text_ (NOT *text*)
-- Code: `text` (same as markdown)
-- Links: <url|text> (NOT [text](url))
-- Lists: Use bullet points with •
+        if extracted.get("time_range", {}).get("description"):
+            tr = extracted["time_range"]
+            time_str = tr["description"]
+            if tr.get("hours_back"):
+                time_str += f" (~{tr['hours_back']} hours)"
+            context_parts.append(f"Time range: {time_str}")
 
-ACTION FIRST, QUESTIONS SECOND:
-- When given a PR URL → ALWAYS call get_pr_details (extract repo and pr_id from URL)
-- When given a service name → check deploys AND logs, then ask clarifying questions WITH your findings
-- Don't say "logs won't help" - just check everything and report what you find
-- Lead with findings: "I checked the logs and deploys. Here's what I found... Also, what exactly are you seeing?"
+        if extracted.get("urgency") == "high":
+            context_parts.append("Urgency: HIGH - prioritize speed")
 
-FOR VAGUE ISSUES ("having an issue", "not working", "something's broken"):
-- ALWAYS investigate first - check recent errors, deploys, and alarms
-- Lead with findings: "I checked logs and deploys for [service]. Here's what I found: [findings]. What specific behavior are you seeing?"
-- Never just ask questions without investigating - developers came to you for help, not to be questioned
-- If you can identify the service/environment from context, start there. If not, check recent errors across all services.
+        entities = extracted.get("entities", {})
+        if entities.get("ticket_ids"):
+            context_parts.append(f"Jira tickets: {', '.join(entities['ticket_ids'])}")
+        if entities.get("pr_ids"):
+            context_parts.append(f"PR IDs: {', '.join(map(str, entities['pr_ids']))}")
+        if entities.get("incident_ids"):
+            context_parts.append(f"PagerDuty incidents: {', '.join(entities['incident_ids'])}")
 
-ABOUT HUMAN HELP:
-- You assist, not replace humans
-- "Happy to dig in while you wait for someone!"
-- For access requests: gather details for the DevOps engineer who will do the work
+        if extracted.get("clarifications_needed"):
+            context_parts.append(f"May need clarification: {'; '.join(extracted['clarifications_needed'])}")
 
-SENSITIVE INFORMATION - NEVER SHARE OR ASK FOR:
-- SSH keys, API keys, passwords, tokens, or any credentials in Slack
-- If you find credentials in code/configs, DO NOT display them - just say "credentials found in [location]"
-- Instead say: "A DevOps engineer will reach out via DM or a secure channel for any credentials needed"
-- For SFTP/SSH setup: just ask for username and environment, NOT the public key
-- Guide users to share sensitive info through secure channels (1Password, DM, etc.)
-- If you see patterns like PASSWORD=, SECRET=, TOKEN=, KEY= in code, redact the values
+        if context_parts:
+            context = "\n".join(f"  - {p}" for p in context_parts)
+            enhanced = f"{message}\n\n---\nAI-extracted context:\n{context}"
+            print(f"[Clippy] AI enhancement added {len(context_parts)} context items")
+            return enhanced
 
-WHAT YOU CAN'T DO:
-- SSH into servers, create users, run commands
-- Approve/merge PRs, deploy code
-- Create tickets or assign work
-- Say: "A DevOps engineer will handle the actual setup"
+        return message
 
-CRITICAL - NEVER HALLUCINATE:
-- If a tool returns an error, say "I hit an error checking that" - STOP THERE
-- DO NOT invent fake data to fill in the gaps
-- DO NOT make up names (reviewers, authors, files, anything)
-- DO NOT pretend you saw data you didn't see
-- If you couldn't get the data, just say so and offer alternatives
-- Example of WRONG: "The PR was approved by John and Sarah" (when you don't know)
-- Example of RIGHT: "I couldn't fetch the PR details. Try the Bitbucket link directly."
+    except Exception as e:
+        print(f"[Clippy] AI enhancement error: {e}")
+        # Fall back to original message on any error
+        return message
 
-FRONTENDS VS BACKENDS:
-- Frontends: check deploys, ask about API errors, still check logs briefly
-- Backends: check logs AND deploys
-- Use get_service_info if unsure
 
-CLOUDWATCH:
-- When user says "check CloudWatch" → use search_cloudwatch_logs
-- For Lambda/service logs: use search_cloudwatch_logs with service name
-- For alarms/alerts: use list_alarms
-- Don't say "I don't have access" - just try the tools!
+def enhance_prompt(message: str) -> str:
+    """Enhance user message with additional context for better tool usage.
 
-ABOUT search_devops_history:
-- PROACTIVELY use this when investigating issues to find similar past problems
-- Don't wait for user to ask - include past context in your investigation
-- Example: User reports "504 errors on cast" → search history for "504 cast" to see how it was resolved before
-- Summarize: "I found a similar issue from [date]. The team resolved it by [solution]."
-- This helps the DevOps engineer who will follow up see relevant history
+    Uses AI (Claude Haiku) to extract structured information from the message.
+    Falls back to rule-based extraction if AI fails.
+    """
+    # Try AI-powered enhancement first
+    enhanced = enhance_prompt_with_ai(message)
+    if enhanced != message:
+        return enhanced
 
-WHEN SEARCHES RETURN NOTHING:
-- Don't be overconfident: "I'm not seeing errors, but could you tell me more?"
-- Suggest alternatives
+    # Fallback: Simple rule-based enhancement
+    from datetime import datetime, timedelta
 
-THREAD CONTEXT & FOLLOW-UPS:
-- Previous messages in the thread are provided as conversation history
-- Use this context to understand what was already discussed or found
-- If user asks a follow-up like "when did this start?" or "which ones?" - refer to your previous findings
-- Don't ask the user to repeat information you already have from the thread
-- Build on previous tool results rather than starting fresh each time
-"""
+    enhancements = []
+    message_lower = message.lower()
+
+    # Time parsing
+    now = datetime.now()
+    time_context = None
+
+    if "this week" in message_lower:
+        monday = now - timedelta(days=now.weekday())
+        time_context = f"Time: 'this week' = since {monday.strftime('%Y-%m-%d')}"
+    elif "today" in message_lower:
+        time_context = f"Time: 'today' = {now.strftime('%Y-%m-%d')}"
+    elif "yesterday" in message_lower:
+        yesterday = now - timedelta(days=1)
+        time_context = f"Time: 'yesterday' = {yesterday.strftime('%Y-%m-%d')}"
+
+    if time_context:
+        enhancements.append(time_context)
+
+    # Service mapping (loaded from S3)
+    service_registry = get_service_registry()
+    for service_key, info in service_registry.items():
+        for alias in info.get("aliases", []):
+            pattern = r"\b" + re.escape(alias) + r"\b"
+            if re.search(pattern, message_lower):
+                enhancements.append(f"Service: {alias} = {info['full_name']}")
+                break
+
+    # Environment (loaded from S3)
+    env_mappings = get_env_mappings()
+    for env_short, env_full in env_mappings.items():
+        pattern = r"\b" + re.escape(env_short) + r"\b"
+        if re.search(pattern, message_lower):
+            enhancements.append(f"Environment: {env_full}")
+            break
+
+    if enhancements:
+        context = "\n".join(f"  - {e}" for e in enhancements)
+        return f"{message}\n\n---\nContext:\n{context}"
+
+    return message
 
 
 def invoke_claude_with_tools(
@@ -470,10 +405,11 @@ def invoke_claude_with_tools(
     """Invoke Claude with tool definitions and handle tool calls.
 
     This is the core of the new architecture:
-    1. Send message to Claude with tool definitions
-    2. If Claude wants to use a tool, execute it
-    3. Send tool result back to Claude
-    4. Repeat until Claude gives final response (up to max_tool_calls)
+    1. Enhance the message with context (time, service info, env)
+    2. Send message to Claude with tool definitions
+    3. If Claude wants to use a tool, execute it
+    4. Send tool result back to Claude
+    5. Repeat until Claude gives final response (up to max_tool_calls)
 
     Returns:
         dict with 'response' (text) and optionally 'tool_used', 'tool_result'
@@ -481,6 +417,11 @@ def invoke_claude_with_tools(
     start_time = time.time()
     client = get_bedrock_client()
     any_truncated = False
+
+    # Enhance the message with additional context
+    enhanced_message = enhance_prompt(message)
+    if enhanced_message != message:
+        print(f"[Clippy] Prompt enhanced with context")
 
     # Build messages with optional thread context
     messages = []
@@ -498,8 +439,8 @@ def invoke_claude_with_tools(
             if content.strip():
                 messages.append({"role": role, "content": content})
 
-    # Add current message
-    messages.append({"role": "user", "content": message})
+    # Add current message (with enhancements)
+    messages.append({"role": "user", "content": enhanced_message})
 
     tools_used = []
     tool_results = []
@@ -508,7 +449,7 @@ def invoke_claude_with_tools(
         body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
-            "system": CLIPPY_SYSTEM_PROMPT,
+            "system": get_system_prompt(),  # Loaded from S3
             "messages": messages,
             "tools": CLIPPY_TOOLS,
         }
@@ -633,6 +574,13 @@ def invoke_claude_with_tools(
         # Record error metrics
         duration_ms = (time.time() - start_time) * 1000
         _metrics.record_request(duration_ms, [], was_truncated=False, hit_limit=False, error=True)
+
+        # Alert to dev channel
+        alert_error(
+            "Claude API Error",
+            f"Error processing request: {str(e)[:200]}",
+            {"message_preview": message[:100], "duration_ms": f"{duration_ms:.0f}"},
+        )
 
         return {
             "response": f"I encountered an error: {str(e)[:100]}. Please try again.",
@@ -861,54 +809,53 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
             )
 
         elif tool_name == "get_service_info":
-            # Use KB to understand what type of service this is
-            from src.lib.code_search import search_knowledge_base
+            # Use service registry (fast lookup from S3-cached data)
+            from src.lib.config_loader import lookup_service
 
             service_name = tool_input.get("service_name", "")
+            service_info = lookup_service(service_name)
 
-            # Search for package.json, README, or main files to understand the service
-            results = search_knowledge_base(
-                query=f"{service_name} package.json or README or main technology stack", num_results=5
-            )
+            if service_info:
+                # Found in registry - return rich info
+                service_type = service_info.get("type", "unknown")
+                return {
+                    "service_name": service_name,
+                    "found": True,
+                    "key": service_info.get("key"),
+                    "full_name": service_info.get("full_name"),
+                    "type": service_type,
+                    "tech_stack": service_info.get("tech_stack", []),
+                    "description": service_info.get("description", ""),
+                    "aliases": service_info.get("aliases", []),
+                    "repo": service_info.get("repo", service_info.get("full_name")),
+                    "suggestion": (
+                        "Frontend app - check deploys and browser console for API errors."
+                        if service_type == "frontend"
+                        else (
+                            "Backend service - check logs first, then recent deploys."
+                            if service_type == "backend"
+                            else (
+                                "Library/tool - check if dependent services are affected."
+                                if service_type in ("library", "tool")
+                                else "Check both logs and deploys."
+                            )
+                        )
+                    ),
+                }
+            else:
+                # Not in registry - fall back to KB search
+                from src.lib.code_search import search_knowledge_base
 
-            # Also search for what it might depend on
-            deps_results = search_knowledge_base(
-                query=f"{service_name} API calls dependencies imports fetch axios", num_results=3
-            )
+                results = search_knowledge_base(query=f"{service_name} package.json README", num_results=3)
+                files_found = [r.get("file", "") for r in results.get("results", [])]
 
-            # Let Claude analyze the results
-            files_found = [r.get("file", "") for r in results.get("results", [])]
-
-            # Determine type based on file patterns
-            service_type = "unknown"
-            tech_hints = []
-
-            for f in files_found:
-                if "package.json" in f:
-                    if any(x in str(results) for x in ["react", "vue", "angular", "next"]):
-                        service_type = "frontend"
-                        tech_hints.append("React/Vue/Angular app")
-                    else:
-                        service_type = "backend"
-                        tech_hints.append("Node.js service")
-                elif "requirements.txt" in f or "serverless.yml" in f:
-                    service_type = "backend"
-                    tech_hints.append("Python/Lambda service")
-                elif "Dockerfile" in f:
-                    tech_hints.append("Containerized")
-
-            return {
-                "service_name": service_name,
-                "type": service_type,
-                "tech_hints": tech_hints,
-                "files_found": files_found[:5],
-                "suggestion": f"This appears to be a {service_type}. "
-                + (
-                    "For frontends, check deploys and API dependencies rather than logs."
-                    if service_type == "frontend"
-                    else "For backends, check both logs and recent deploys."
-                ),
-            }
+                return {
+                    "service_name": service_name,
+                    "found": False,
+                    "message": f"Service '{service_name}' not found in registry (129 known services).",
+                    "files_found": files_found[:3],
+                    "suggestion": "This may be a new service or misspelled. Check the files found or try a different name.",
+                }
 
         elif tool_name == "search_devops_history":
             # Search Slack history in the Knowledge Base
@@ -956,11 +903,75 @@ def _execute_tool_internal(tool_name: str, tool_input: dict) -> dict:
                 description=tool_input.get("description"),
             )
 
+        elif tool_name == "jira_search":
+            from src.lib.jira import handle_search_jira
+
+            return handle_search_jira(
+                query=tool_input.get("query", ""),
+                max_results=tool_input.get("max_results", 20),
+            )
+
+        elif tool_name == "jira_cve_tickets":
+            from src.lib.jira import get_open_cve_issues
+
+            return get_open_cve_issues(max_results=tool_input.get("max_results", 50))
+
+        elif tool_name == "jira_get_ticket":
+            from src.lib.jira import get_issue
+
+            return get_issue(issue_key=tool_input.get("issue_key", ""))
+
+        elif tool_name == "pagerduty_active_incidents":
+            from src.lib.pagerduty import handle_active_incidents
+
+            return handle_active_incidents()
+
+        elif tool_name == "pagerduty_recent_incidents":
+            from src.lib.pagerduty import handle_recent_incidents
+
+            days = tool_input.get("days", 7)
+            return handle_recent_incidents(days=days)
+
+        elif tool_name == "pagerduty_incident_details":
+            from src.lib.pagerduty import handle_incident_details
+
+            return handle_incident_details(incident_id=tool_input.get("incident_id", ""))
+
+        elif tool_name == "pagerduty_investigate":
+            from src.lib.coralogix import handle_get_recent_errors
+            from src.lib.pagerduty import extract_service_name_from_incident, handle_incident_details
+
+            # Get incident details first
+            incident = handle_incident_details(incident_id=tool_input.get("incident_id", ""))
+            if "error" in incident:
+                return incident
+
+            # Try to extract service name and check logs
+            service_name = extract_service_name_from_incident(incident)
+            logs_result = None
+            if service_name:
+                try:
+                    logs_result = handle_get_recent_errors(service=service_name, hours_back=4)
+                except Exception as e:
+                    logs_result = {"error": str(e)}
+
+            return {
+                "incident": incident,
+                "service_detected": service_name,
+                "related_logs": logs_result,
+            }
+
         else:
             return {"error": f"Unknown tool: {tool_name}"}
 
     except Exception as e:
         print(f"[Clippy] Tool execution error: {e}")
+        # Alert to dev channel for tool failures
+        alert_error(
+            "Tool Execution Error",
+            f"Tool '{tool_name}' failed: {str(e)[:200]}",
+            {"tool": tool_name, "input": str(tool_input)[:200]},
+        )
         return {"error": str(e)}
 
 
@@ -1197,6 +1208,40 @@ Assessment:"""
 # ============================================================================
 # CLIPPY PERSONALITY
 # ============================================================================
+
+
+def _convert_to_slack_markdown(text: str) -> str:
+    """Convert standard markdown to Slack mrkdwn format.
+
+    Slack uses different markdown:
+    - *bold* instead of **bold**
+    - _italic_ instead of *italic*
+    - ~strikethrough~ (same)
+    - `code` (same)
+    - ```code block``` (same)
+    """
+    import re
+
+    # Convert **bold** to *bold* (but not inside code blocks)
+    # First, protect code blocks
+    code_blocks = []
+
+    def save_code_block(match):
+        code_blocks.append(match.group(0))
+        return f"__CODE_BLOCK_{len(code_blocks) - 1}__"
+
+    # Save code blocks
+    result = re.sub(r"```[\s\S]*?```", save_code_block, text)
+    result = re.sub(r"`[^`]+`", save_code_block, result)
+
+    # Convert **bold** to *bold*
+    result = re.sub(r"\*\*([^*]+)\*\*", r"*\1*", result)
+
+    # Restore code blocks
+    for i, block in enumerate(code_blocks):
+        result = result.replace(f"__CODE_BLOCK_{i}__", block)
+
+    return result
 
 
 def _redact_secrets(text: str) -> str:
@@ -1983,10 +2028,14 @@ class SlackBot:
 
     def _setup_app(self):
         """Set up the Slack Bolt app with event handlers."""
+        global _slack_client
         from slack_bolt import App
         from slack_bolt.adapter.socket_mode import SocketModeHandler
 
         self.app = App(token=self.bot_token)
+
+        # Set global slack client for error alerting
+        _slack_client = self.app.client
 
         @self.app.event("app_mention")
         def handle_mention(event, say, client):
@@ -2027,10 +2076,13 @@ class SlackBot:
 
             print(f"[Clippy] Tool used: {result.get('tool_used')}")
 
-            # Format response with footer and redact any secrets
+            # Format response with footer, convert markdown, and redact any secrets
             response = result.get("response", "I'm not sure how to help with that.")
+            response = _convert_to_slack_markdown(response)  # Convert **bold** to *bold*
             response = _redact_secrets(response)
-            response += CLIPPY_FOOTER
+            # Only add footer if not already present (avoid duplicates)
+            if "Clippy is a work in progress" not in response:
+                response += CLIPPY_FOOTER
 
             # Reply in thread
             say(response, thread_ts=thread_ts)
@@ -2047,16 +2099,74 @@ class SlackBot:
             # Use Claude Tool Use
             result = invoke_claude_with_tools(text)
             response = result.get("response", "I'm not sure how to help with that.")
+            response = _convert_to_slack_markdown(response)  # Convert **bold** to *bold*
             response = _redact_secrets(response)
-            response += CLIPPY_FOOTER
+            # Only add footer if not already present (avoid duplicates)
+            if "Clippy is a work in progress" not in response:
+                response += CLIPPY_FOOTER
 
             respond(response)
+
+        @self.app.command("/clippy-help")
+        def handle_help_command(ack, respond, command):
+            """Handle /clippy-help slash command - shows Clippy's capabilities."""
+            ack()
+
+            help_text = """*:paperclip: Clippy Capabilities*
+
+*Logs & Troubleshooting*
+• `@Clippy check logs for errors in [service]` - Search Coralogix logs
+• `@Clippy what's broken?` - Get recent errors across services
+• `@Clippy investigate [service] in prod` - Full automated investigation
+
+*Code Search*
+• `@Clippy how does authentication work?` - Semantic code search across 254 repos
+• `@Clippy find CSP configuration` - Find specific implementations
+
+*Deployments & Pipelines*
+• `@Clippy pipeline status for [repo]` - Recent builds/deploys
+• `@Clippy why did build 123 fail in [repo]?` - Pipeline failure details
+
+*Pull Requests*
+• `@Clippy show open PRs in [repo]` - List open pull requests
+• `@Clippy [paste Bitbucket PR URL]` - Get PR details and diff summary
+
+*Jira Tickets*
+• `@Clippy show me open CVE tickets` - Security vulnerability tickets
+• `@Clippy tell me about DEVOPS-123` - Get ticket details
+• `@Clippy find tickets with PCI label` - Search by label
+
+*PagerDuty Incidents*
+• `@Clippy show me active incidents` - Currently triggered/acknowledged
+• `@Clippy incidents this week` - Recent incident history
+• `@Clippy investigate incident PXXXXXX` - Full details + related logs
+
+*AWS & CloudWatch*
+• `@Clippy list alarms in ALARM state` - Check CloudWatch alarms
+• `@Clippy search CloudWatch logs for [service]` - AWS log search
+• `@Clippy check ECS metrics` - CPU/memory usage
+
+*DevOps History*
+• `@Clippy have we seen 504 errors before?` - Search past Slack conversations
+
+*Example Queries:*
+```
+@Clippy cast-core is returning 504s in prod
+@Clippy why did the emvio-dashboard-app deploy fail?
+@Clippy show me CVE tickets assigned to me
+@Clippy what changed in cast-core recently?
+```
+
+_Tip: Be specific with service names and environments for best results!_"""
+
+            respond(help_text)
 
         @self.app.event("message")
         def handle_message(event, say, client):
             """Handle all messages - auto-reply once per thread in designated channels.
 
             Uses Claude Tool Use for AI-powered responses.
+            Only responds to new parent messages, not thread replies (use @mention for follow-ups).
             """
             channel = event.get("channel", "")
             text = event.get("text", "")[:200] if event.get("text") else ""
@@ -2066,7 +2176,8 @@ class SlackBot:
             if subtype in ["bot_message", "message_changed", "message_deleted"]:
                 return
 
-            # Skip if this is a thread reply (we only reply to parent messages)
+            # Skip thread replies - only auto-reply to parent messages
+            # (Use @mention for follow-up questions in threads - it has full context)
             if event.get("thread_ts") and event.get("thread_ts") != event.get("ts"):
                 return
 
@@ -2118,11 +2229,13 @@ class SlackBot:
             ack_msg = _get_acknowledgment(text)
             say(ack_msg, thread_ts=ts)
 
-            # Use Claude Tool Use
+            # Use Claude Tool Use (no thread context for initial auto-reply)
             result = invoke_claude_with_tools(text)
             response = result.get("response", "I'm not sure how to help with that.")
             response = _redact_secrets(response)
-            response += CLIPPY_FOOTER
+            # Only add footer if not already present (avoid duplicates)
+            if "Clippy is a work in progress" not in response:
+                response += CLIPPY_FOOTER
 
             say(response, thread_ts=ts)
 

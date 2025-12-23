@@ -28,15 +28,24 @@ ERROR_KEYWORDS = ["error", "exception", "fail", "crash", "fatal", "critical", "w
 METRIC_KEYWORDS = ["count", "sum", "avg", "average", "max", "min", "total"]
 TIME_KEYWORDS = {"hour": 1, "hours": 1, "day": 24, "days": 24, "week": 168, "minute": 0.017}
 
-# Environment patterns
+# Environment patterns - map user input to log group patterns
+# Note: Some services use -dev, others use -development, so we need to handle both
 ENV_PATTERNS = {
     "prod": "-prod",
     "production": "-prod",
     "sandbox": "-sandbox",
-    "dev": "-dev",
-    "development": "-dev",
+    "dev": "-dev",  # Will also check -development in query builder
+    "development": "-development",
     "staging": "-staging",
     "stage": "-staging",
+}
+
+# Alternative patterns for environments (some services use different naming)
+ENV_ALTERNATIVES = {
+    "-dev": "-development",
+    "-development": "-dev",
+    "-prod": "-production",
+    "-production": "-prod",
 }
 
 
@@ -115,6 +124,7 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
     filters = []
     explanation = []
     message_filters = []  # Separate list for message content filters
+    environment_detected = None  # Track if an environment was specified
 
     # 1. Detect error-related queries
     found_errors = [kw for kw in ERROR_KEYWORDS if kw in query_lower]
@@ -126,8 +136,15 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
     # 2. Detect environment
     for env_name, env_pattern in ENV_PATTERNS.items():
         if env_name in query_lower:
-            filters.append(f"logGroup ~ '{env_pattern}'")
+            # Check for alternative pattern (e.g., -dev vs -development)
+            alt_pattern = ENV_ALTERNATIVES.get(env_pattern)
+            if alt_pattern:
+                # Use OR to match either pattern
+                filters.append(f"(logGroup ~ '{env_pattern}' || logGroup ~ '{alt_pattern}')")
+            else:
+                filters.append(f"logGroup ~ '{env_pattern}'")
             explanation.append(f"Environment: {env_name}")
+            environment_detected = env_name
             break
 
     # 3. Detect service names - extract any hyphenated service name
@@ -268,6 +285,7 @@ def natural_language_to_dataprime(query: str, limit: int = 50) -> dict:
         "dataprime_query": dataprime,
         "original_query": query,
         "explanation": explanation,
+        "environment": environment_detected,  # None if no environment was specified
     }
 
 
@@ -289,8 +307,24 @@ def execute_natural_language_query(
     # Convert to DataPrime
     conversion = natural_language_to_dataprime(query, limit)
     dataprime_query = conversion["dataprime_query"]
+    env = conversion.get("environment")
 
-    # Execute
+    # IMPORTANT: If no environment specified, DO NOT execute the query.
+    # Return immediately asking user to specify environment.
+    if not env:
+        return {
+            "query": query,
+            "dataprime_query": dataprime_query,
+            "explanation": conversion["explanation"],
+            "environment_searched": None,
+            "missing_environment": True,
+            "total_results": 0,
+            "logs": [],
+            "error": "ENVIRONMENT_REQUIRED",
+            "message": "I need to know which environment to search. Please specify: prod, staging, dev, or sandbox.",
+        }
+
+    # Execute query (only if environment is specified)
     response = _make_request(dataprime_query, hours_back, limit)
     logs = _parse_response(response)
 
@@ -301,6 +335,7 @@ def execute_natural_language_query(
         "time_range": f"Last {hours_back} hour(s)",
         "total_results": len(logs),
         "logs": logs[:limit],
+        "environment_searched": env,
     }
 
 
@@ -436,7 +471,24 @@ def handle_get_recent_errors(
     limit: int = 100,
     environment: str = "all",
 ) -> dict:
-    """Get recent errors from logs."""
+    """Get recent errors from logs.
+
+    IMPORTANT: If environment is "all" and a specific service is requested,
+    we require the user to specify an environment to avoid misleading results.
+    """
+    # If searching for a specific service without environment, refuse to search
+    if service_name.lower() != "all" and environment.lower() == "all":
+        return {
+            "environment": None,
+            "filter": service_name,
+            "missing_environment": True,
+            "total_errors": 0,
+            "services_with_errors": 0,
+            "errors_by_service": {},
+            "error": "ENVIRONMENT_REQUIRED",
+            "message": f"I need to know which environment to check for {service_name} errors. Please specify: prod, staging, dev, or sandbox.",
+        }
+
     error_patterns = "message ~ 'ERROR' || message ~ 'Error' || message ~ 'Exception' || message ~ 'FATAL'"
 
     filters = [f"({error_patterns})"]
@@ -531,16 +583,41 @@ def handle_search_logs(query: str, hours_back: int = 4, limit: int = 100) -> dic
     # Check if it's already a DataPrime query (starts with 'source')
     if query.strip().lower().startswith("source"):
         print("[Coralogix] Detected raw DataPrime query")
-        # Execute raw DataPrime
+
+        # Try to detect environment from raw query
+        query_lower = query.lower()
+        env_searched = None
+        for env_name in ["prod", "production", "staging", "dev", "development", "sandbox"]:
+            if env_name in query_lower:
+                env_searched = env_name
+                break
+
+        # IMPORTANT: If no environment in raw query, refuse to execute
+        if not env_searched:
+            print("[Coralogix] No environment in raw query - refusing to execute")
+            return {
+                "query": query,
+                "dataprime_query": query,
+                "environment_searched": None,
+                "missing_environment": True,
+                "total_results": 0,
+                "logs": [],
+                "error": "ENVIRONMENT_REQUIRED",
+                "message": "I need to know which environment to search. Please specify: prod, staging, dev, or sandbox.",
+            }
+
+        # Execute raw DataPrime (only if environment detected)
         response = _make_request(query, hours_back, min(limit, 500))
         logs = _parse_response(response)
         print(f"[Coralogix] Raw query returned {len(logs)} logs")
+
         return {
             "query": query,
             "dataprime_query": query,
             "time_range": f"Last {hours_back} hour(s)",
             "total_results": len(logs),
             "logs": logs[:limit],
+            "environment_searched": env_searched,
         }
     else:
         # Convert natural language to DataPrime and execute

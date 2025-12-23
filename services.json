@@ -1,0 +1,2260 @@
+{
+  "aws-utility": {
+    "full_name": "AWS-utility",
+    "type": "backend",
+    "aliases": [
+      "AWS-utility",
+      "AWSutility"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "AWS Lambda utilities - creates shared lambdas per environment type (non-prod, prod, sandbox)",
+    "repo": "AWS-utility",
+    "package_location": "package.json"
+  },
+  "wonka": {
+    "full_name": "Wonka",
+    "type": "frontend",
+    "aliases": [
+      "Wonka"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "Internal tool at wonka.mrrobot.dev",
+    "repo": "Wonka",
+    "package_location": "package.json"
+  },
+  "checkout-provider": {
+    "full_name": "apm-checkout-provider",
+    "type": "backend",
+    "aliases": [
+      "apm-checkout-provider",
+      "checkout-provider",
+      "apm-checkout",
+      "apmcheckoutprovider"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "AWS SDK"
+    ],
+    "description": "APM provider for Checkout.com payment processing via emvio-apm-service",
+    "repo": "apm-checkout-provider",
+    "package_location": "package.json"
+  },
+  "citcon-provider": {
+    "full_name": "apm-citcon-provider",
+    "type": "backend",
+    "aliases": [
+      "apm-citcon-provider",
+      "citcon-provider",
+      "apm-citcon",
+      "apmcitconprovider"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "APM provider for Citcon (Chinese payment methods) via emvio-apm-service",
+    "repo": "apm-citcon-provider",
+    "package_location": "package.json"
+  },
+  "openpay-provider": {
+    "full_name": "apm-openpay-provider",
+    "type": "backend",
+    "aliases": [
+      "apm-openpay-provider",
+      "openpay-provider",
+      "apm-openpay",
+      "apmopenpayprovider"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "APM provider for OpenPay payment processing via emvio-apm-service",
+    "repo": "apm-openpay-provider",
+    "package_location": "package.json"
+  },
+  "speedpay-provider": {
+    "full_name": "apm-speedpay-provider",
+    "type": "backend",
+    "aliases": [
+      "apm-speedpay-provider",
+      "speedpay-provider",
+      "apm-speedpay",
+      "apmspeedpayprovider"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "APM provider for SpeedPay payment processing via emvio-apm-service",
+    "repo": "apm-speedpay-provider",
+    "package_location": "package.json"
+  },
+  "aws-textract": {
+    "full_name": "aws-textract",
+    "type": "backend",
+    "aliases": [
+      "aws-textract",
+      "awstextract"
+    ],
+    "tech_stack": [
+      "Python"
+    ],
+    "description": "AWS Textract document scanning - extracts text from PDFs (cost warning: table scans are expensive)",
+    "repo": "aws-textract",
+    "package_location": null
+  },
+  "app": {
+    "full_name": "cast-app",
+    "type": "frontend",
+    "aliases": [
+      "cast-app",
+      "app",
+      "cast",
+      "castapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "CAST React application - QuickBooks invoice management, payment processing, CRM",
+    "repo": "cast-app",
+    "package_location": "package.json"
+  },
+  "component-library": {
+    "full_name": "cast-component-library",
+    "type": "frontend",
+    "aliases": [
+      "cast-component-library",
+      "component-library",
+      "castcomponentlibrary"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "CAST shared React component library (@mrrobot/cast-component-library)",
+    "repo": "cast-component-library",
+    "package_location": "package.json"
+  },
+  "connections-util": {
+    "full_name": "cast-connections-util",
+    "type": "library",
+    "aliases": [
+      "cast-connections-util",
+      "connections-util",
+      "cast-connections",
+      "connections",
+      "castconnectionsutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Shared utilities for CAST connections and core services",
+    "repo": "cast-connections-util",
+    "package_location": "package.json"
+  },
+  "core": {
+    "full_name": "cast-core-service",
+    "type": "backend",
+    "aliases": [
+      "cast-core-service",
+      "core-service",
+      "cast-core",
+      "core",
+      "castcoreservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "cast-core",
+    "repo": "cast-core-service",
+    "package_location": "service/package.json"
+  },
+  "housecallpro": {
+    "full_name": "cast-housecallpro-service",
+    "type": "backend",
+    "aliases": [
+      "cast-housecallpro-service",
+      "housecallpro-service",
+      "cast-housecallpro",
+      "housecallpro",
+      "casthousecallproservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Housecall Pro Connection",
+    "repo": "cast-housecallpro-service",
+    "package_location": "service/package.json"
+  },
+  "jobber": {
+    "full_name": "cast-jobber-service",
+    "type": "backend",
+    "aliases": [
+      "cast-jobber-service",
+      "jobber-service",
+      "cast-jobber",
+      "jobber",
+      "castjobberservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Housecall Pro Connection",
+    "repo": "cast-jobber-service",
+    "package_location": "service/package.json"
+  },
+  "mhelpdesk": {
+    "full_name": "cast-mhelpdesk-service",
+    "type": "backend",
+    "aliases": [
+      "cast-mhelpdesk-service",
+      "mhelpdesk-service",
+      "cast-mhelpdesk",
+      "mhelpdesk",
+      "castmhelpdeskservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Housecall Pro Connection",
+    "repo": "cast-mhelpdesk-service",
+    "package_location": "service/package.json"
+  },
+  "quickbooks": {
+    "full_name": "cast-quickbooks-service",
+    "type": "backend",
+    "aliases": [
+      "cast-quickbooks-service",
+      "quickbooks-service",
+      "cast-quickbooks",
+      "quickbooks",
+      "castquickbooksservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Quickbooks Connection",
+    "repo": "cast-quickbooks-service",
+    "package_location": "service/package.json"
+  },
+  "service-titan": {
+    "full_name": "cast-service-titan-service",
+    "type": "backend",
+    "aliases": [
+      "cast-service-titan-service",
+      "service-titan-service",
+      "cast-service-titan",
+      "service-titan",
+      "castservicetitanservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Housecall Pro Connection",
+    "repo": "cast-service-titan-service",
+    "package_location": "service/package.json"
+  },
+  "support-portal": {
+    "full_name": "cast-support-portal-service",
+    "type": "backend",
+    "aliases": [
+      "cast-support-portal-service",
+      "support-portal-service",
+      "cast-support-portal",
+      "support-portal",
+      "castsupportportalservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Cast Support Portal Service for MrRobot",
+    "repo": "cast-support-portal-service",
+    "package_location": "service/package.json"
+  },
+  "xero-accounting": {
+    "full_name": "cast-xero-accounting-service",
+    "type": "backend",
+    "aliases": [
+      "cast-xero-accounting-service",
+      "xero-accounting-service",
+      "cast-xero-accounting",
+      "xero-accounting",
+      "castxeroaccountingservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Housecall Pro Connection",
+    "repo": "cast-xero-accounting-service",
+    "package_location": "service/package.json"
+  },
+  "cforce": {
+    "full_name": "cforce",
+    "type": "backend",
+    "aliases": [
+      "cforce",
+      "cforce-app",
+      "cforce-php"
+    ],
+    "tech_stack": [
+      "PHP",
+      "ECS"
+    ],
+    "description": "CForce main PHP application running on ECS",
+    "repo": "cforce",
+    "package_location": null
+  },
+  "auth": {
+    "full_name": "emvio-auth-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-auth-service",
+      "emvio-auth",
+      "legacy-auth",
+      "old-auth",
+      "emvioauthservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Legacy Serverless authentication service for Emvio (older)",
+    "repo": "emvio-auth-service",
+    "package_location": "package.json"
+  },
+  "dashboard": {
+    "full_name": "emvio-dashboard-app",
+    "type": "frontend",
+    "aliases": [
+      "emvio-dashboard-app",
+      "dashboard-app",
+      "emvio-dashboard",
+      "dashboard",
+      "emviodashboardapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Emvio merchant dashboard - main web UI for merchants (React/Redux)",
+    "repo": "emvio-dashboard-app",
+    "package_location": "package.json"
+  },
+  "email": {
+    "full_name": "emvio-email-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-email-service",
+      "email-service",
+      "emvio-email",
+      "email",
+      "emvioemailservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Email service - sends feedback emails, fraud request notifications",
+    "repo": "emvio-email-service",
+    "package_location": "package.json"
+  },
+  "ach": {
+    "full_name": "emvio-ach-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-ach-service",
+      "ach-service",
+      "emvio-ach",
+      "ach",
+      "emvioachservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ACH service - CRUD operations for ACH bank transfer information",
+    "repo": "emvio-ach-service",
+    "package_location": "package.json"
+  },
+  "apm": {
+    "full_name": "emvio-apm-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-apm-service",
+      "apm-service",
+      "emvio-apm",
+      "apm",
+      "emvioapmservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "TypeScript",
+      "AWS SDK"
+    ],
+    "description": "Alternative Payment Methods service - unified interface for PayPal, Apple Pay, Google Pay, etc.",
+    "repo": "emvio-apm-service",
+    "package_location": "package.json"
+  },
+  "batch": {
+    "full_name": "emvio-batch-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-batch-service",
+      "batch-service",
+      "emvio-batch",
+      "batch",
+      "emviobatchservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Batch data service - makes batch transaction data accessible to merchants",
+    "repo": "emvio-batch-service",
+    "package_location": "package.json"
+  },
+  "billing": {
+    "full_name": "emvio-billing-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-billing-service",
+      "billing-service",
+      "emvio-billing",
+      "billing",
+      "emviobillingservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Billing service - manages billing rates, combines with usage data to generate invoices",
+    "repo": "emvio-billing-service",
+    "package_location": "package.json"
+  },
+  "binary": {
+    "full_name": "emvio-binary-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-binary-service",
+      "binary-service",
+      "emvio-binary",
+      "binary",
+      "emviobinaryservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Binary/Statement service - retrieves merchant statements from S3 storage",
+    "repo": "emvio-binary-service",
+    "package_location": "package.json"
+  },
+  "broker-util": {
+    "full_name": "emvio-broker-util",
+    "type": "backend",
+    "aliases": [
+      "emvio-broker-util",
+      "broker-util",
+      "emvio-broker",
+      "broker",
+      "emviobrokerutil"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "broker util for etl processing",
+    "repo": "emvio-broker-util",
+    "package_location": "package.json"
+  },
+  "cache-util": {
+    "full_name": "emvio-cache-util",
+    "type": "backend",
+    "aliases": [
+      "emvio-cache-util",
+      "cache-util",
+      "emvio-cache",
+      "cache",
+      "emviocacheutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Util for setting/getting cached data",
+    "repo": "emvio-cache-util",
+    "package_location": "package.json"
+  },
+  "card": {
+    "full_name": "emvio-card-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-card-service",
+      "card-service",
+      "emvio-card",
+      "card",
+      "emviocardservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Card service - manages card data streaming to RDS via S3",
+    "repo": "emvio-card-service",
+    "package_location": "package.json"
+  },
+  "changelog": {
+    "full_name": "emvio-changelog-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-changelog-service",
+      "changelog-service",
+      "emvio-changelog",
+      "changelog",
+      "emviochangelogservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Changelog service - tracks and logs changes to accounts, merchants, and other entities",
+    "repo": "emvio-changelog-service",
+    "package_location": "package.json"
+  },
+  "chargeback": {
+    "full_name": "emvio-chargeback-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-chargeback-service",
+      "chargeback-service",
+      "emvio-chargeback",
+      "chargeback",
+      "emviochargebackservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Chargeback service - handles chargeback dispute processing and reporting",
+    "repo": "emvio-chargeback-service",
+    "package_location": "package.json"
+  },
+  "chart-util-ui": {
+    "full_name": "emvio-chart-util-ui",
+    "type": "frontend",
+    "aliases": [
+      "emvio-chart-util-ui",
+      "chart-util-ui",
+      "emviochartutilui"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "emvio util ui",
+    "repo": "emvio-chart-util-ui",
+    "package_location": "package.json"
+  },
+  "crypto-util": {
+    "full_name": "emvio-crypto-util",
+    "type": "library",
+    "aliases": [
+      "emvio-crypto-util",
+      "crypto-util",
+      "emvio-crypto",
+      "crypto",
+      "emviocryptoutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Cryptographic utilities for encryption/decryption operations",
+    "repo": "emvio-crypto-util",
+    "package_location": "package.json"
+  },
+  "css-base": {
+    "full_name": "emvio-css-base",
+    "type": "library",
+    "aliases": [
+      "emvio-css-base",
+      "css-base",
+      "emviocssbase"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Base CSS styles and themes shared across Emvio frontends",
+    "repo": "emvio-css-base",
+    "package_location": "package.json"
+  },
+  "db-util": {
+    "full_name": "emvio-db-util",
+    "type": "library",
+    "aliases": [
+      "emvio-db-util",
+      "db-util",
+      "emvio-db",
+      "db",
+      "emviodbutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Database utilities - Sequelize connections, migrations, query helpers",
+    "repo": "emvio-db-util",
+    "package_location": "package.json"
+  },
+  "demo": {
+    "full_name": "emvio-demo-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-demo-service",
+      "demo-service",
+      "emvio-demo",
+      "demo",
+      "emviodemoservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Demo transaction service - sandbox environment for testing transactions",
+    "repo": "emvio-demo-service",
+    "package_location": "package.json"
+  },
+  "dynamo-util": {
+    "full_name": "emvio-dynamo-util",
+    "type": "backend",
+    "aliases": [
+      "emvio-dynamo-util",
+      "dynamo-util",
+      "emvio-dynamo",
+      "dynamo",
+      "emviodynamoutil"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "dynamo util for query, search and batch write and batch delete using aws sdk v3",
+    "repo": "emvio-dynamo-util",
+    "package_location": "package.json"
+  },
+  "export": {
+    "full_name": "emvio-export-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-export-service",
+      "export-service",
+      "emvio-export",
+      "export",
+      "emvioexportservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Export service - handles data export operations",
+    "repo": "emvio-export-service",
+    "package_location": "package.json"
+  },
+  "form-components": {
+    "full_name": "emvio-form-components",
+    "type": "frontend",
+    "aliases": [
+      "emvio-form-components",
+      "form-components",
+      "emvioformcomponents"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "emvio form components",
+    "repo": "emvio-form-components",
+    "package_location": "package.json"
+  },
+  "fraud": {
+    "full_name": "emvio-fraud-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-fraud-service",
+      "fraud-service",
+      "emvio-fraud",
+      "fraud",
+      "emviofraudservice"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Service to communicate with fraud tool partners",
+    "repo": "emvio-fraud-service",
+    "package_location": "package.json"
+  },
+  "iframe-tester": {
+    "full_name": "emvio-iframe-tester",
+    "type": "frontend",
+    "aliases": [
+      "emvio-iframe-tester",
+      "iframe-tester",
+      "emvioiframetester"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Testing tool for all MrRobot payment iframes",
+    "repo": "emvio-iframe-tester",
+    "package_location": "package.json"
+  },
+  "jasmine-utils": {
+    "full_name": "emvio-jasmine-utils",
+    "type": "library",
+    "aliases": [
+      "emvio-jasmine-utils",
+      "jasmine-utils",
+      "emviojasmineutils"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Jasmine test utilities and helpers for unit testing",
+    "repo": "emvio-jasmine-utils",
+    "package_location": "package.json"
+  },
+  "log-util": {
+    "full_name": "emvio-log-util",
+    "type": "library",
+    "aliases": [
+      "emvio-log-util",
+      "log-util",
+      "emvio-log",
+      "log",
+      "emviologutil"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Logging utility - parses input and outputs in standard format",
+    "repo": "emvio-log-util",
+    "package_location": "package.json"
+  },
+  "mock-gateway": {
+    "full_name": "emvio-mock-gateway-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-mock-gateway-service",
+      "mock-gateway-service",
+      "emvio-mock-gateway",
+      "mock-gateway",
+      "emviomockgatewayservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Mock gateway to help partners integrate",
+    "repo": "emvio-mock-gateway-service",
+    "package_location": "package.json"
+  },
+  "mock-payout": {
+    "full_name": "emvio-mock-payout-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-mock-payout-service",
+      "mock-payout-service",
+      "emvio-mock-payout",
+      "mock-payout",
+      "emviomockpayoutservice"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Mock payout service for testing payout functionality",
+    "repo": "emvio-mock-payout-service",
+    "package_location": "package.json"
+  },
+  "mock-retail": {
+    "full_name": "emvio-mock-retail-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-mock-retail-service",
+      "mock-retail-service",
+      "emvio-mock-retail",
+      "mock-retail",
+      "emviomockretailservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Mock retail service",
+    "repo": "emvio-mock-retail-service",
+    "package_location": "package.json"
+  },
+  "monitoring": {
+    "full_name": "emvio-monitoring-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-monitoring-service",
+      "monitoring-service",
+      "emvio-monitoring",
+      "monitoring",
+      "emviomonitoringservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Monitoring service - system health and metrics monitoring",
+    "repo": "emvio-monitoring-service",
+    "package_location": "package.json"
+  },
+  "payment-recovery": {
+    "full_name": "emvio-payment-recovery-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-payment-recovery-service",
+      "payment-recovery-service",
+      "emvio-payment-recovery",
+      "payment-recovery",
+      "emviopaymentrecoveryservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Payment recovery service - retries failed card-not-present transactions",
+    "repo": "emvio-payment-recovery-service",
+    "package_location": "package.json"
+  },
+  "payment": {
+    "full_name": "mrrobot-payment-service",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-payment-service",
+      "payment-service",
+      "mrrobot-payment",
+      "payment",
+      "mrrobotpaymentservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "payment Service for MrRobot",
+    "repo": "mrrobot-payment-service",
+    "package_location": "service/package.json"
+  },
+  "payout": {
+    "full_name": "emvio-payout-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-payout-service",
+      "payout-service",
+      "emvio-payout",
+      "payout",
+      "emviopayoutservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Payout service - sends money to sales agents/partners",
+    "repo": "emvio-payout-service",
+    "package_location": "package.json"
+  },
+  "processor-onboarding": {
+    "full_name": "emvio-processor-onboarding-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-processor-onboarding-service",
+      "processor-onboarding-service",
+      "emvio-processor-onboarding",
+      "processor-onboarding",
+      "emvioprocessoronboardingservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Processor onboarding service - manages payment processor integrations",
+    "repo": "emvio-processor-onboarding-service",
+    "package_location": "package.json"
+  },
+  "proxy-tokenization": {
+    "full_name": "emvio-proxy-tokenization-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-proxy-tokenization-service",
+      "proxy-tokenization-service",
+      "emvio-proxy-tokenization",
+      "proxy-tokenization",
+      "emvioproxytokenizationservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "\"tokenization service\"",
+    "repo": "emvio-proxy-tokenization-service",
+    "package_location": "package.json"
+  },
+  "report": {
+    "full_name": "emvio-report-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-report-service",
+      "report-service",
+      "emvio-report",
+      "report",
+      "emvioreportservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL"
+    ],
+    "description": "Report service - generates merchant reports and analytics",
+    "repo": "emvio-report-service",
+    "package_location": "package.json"
+  },
+  "reserve": {
+    "full_name": "emvio-reserve-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-reserve-service",
+      "reserve-service",
+      "emvio-reserve",
+      "reserve",
+      "emvioreserveservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Service to handle reserve reports",
+    "repo": "emvio-reserve-service",
+    "package_location": "package.json"
+  },
+  "residuals": {
+    "full_name": "emvio-residuals-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-residuals-service",
+      "residuals-service",
+      "emvio-residuals",
+      "residuals",
+      "emvioresidualsservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL"
+    ],
+    "description": "Residuals service - queries CForce residual data for sales commissions",
+    "repo": "emvio-residuals-service",
+    "package_location": "package.json"
+  },
+  "retail-iframe": {
+    "full_name": "emvio-retail-iframe-app",
+    "type": "frontend",
+    "aliases": [
+      "emvio-retail-iframe-app",
+      "retail-iframe-app",
+      "emvio-retail-iframe",
+      "retail-iframe",
+      "emvioretailiframeapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Embeddable payment iframe for logged-in retail users",
+    "repo": "emvio-retail-iframe-app",
+    "package_location": "package.json"
+  },
+  "scripts": {
+    "full_name": "emvio-scripts",
+    "type": "backend",
+    "aliases": [
+      "emvio-scripts",
+      "scripts",
+      "emvioscripts"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "corebridge-migration",
+    "repo": "emvio-scripts",
+    "package_location": "package.json"
+  },
+  "search": {
+    "full_name": "emvio-search-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-search-service",
+      "search-service",
+      "emvio-search",
+      "search",
+      "emviosearchservice"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Search service - searches across all transaction data",
+    "repo": "emvio-search-service",
+    "package_location": "package.json"
+  },
+  "service-auth-util": {
+    "full_name": "emvio-service-auth-util",
+    "type": "library",
+    "aliases": [
+      "emvio-service-auth-util",
+      "service-auth-util",
+      "emvio-service-auth",
+      "service-auth",
+      "emvioserviceauthutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Service-to-service authentication utilities",
+    "repo": "emvio-service-auth-util",
+    "package_location": "package.json"
+  },
+  "subscription": {
+    "full_name": "emvio-subscription-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-subscription-service",
+      "subscription-service",
+      "emvio-subscription",
+      "subscription",
+      "emviosubscriptionservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Subscription service - manages payment plans and recurring billing",
+    "repo": "emvio-subscription-service",
+    "package_location": "package.json"
+  },
+  "super-admin": {
+    "full_name": "emvio-super-admin-app",
+    "type": "frontend",
+    "aliases": [
+      "emvio-super-admin-app",
+      "super-admin-app",
+      "emvio-super-admin",
+      "super-admin",
+      "emviosuperadminapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "MrRobot Backoffice (Super App) - internal tool for managing Super Users and accounts",
+    "repo": "emvio-super-admin-app",
+    "package_location": "package.json"
+  },
+  "transactions": {
+    "full_name": "emvio-transactions-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-transactions-service",
+      "transactions-service",
+      "emvio-transactions",
+      "transactions",
+      "emviotransactionsservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Transaction service - core transaction processing and history",
+    "repo": "emvio-transactions-service",
+    "package_location": "package.json"
+  },
+  "tsys-audit-log-util": {
+    "full_name": "emvio-tsys-audit-log-util",
+    "type": "backend",
+    "aliases": [
+      "emvio-tsys-audit-log-util",
+      "tsys-audit-log-util",
+      "emvio-tsys-audit-log",
+      "tsys-audit-log",
+      "emviotsysauditlogutil"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "TSYS audit log utilities - helpers for working with TSYS audit logs",
+    "repo": "emvio-tsys-audit-log-util",
+    "package_location": "package.json"
+  },
+  "tutorials": {
+    "full_name": "emvio-tutorials",
+    "type": "documentation",
+    "aliases": [
+      "emvio-tutorials",
+      "tutorials",
+      "emviotutorials"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Emvio developer tutorials and onboarding documentation",
+    "repo": "emvio-tutorials",
+    "package_location": "package.json"
+  },
+  "ui": {
+    "full_name": "emvio-ui",
+    "type": "frontend",
+    "aliases": [
+      "emvio-ui",
+      "ui",
+      "emvioui"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Emvio UI monorepo - contains all MrRobot frontend packages (Lerna)",
+    "repo": "emvio-ui",
+    "package_location": "package.json"
+  },
+  "underwriting": {
+    "full_name": "emvio-underwriting-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-underwriting-service",
+      "underwriting-service",
+      "emvio-underwriting",
+      "underwriting",
+      "emviounderwritingservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "underwriting-service",
+    "repo": "emvio-underwriting-service",
+    "package_location": "service/package.json"
+  },
+  "usage": {
+    "full_name": "emvio-usage-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-usage-service",
+      "usage-service",
+      "emvio-usage",
+      "usage",
+      "emviousageservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Usage service - tracks feature usage for billing (no HTTP endpoints, cron-based)",
+    "repo": "emvio-usage-service",
+    "package_location": "package.json"
+  },
+  "user-mgt": {
+    "full_name": "emvio-user-mgt-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-user-mgt-service",
+      "user-mgt-service",
+      "emvio-user-mgt",
+      "user-mgt",
+      "emviousermgtservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "User management service - manages user accounts and permissions",
+    "repo": "emvio-user-mgt-service",
+    "package_location": "package.json"
+  },
+  "user-settings": {
+    "full_name": "emvio-user-settings-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-user-settings-service",
+      "user-settings-service",
+      "emvio-user-settings",
+      "user-settings",
+      "emviousersettingsservice"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "User settings service - stores and retrieves user preferences",
+    "repo": "emvio-user-settings-service",
+    "package_location": "package.json"
+  },
+  "util": {
+    "full_name": "emvio-util-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-util-service",
+      "util-service",
+      "emvio-util",
+      "util",
+      "emvioutilservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Utils for handling lambda micro services",
+    "repo": "emvio-util-service",
+    "package_location": "package.json"
+  },
+  "util-responses": {
+    "full_name": "emvio-util-responses",
+    "type": "library",
+    "aliases": [
+      "emvio-util-responses",
+      "util-responses",
+      "emvioutilresponses"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Standard HTTP response utilities and formatters",
+    "repo": "emvio-util-responses",
+    "package_location": "package.json"
+  },
+  "util-ui": {
+    "full_name": "emvio-util-ui",
+    "type": "frontend",
+    "aliases": [
+      "emvio-util-ui",
+      "util-ui",
+      "emvioutilui"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "emvio util ui",
+    "repo": "emvio-util-ui",
+    "package_location": "package.json"
+  },
+  "webhook": {
+    "full_name": "emvio-webhook-service",
+    "type": "backend",
+    "aliases": [
+      "emvio-webhook-service",
+      "webhook-service",
+      "emvio-webhook",
+      "webhook",
+      "emviowebhookservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL"
+    ],
+    "description": "Service to handle webhook requests",
+    "repo": "emvio-webhook-service",
+    "package_location": "package.json"
+  },
+  "eni-usage-lambda": {
+    "full_name": "eni-usage-lambda",
+    "type": "backend",
+    "aliases": [
+      "eni-usage-lambda",
+      "eni-usage",
+      "eniusagelambda"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "A lambda function to publish a custom cloudwatch metric counting the number of elastic network interfaces",
+    "repo": "eni-usage-lambda",
+    "package_location": "package.json"
+  },
+  "account-updater": {
+    "full_name": "etl-account-updater-service",
+    "type": "backend",
+    "aliases": [
+      "etl-account-updater-service",
+      "account-updater-service",
+      "etl-account-updater",
+      "etlaccountupdaterservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "ETL account updater - syncs account data from card networks",
+    "repo": "etl-account-updater-service",
+    "package_location": "package.json"
+  },
+  "audit-script": {
+    "full_name": "etl-audit-script",
+    "type": "backend",
+    "aliases": [
+      "etl-audit-script",
+      "audit-script",
+      "etlauditscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "ETL audit script - processes audit data for compliance",
+    "repo": "etl-audit-script",
+    "package_location": "package.json"
+  },
+  "auto-parsing-script": {
+    "full_name": "etl-auto-parsing-script",
+    "type": "backend",
+    "aliases": [
+      "etl-auto-parsing-script",
+      "auto-parsing-script",
+      "etlautoparsingscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Serverless tsys auto-parsing scripts. Includes lambda functions triggered by new .TSYSO files being added to s3 bucket; these functions parse the data from the flat files, return a .sql DML file, and ",
+    "repo": "etl-auto-parsing-script",
+    "package_location": "package.json"
+  },
+  "batch-script": {
+    "full_name": "etl-batch-script",
+    "type": "backend",
+    "aliases": [
+      "etl-batch-script",
+      "batch-script",
+      "etlbatchscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL"
+    ],
+    "description": "ETL batch script - processes batch transaction files",
+    "repo": "etl-batch-script",
+    "package_location": "package.json"
+  },
+  "chargeback-script": {
+    "full_name": "etl-chargeback-script",
+    "type": "backend",
+    "aliases": [
+      "etl-chargeback-script",
+      "chargeback-script",
+      "etlchargebackscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL chargeback script - processes chargeback data for reporting",
+    "repo": "etl-chargeback-script",
+    "package_location": "package.json"
+  },
+  "fdr-ndf": {
+    "full_name": "etl-fdr-ndf-service",
+    "type": "backend",
+    "aliases": [
+      "etl-fdr-ndf-service",
+      "fdr-ndf-service",
+      "etl-fdr-ndf",
+      "etlfdrndfservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL FDR NDF service - SFTPs to First Data, parses CARD-1013CM files, sends to bank",
+    "repo": "etl-fdr-ndf-service",
+    "package_location": "package.json"
+  },
+  "fdr-north-parsing-script": {
+    "full_name": "etl-fdr-north-parsing-script",
+    "type": "backend",
+    "aliases": [
+      "etl-fdr-north-parsing-script",
+      "fdr-north-parsing-script",
+      "etlfdrnorthparsingscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL FDR North parsing - parses First Data North processor files",
+    "repo": "etl-fdr-north-parsing-script",
+    "package_location": "package.json"
+  },
+  "fdr-parse-script": {
+    "full_name": "etl-fdr-parse-script",
+    "type": "backend",
+    "aliases": [
+      "etl-fdr-parse-script",
+      "fdr-parse-script",
+      "etlfdrparsescript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL FDR parse - parses First Data reports from S3",
+    "repo": "etl-fdr-parse-script",
+    "package_location": "package.json"
+  },
+  "fdr-postparse-script": {
+    "full_name": "etl-fdr-postparse-script",
+    "type": "backend",
+    "aliases": [
+      "etl-fdr-postparse-script",
+      "fdr-postparse-script",
+      "etlfdrpostparsescript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL FDR post-parse - runs time-based reports after FDR parsing",
+    "repo": "etl-fdr-postparse-script",
+    "package_location": "package.json"
+  },
+  "gateway-script": {
+    "full_name": "etl-gateway-script",
+    "type": "backend",
+    "aliases": [
+      "etl-gateway-script",
+      "gateway-script",
+      "etlgatewayscript"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "ETL gateway script - API gateway for ETL operations",
+    "repo": "etl-gateway-script",
+    "package_location": "package.json"
+  },
+  "legacy-scripts": {
+    "full_name": "etl-legacy-scripts",
+    "type": "backend",
+    "aliases": [
+      "etl-legacy-scripts",
+      "legacy-scripts",
+      "etllegacyscripts"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL"
+    ],
+    "description": "ETL legacy scripts - old scripts from GINA, cForce Beta, deprecated servers",
+    "repo": "etl-legacy-scripts",
+    "package_location": "package.json"
+  },
+  "merchant-script": {
+    "full_name": "etl-merchant-script",
+    "type": "backend",
+    "aliases": [
+      "etl-merchant-script",
+      "merchant-script",
+      "etlmerchantscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL process for migrating merchant data from old DB tables to new merchant microservice",
+    "repo": "etl-merchant-script",
+    "package_location": "package.json"
+  },
+  "pci-compliance-script": {
+    "full_name": "etl-pci-compliance-script",
+    "type": "backend",
+    "aliases": [
+      "etl-pci-compliance-script",
+      "pci-compliance-script",
+      "etlpcicompliancescript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "ETL PCI compliance - generates PCI compliance statements",
+    "repo": "etl-pci-compliance-script",
+    "package_location": "package.json"
+  },
+  "pci-fdr-get-reports-script": {
+    "full_name": "etl-pci-fdr-get-reports-script",
+    "type": "backend",
+    "aliases": [
+      "etl-pci-fdr-get-reports-script",
+      "pci-fdr-get-reports-script",
+      "etlpcifdrgetreportsscript"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "ETL PCI FDR reports - SFTPs to First Data, pulls daily files to S3",
+    "repo": "etl-pci-fdr-get-reports-script",
+    "package_location": "package.json"
+  },
+  "insights-agent": {
+    "full_name": "insights-agent",
+    "type": "backend",
+    "aliases": [
+      "insights-agent",
+      "insightsagent"
+    ],
+    "tech_stack": [
+      "Python"
+    ],
+    "description": "Insights AI agent - multi-agent system powered by crewAI for analytics",
+    "repo": "insights-agent",
+    "package_location": null
+  },
+  "llm": {
+    "full_name": "llm-service",
+    "type": "backend",
+    "aliases": [
+      "llm-service",
+      "llm",
+      "llmservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "\"chatgpt chatbot for mrrobot documentation\"",
+    "repo": "llm-service",
+    "package_location": "package.json"
+  },
+  "master-dependency-audit": {
+    "full_name": "master-dependency-audit",
+    "type": "tool",
+    "aliases": [
+      "master-dependency-audit",
+      "masterdependencyaudit"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Dependency auditing tool for security vulnerability scanning",
+    "repo": "master-dependency-audit",
+    "package_location": "package.json"
+  },
+  "master-dependency-audit-refactor": {
+    "full_name": "master-dependency-audit-refactor",
+    "type": "tool",
+    "aliases": [
+      "master-dependency-audit-refactor",
+      "masterdependencyauditrefactor"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Refactored dependency auditing tool (newer version)",
+    "repo": "master-dependency-audit-refactor",
+    "package_location": "package.json"
+  },
+  "merchant": {
+    "full_name": "merchant-service",
+    "type": "backend",
+    "aliases": [
+      "merchant-service",
+      "merchant",
+      "merchantservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Merchant service - manages merchant IDs and details from CMC database",
+    "repo": "merchant-service",
+    "package_location": "package.json"
+  },
+  "nexigrunt": {
+    "full_name": "nexigrunt",
+    "type": "tool",
+    "aliases": [
+      "nexigrunt"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Grunt task runner configuration for MrRobot projects",
+    "repo": "nexigrunt",
+    "package_location": "package.json"
+  },
+  "ai-rest": {
+    "full_name": "mrrobot-ai-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-ai-rest",
+      "ai-rest",
+      "mrrobot-ai",
+      "ai",
+      "mrrobotairest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "AI Service for MrRobot",
+    "repo": "mrrobot-ai-rest",
+    "package_location": "service/package.json"
+  },
+  "auth-rest": {
+    "full_name": "mrrobot-auth-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-auth-rest",
+      "auth-rest",
+      "mrrobot-auth",
+      "auth",
+      "mrrobotauthrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "MrRobot authentication service (current/primary auth system)",
+    "repo": "mrrobot-auth-rest",
+    "package_location": "service/package.json"
+  },
+  "azuread-last-login": {
+    "full_name": "mrrobot-azuread-last-login",
+    "type": "tool",
+    "aliases": [
+      "mrrobot-azuread-last-login",
+      "azuread-last-login",
+      "mrrobotazureadlastlogin"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Tool to check Azure AD last login times for users",
+    "repo": "mrrobot-azuread-last-login",
+    "package_location": "src/package.json"
+  },
+  "cli": {
+    "full_name": "mrrobot-cli",
+    "type": "tool",
+    "aliases": [
+      "mrrobot-cli",
+      "cli",
+      "mrrobotcli"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "MrRobot CLI - command line tool for developers (@mrrobot/cli)",
+    "repo": "mrrobot-cli",
+    "package_location": "package.json"
+  },
+  "common-js-utils": {
+    "full_name": "mrrobot-common-js-utils",
+    "type": "library",
+    "aliases": [
+      "mrrobot-common-js-utils",
+      "common-js-utils",
+      "mrrobotcommonjsutils"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "Common JavaScript utilities shared across services",
+    "repo": "mrrobot-common-js-utils",
+    "package_location": "package.json"
+  },
+  "connector-hub": {
+    "full_name": "mrrobot-connector-hub",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-connector-hub",
+      "connector-hub",
+      "mrrobotconnectorhub"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "MrRobot Connector Hub - AWS serverless platform for secure file transfers with Fiserv, TSYS, Aperia",
+    "repo": "mrrobot-connector-hub",
+    "package_location": "service/package.json"
+  },
+  "csp-reports-rest": {
+    "full_name": "mrrobot-csp-reports-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-csp-reports-rest",
+      "csp-reports-rest",
+      "mrrobot-csp-reports",
+      "csp-reports",
+      "mrrobotcspreportsrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "csp-reports Service for MrRobot",
+    "repo": "mrrobot-csp-reports-rest",
+    "package_location": "service/package.json"
+  },
+  "etl-salesforce-api": {
+    "full_name": "mrrobot-etl-salesforce-api",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-etl-salesforce-api",
+      "etl-salesforce-api",
+      "mrrobot-etl-salesforce",
+      "etl-salesforce",
+      "mrrobotetlsalesforceapi"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "NodeJS REST API for Salesforce ETL entrypoints",
+    "repo": "mrrobot-etl-salesforce-api",
+    "package_location": "service/package.json"
+  },
+  "health-rest": {
+    "full_name": "mrrobot-health-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-health-rest",
+      "health-rest",
+      "mrrobot-health",
+      "health",
+      "mrrobothealthrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Health service for MrRobot",
+    "repo": "mrrobot-health-rest",
+    "package_location": "service/package.json"
+  },
+  "internal": {
+    "full_name": "mrrobot-internal-app",
+    "type": "frontend",
+    "aliases": [
+      "mrrobot-internal-app",
+      "internal-app",
+      "mrrobot-internal",
+      "internal",
+      "mrrobotinternalapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "MrRobot internal app - React admin tool for internal operations",
+    "repo": "mrrobot-internal-app",
+    "package_location": "package.json"
+  },
+  "logging-util-npm": {
+    "full_name": "mrrobot-logging-util-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-logging-util-npm",
+      "logging-util-npm",
+      "mrrobotloggingutilnpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "NPM logging utility package for standardized logging",
+    "repo": "mrrobot-logging-util-npm",
+    "package_location": "package.json"
+  },
+  "login-ui": {
+    "full_name": "mrrobot-login-ui",
+    "type": "frontend",
+    "aliases": [
+      "mrrobot-login-ui",
+      "login-ui",
+      "mrrobotloginui"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "MrRobot login UI - React/Vite authentication frontend",
+    "repo": "mrrobot-login-ui",
+    "package_location": "package.json"
+  },
+  "merchant-onboarding": {
+    "full_name": "mrrobot-merchant-onboarding-app",
+    "type": "frontend",
+    "aliases": [
+      "mrrobot-merchant-onboarding-app",
+      "merchant-onboarding-app",
+      "mrrobot-merchant-onboarding",
+      "merchant-onboarding",
+      "mrrobotmerchantonboardingapp"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "Merchant onboarding app - React application for new merchant signup",
+    "repo": "mrrobot-merchant-onboarding-app",
+    "package_location": "package.json"
+  },
+  "messaging-rest": {
+    "full_name": "mrrobot-messaging-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-messaging-rest",
+      "messaging-rest",
+      "mrrobot-messaging",
+      "messaging",
+      "mrrobotmessagingrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Messaging Service for MrRobot",
+    "repo": "mrrobot-messaging-rest",
+    "package_location": "service/package.json"
+  },
+  "otp-rest": {
+    "full_name": "mrrobot-otp-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-otp-rest",
+      "otp-rest",
+      "mrrobot-otp",
+      "otp",
+      "mrrobototprest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "OTP Service for MrRobot",
+    "repo": "mrrobot-otp-rest",
+    "package_location": "service/package.json"
+  },
+  "partner-portal": {
+    "full_name": "mrrobot-partner-portal-service",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-partner-portal-service",
+      "partner-portal-service",
+      "mrrobot-partner-portal",
+      "partner-portal",
+      "mrrobotpartnerportalservice"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Partner Portal for MrRobot",
+    "repo": "mrrobot-partner-portal-service",
+    "package_location": "service/package.json"
+  },
+  "pii-npm": {
+    "full_name": "mrrobot-pii-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-pii-npm",
+      "pii-npm",
+      "mrrobotpiinpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "PII removal utility - removes sensitive data from strings/objects/logs (@mrrobot/pii)",
+    "repo": "mrrobot-pii-npm",
+    "package_location": "package.json"
+  },
+  "rest-template": {
+    "full_name": "mrrobot-rest-template",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-rest-template",
+      "rest-template",
+      "mrrobotresttemplate"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Template Service for MrRobot",
+    "repo": "mrrobot-rest-template",
+    "package_location": "service/package.json"
+  },
+  "rest-utils-npm": {
+    "full_name": "mrrobot-rest-utils-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-rest-utils-npm",
+      "rest-utils-npm",
+      "mrrobotrestutilsnpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "REST API utilities - request/response helpers for services",
+    "repo": "mrrobot-rest-utils-npm",
+    "package_location": "package.json"
+  },
+  "risk-rest": {
+    "full_name": "mrrobot-risk-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-risk-rest",
+      "risk-rest",
+      "mrrobot-risk",
+      "risk",
+      "mrrobotriskrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "risk-service",
+    "repo": "mrrobot-risk-rest",
+    "package_location": "service/package.json"
+  },
+  "sdk-npm": {
+    "full_name": "mrrobot-sdk-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-sdk-npm",
+      "sdk-npm",
+      "mrrobotsdknpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "MrRobot SDK - core SDK for interacting with MrRobot APIs (@mrrobot/sdk)",
+    "repo": "mrrobot-sdk-npm",
+    "package_location": "package.json"
+  },
+  "sds-rest": {
+    "full_name": "mrrobot-sds-rest",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-sds-rest",
+      "sds-rest",
+      "mrrobot-sds",
+      "sds",
+      "mrrobotsdsrest"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js"
+    ],
+    "description": "Service Directory Service",
+    "repo": "mrrobot-sds-rest",
+    "package_location": "service/package.json"
+  },
+  "security-tools-npm": {
+    "full_name": "mrrobot-security-tools-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-security-tools-npm",
+      "security-tools-npm",
+      "mrrobotsecuritytoolsnpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Security utilities - input validation, sanitization, security helpers",
+    "repo": "mrrobot-security-tools-npm",
+    "package_location": "package.json"
+  },
+  "service-observability": {
+    "full_name": "mrrobot-service-observability",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-service-observability",
+      "service-observability",
+      "mrrobotserviceobservability"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Service observability - automated metrics collection, DynamoDB health monitoring, AI observability",
+    "repo": "mrrobot-service-observability",
+    "package_location": "service/package.json"
+  },
+  "testing-tools-npm": {
+    "full_name": "mrrobot-testing-tools-npm",
+    "type": "library",
+    "aliases": [
+      "mrrobot-testing-tools-npm",
+      "testing-tools-npm",
+      "mrrobottestingtoolsnpm"
+    ],
+    "tech_stack": [
+      "Node.js"
+    ],
+    "description": "Testing utilities - mocks, fixtures, test helpers for MrRobot services",
+    "repo": "mrrobot-testing-tools-npm",
+    "package_location": "package.json"
+  },
+  "tsys-cert-manager": {
+    "full_name": "mrrobot-tsys-cert-manager",
+    "type": "backend",
+    "aliases": [
+      "mrrobot-tsys-cert-manager",
+      "tsys-cert-manager",
+      "mrrobottsyscertmanager"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "DynamoDB",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "TSYS certificate manager - manages SSL certificates for TSYS connections",
+    "repo": "mrrobot-tsys-cert-manager",
+    "package_location": "service/package.json"
+  },
+  "online-application": {
+    "full_name": "online-application-service",
+    "type": "backend",
+    "aliases": [
+      "online-application-service",
+      "online-application",
+      "onlineapplicationservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "Online application service - handles merchant application submissions",
+    "repo": "online-application-service",
+    "package_location": "package.json"
+  },
+  "pci-file-scanner": {
+    "full_name": "pci-file-scanner",
+    "type": "backend",
+    "aliases": [
+      "pci-file-scanner",
+      "pcifilescanner"
+    ],
+    "tech_stack": [
+      "Serverless"
+    ],
+    "description": "PCI file scanner - scans uploaded PDFs for credit card numbers, replaces violations with warnings",
+    "repo": "pci-file-scanner",
+    "package_location": null
+  },
+  "service-util-ts": {
+    "full_name": "service-util-ts",
+    "type": "library",
+    "aliases": [
+      "service-util-ts",
+      "serviceutilts"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "DynamoDB",
+      "AWS SDK"
+    ],
+    "description": "TypeScript service utilities - shared types and helpers",
+    "repo": "service-util-ts",
+    "package_location": "package.json"
+  },
+  "snapp-backend": {
+    "full_name": "snapp-backend",
+    "type": "backend",
+    "aliases": [
+      "snapp-backend",
+      "snappbackend"
+    ],
+    "tech_stack": [
+      "Express",
+      "Node.js",
+      "AWS SDK"
+    ],
+    "description": "Template Service for MrRobot",
+    "repo": "snapp-backend",
+    "package_location": "service/package.json"
+  },
+  "snapp-frontend": {
+    "full_name": "snapp-frontend",
+    "type": "frontend",
+    "aliases": [
+      "snapp-frontend",
+      "snappfrontend"
+    ],
+    "tech_stack": [
+      "React",
+      "Node.js"
+    ],
+    "description": "SNAPP frontend application",
+    "repo": "snapp-frontend",
+    "package_location": "package.json"
+  },
+  "td-agent": {
+    "full_name": "td-agent",
+    "type": "backend",
+    "aliases": [
+      "td-agent",
+      "tdagent"
+    ],
+    "tech_stack": [
+      "Docker",
+      "Python"
+    ],
+    "description": "TD Agent - on-demand test agent (Docker-based)",
+    "repo": "td-agent",
+    "package_location": null
+  },
+  "types-util-ts": {
+    "full_name": "types-util-ts",
+    "type": "backend",
+    "aliases": [
+      "types-util-ts",
+      "typesutilts"
+    ],
+    "tech_stack": [
+      "TypeScript",
+      "AWS SDK"
+    ],
+    "description": "types and constants for typescript services",
+    "repo": "types-util-ts",
+    "package_location": "package.json"
+  },
+  "cforce-service": {
+    "full_name": "cforce-service",
+    "type": "backend",
+    "aliases": [
+      "cforce-service",
+      "cforce-svc",
+      "cforceservice"
+    ],
+    "tech_stack": [
+      "Node.js",
+      "MySQL",
+      "AWS SDK"
+    ],
+    "description": "CForce JavaScript Serverless backend API",
+    "repo": "cforce-service",
+    "package_location": "package.json"
+  }
+}

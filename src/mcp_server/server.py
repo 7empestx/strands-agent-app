@@ -20,6 +20,7 @@ import sys
 from datetime import datetime, timezone
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 # Add project root to path for imports (go up from src/mcp_server to project root)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -48,6 +49,7 @@ from src.lib.cloudwatch import (
     query_logs,
 )
 from src.lib.code_search import KB_ID, get_file_from_bitbucket, search_knowledge_base
+from src.lib.config_loader import get_service_registry, lookup_service
 from src.lib.coralogix import (
     handle_discover_services,
     handle_get_recent_errors,
@@ -55,11 +57,33 @@ from src.lib.coralogix import (
     handle_get_service_logs,
     handle_search_logs,
 )
+from src.lib.jira import get_issue as jira_get_issue
+from src.lib.jira import get_issue_comments as jira_get_issue_comments
+from src.lib.jira import get_issues_by_label as jira_get_issues_by_label
+from src.lib.jira import get_open_cve_issues as jira_get_open_cve_issues
+from src.lib.jira import handle_search_jira
 
-# Create FastMCP server
+# Create FastMCP server with custom domain allowed for DNS rebinding protection
+# See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
 mcp = FastMCP(
     name="mrrobot-mcp",
     instructions="MrRobot AI MCP Server - Code Search, Log Analysis, User Management",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "localhost:*",
+            "127.0.0.1:*",
+            "mcp.mrrobot.dev",
+            "mcp.mrrobot.dev:*",
+        ],
+        allowed_origins=[
+            "http://localhost:*",
+            "https://localhost:*",
+            "http://127.0.0.1:*",
+            "https://mcp.mrrobot.dev",
+            "https://mcp.mrrobot.dev:*",
+        ],
+    ),
 )
 
 
@@ -142,6 +166,85 @@ def get_file_content(repo: str, file_path: str, branch: str = "master") -> dict:
         branch: Branch name (default: master)
     """
     return get_file_from_bitbucket(repo, file_path, branch)
+
+
+@mcp.tool()
+def get_service_info(service_name: str) -> dict:
+    """Look up a MrRobot service by name or alias.
+
+    Returns service type (frontend/backend/library), tech stack, description,
+    and troubleshooting suggestions. Searches 129 known services.
+
+    Args:
+        service_name: Service name, key, or alias (e.g., 'cast', 'dashboard', 'emvio-auth-service')
+    """
+    service_info = lookup_service(service_name)
+
+    if service_info:
+        service_type = service_info.get("type", "unknown")
+        return {
+            "found": True,
+            "key": service_info.get("key"),
+            "full_name": service_info.get("full_name"),
+            "type": service_type,
+            "tech_stack": service_info.get("tech_stack", []),
+            "description": service_info.get("description", ""),
+            "aliases": service_info.get("aliases", []),
+            "repo": service_info.get("repo", service_info.get("full_name")),
+            "suggestion": (
+                "Frontend app - check deploys and browser console for API errors."
+                if service_type == "frontend"
+                else (
+                    "Backend service - check logs first, then recent deploys."
+                    if service_type == "backend"
+                    else (
+                        "Library/tool - used by other services, check dependents."
+                        if service_type in ("library", "tool")
+                        else "Check both logs and deploys."
+                    )
+                )
+            ),
+        }
+    else:
+        return {
+            "found": False,
+            "service_name": service_name,
+            "message": f"Service '{service_name}' not found in registry.",
+            "suggestion": "Try a different name or use search_mrrobot_repos to find it.",
+            "total_known_services": len(get_service_registry()),
+        }
+
+
+@mcp.tool()
+def list_all_services(service_type: str = None) -> dict:
+    """List all known MrRobot services, optionally filtered by type.
+
+    Args:
+        service_type: Optional filter - 'frontend', 'backend', 'library', 'tool', or None for all
+    """
+    registry = get_service_registry()
+
+    services = []
+    for key, info in registry.items():
+        svc_type = info.get("type", "unknown")
+        if service_type is None or svc_type == service_type:
+            services.append(
+                {
+                    "key": key,
+                    "full_name": info.get("full_name"),
+                    "type": svc_type,
+                    "description": info.get("description", "")[:100],
+                }
+            )
+
+    # Sort by type then key
+    services.sort(key=lambda x: (x["type"], x["key"]))
+
+    return {
+        "total": len(services),
+        "filter": service_type,
+        "services": services,
+    }
 
 
 # Note: list_repos is available via the mrrobot-code-kb MCP server
@@ -475,10 +578,76 @@ def cloudwatch_lambda_metrics(function_name: str, hours_back: int = 1) -> dict:
 
 
 # ============================================================================
+# JIRA TOOLS
+# ============================================================================
+
+
+@mcp.tool()
+def jira_search(query: str, max_results: int = 20) -> dict:
+    """Search Jira tickets using natural language or JQL.
+
+    Examples:
+    - "CVE tickets" - finds issues with CVE label
+    - "open bugs" - finds open bug tickets
+    - "my tickets" - finds your assigned tickets
+    - "DEVOPS-123" - gets specific ticket details
+    - "labels = CVE AND status != Done" - raw JQL query
+
+    Args:
+        query: Natural language search or JQL query
+        max_results: Maximum results to return (default: 20)
+    """
+    return handle_search_jira(query, max_results)
+
+
+@mcp.tool()
+def jira_get_ticket(issue_key: str) -> dict:
+    """Get detailed information about a specific Jira ticket.
+
+    Args:
+        issue_key: The ticket key (e.g., 'DEVOPS-123', 'SEC-456')
+    """
+    return jira_get_issue(issue_key)
+
+
+@mcp.tool()
+def jira_get_comments(issue_key: str, max_results: int = 10) -> dict:
+    """Get comments on a Jira ticket.
+
+    Args:
+        issue_key: The ticket key (e.g., 'DEVOPS-123')
+        max_results: Maximum comments to return
+    """
+    return jira_get_issue_comments(issue_key, max_results)
+
+
+@mcp.tool()
+def jira_cve_tickets(max_results: int = 50) -> dict:
+    """Get open CVE/security vulnerability tickets.
+
+    Returns tickets labeled with CVE, security, or vulnerability
+    that are not yet resolved.
+    """
+    return jira_get_open_cve_issues(max_results)
+
+
+@mcp.tool()
+def jira_tickets_by_label(label: str, status: str = None, max_results: int = 20) -> dict:
+    """Get Jira tickets with a specific label.
+
+    Args:
+        label: Label to search for (e.g., 'CVE', 'security', 'urgent')
+        status: Optional status filter (e.g., 'Open', 'In Progress', 'Done')
+        max_results: Maximum results to return
+    """
+    return jira_get_issues_by_label(label, status, max_results)
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"  # Bumped for Jira tools
 START_TIME = datetime.now(timezone.utc)
 
 
@@ -529,18 +698,23 @@ def run_http_server(host: str, port: int):
         )
 
     # Get the MCP ASGI apps
+    # Note: sse_app() creates routes at /sse and /messages/ internally
+    # We mount at root so clients can connect directly to /sse
+    # See: https://github.com/modelcontextprotocol/python-sdk/issues/412
     mcp_http_app = mcp.streamable_http_app()
     mcp_sse_app = mcp.sse_app()
 
     # Create combined Starlette app with health routes + MCP
+    # Mount SSE app at root (it has its own /sse and /messages/ routes)
+    # Mount MCP app at /mcp
     app = Starlette(
         routes=[
-            Route("/", root, methods=["GET"]),
             Route("/health", health, methods=["GET"]),
-            # Mount MCP apps
+            # Mount MCP HTTP transport at /mcp
             Mount("/mcp", app=mcp_http_app),
-            Mount("/sse", app=mcp_sse_app),
-        ]
+            # Mount SSE app at root (provides /sse and /messages/ routes)
+            Mount("/", app=mcp_sse_app),
+        ],
     )
 
     print(f"[MCP] MrRobot MCP Server v{VERSION}")

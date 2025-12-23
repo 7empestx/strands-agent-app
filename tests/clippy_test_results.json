@@ -1,0 +1,1110 @@
+[
+  {
+    "test_type": "service_registry",
+    "query": "cast-core",
+    "response": {
+      "key": "core",
+      "full_name": "cast-core-service",
+      "type": "backend",
+      "aliases": [
+        "cast-core-service",
+        "core-service",
+        "cast-core",
+        "core",
+        "castcoreservice"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "DynamoDB",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "cast-core",
+      "repo": "cast-core-service",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "cast-core-service",
+    "response": {
+      "key": "core",
+      "full_name": "cast-core-service",
+      "type": "backend",
+      "aliases": [
+        "cast-core-service",
+        "core-service",
+        "cast-core",
+        "core",
+        "castcoreservice"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "DynamoDB",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "cast-core",
+      "repo": "cast-core-service",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "emvio-dashboard",
+    "response": {
+      "key": "dashboard",
+      "full_name": "emvio-dashboard-app",
+      "type": "frontend",
+      "aliases": [
+        "emvio-dashboard-app",
+        "dashboard-app",
+        "emvio-dashboard",
+        "dashboard",
+        "emviodashboardapp"
+      ],
+      "tech_stack": [
+        "React",
+        "Node.js",
+        "AWS SDK"
+      ],
+      "description": "Emvio merchant dashboard - main web UI for merchants (React/Redux)",
+      "repo": "emvio-dashboard-app",
+      "package_location": "package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "emvio-underwriting",
+    "response": {
+      "key": "underwriting",
+      "full_name": "emvio-underwriting-service",
+      "type": "backend",
+      "aliases": [
+        "emvio-underwriting-service",
+        "underwriting-service",
+        "emvio-underwriting",
+        "underwriting",
+        "emviounderwritingservice"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "underwriting-service",
+      "repo": "emvio-underwriting-service",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "mrrobot-messaging-rest",
+    "response": {
+      "key": "messaging-rest",
+      "full_name": "mrrobot-messaging-rest",
+      "type": "backend",
+      "aliases": [
+        "mrrobot-messaging-rest",
+        "messaging-rest",
+        "mrrobot-messaging",
+        "messaging",
+        "mrrobotmessagingrest"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "AWS SDK"
+      ],
+      "description": "Messaging Service for MrRobot",
+      "repo": "mrrobot-messaging-rest",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "cast-connections-util",
+    "response": {
+      "key": "connections-util",
+      "full_name": "cast-connections-util",
+      "type": "library",
+      "aliases": [
+        "cast-connections-util",
+        "connections-util",
+        "cast-connections",
+        "connections",
+        "castconnectionsutil"
+      ],
+      "tech_stack": [
+        "Node.js",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "Shared utilities for CAST connections and core services",
+      "repo": "cast-connections-util",
+      "package_location": "package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "cast-support-portal",
+    "response": {
+      "key": "support-portal",
+      "full_name": "cast-support-portal-service",
+      "type": "backend",
+      "aliases": [
+        "cast-support-portal-service",
+        "support-portal-service",
+        "cast-support-portal",
+        "support-portal",
+        "castsupportportalservice"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "Cast Support Portal Service for MrRobot",
+      "repo": "cast-support-portal-service",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "cast-component-library",
+    "response": {
+      "key": "component-library",
+      "full_name": "cast-component-library",
+      "type": "frontend",
+      "aliases": [
+        "cast-component-library",
+        "component-library",
+        "castcomponentlibrary"
+      ],
+      "tech_stack": [
+        "Node.js"
+      ],
+      "description": "CAST shared React component library (@mrrobot/cast-component-library)",
+      "repo": "cast-component-library",
+      "package_location": "package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "connector-hub",
+    "response": {
+      "key": "connector-hub",
+      "full_name": "mrrobot-connector-hub",
+      "type": "backend",
+      "aliases": [
+        "mrrobot-connector-hub",
+        "connector-hub",
+        "mrrobotconnectorhub"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "DynamoDB",
+        "MySQL",
+        "AWS SDK"
+      ],
+      "description": "MrRobot Connector Hub - AWS serverless platform for secure file transfers with Fiserv, TSYS, Aperia",
+      "repo": "mrrobot-connector-hub",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "auth-rest",
+    "response": {
+      "key": "auth-rest",
+      "full_name": "mrrobot-auth-rest",
+      "type": "backend",
+      "aliases": [
+        "mrrobot-auth-rest",
+        "auth-rest",
+        "mrrobot-auth",
+        "auth",
+        "mrrobotauthrest"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "AWS SDK"
+      ],
+      "description": "MrRobot authentication service (current/primary auth system)",
+      "repo": "mrrobot-auth-rest",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "payment",
+    "response": {
+      "key": "payment",
+      "full_name": "mrrobot-payment-service",
+      "type": "backend",
+      "aliases": [
+        "mrrobot-payment-service",
+        "payment-service",
+        "mrrobot-payment",
+        "payment",
+        "mrrobotpaymentservice"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "AWS SDK"
+      ],
+      "description": "payment Service for MrRobot",
+      "repo": "mrrobot-payment-service",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "nonexistent-service",
+    "response": null
+  },
+  {
+    "test_type": "service_registry",
+    "query": "cforce",
+    "response": {
+      "key": "cforce",
+      "full_name": "cforce",
+      "type": "backend",
+      "aliases": [
+        "cforce",
+        "cforce-app",
+        "cforce-php"
+      ],
+      "tech_stack": [
+        "PHP",
+        "ECS"
+      ],
+      "description": "CForce main PHP application running on ECS",
+      "repo": "cforce",
+      "package_location": null
+    }
+  },
+  {
+    "test_type": "service_registry",
+    "query": "emvio-payment",
+    "response": null
+  },
+  {
+    "test_type": "service_registry",
+    "query": "mrrobot-auth-rest",
+    "response": {
+      "key": "auth-rest",
+      "full_name": "mrrobot-auth-rest",
+      "type": "backend",
+      "aliases": [
+        "mrrobot-auth-rest",
+        "auth-rest",
+        "mrrobot-auth",
+        "auth",
+        "mrrobotauthrest"
+      ],
+      "tech_stack": [
+        "Express",
+        "Node.js",
+        "AWS SDK"
+      ],
+      "description": "MrRobot authentication service (current/primary auth system)",
+      "repo": "mrrobot-auth-rest",
+      "package_location": "service/package.json"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "errors in cast-core prod",
+    "response": {
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'cast-core' && (message ~ 'error') | limit 50",
+      "original_query": "errors in cast-core prod",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: prod",
+        "Service: cast-core"
+      ],
+      "environment": "prod"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "show logs from connector-hub in production",
+    "response": {
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'connector-hub' | limit 50",
+      "original_query": "show logs from connector-hub in production",
+      "explanation": [
+        "Environment: prod",
+        "Service: connector-hub"
+      ],
+      "environment": "prod"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "check staging errors for emvio-dashboard",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ '-staging' && logGroup ~ 'emvio-dashboard' && (message ~ 'error') | limit 50",
+      "original_query": "check staging errors for emvio-dashboard",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: staging",
+        "Service: emvio-dashboard"
+      ],
+      "environment": "staging"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "dev logs for mrrobot-auth-rest",
+    "response": {
+      "dataprime_query": "source logs | filter (logGroup ~ '-dev' || logGroup ~ '-development') && logGroup ~ 'mrrobot-auth-rest' | limit 50",
+      "original_query": "dev logs for mrrobot-auth-rest",
+      "explanation": [
+        "Environment: dev",
+        "Service: mrrobot-auth-rest"
+      ],
+      "environment": "dev"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "sandbox errors in payment service",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ '-sandbox' && logGroup ~ 'payment-trustMyTravel-connector' && (message ~ 'error') | limit 50",
+      "original_query": "sandbox errors in payment service",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: sandbox",
+        "Service: payment-trustMyTravel-connector"
+      ],
+      "environment": "sandbox"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "errors in cast-core",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'cast-core' && (message ~ 'error') | limit 50",
+      "original_query": "errors in cast-core",
+      "explanation": [
+        "Filtering for: error",
+        "Service: cast-core"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "show me logs from connector-hub",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'connector-hub' | limit 50",
+      "original_query": "show me logs from connector-hub",
+      "explanation": [
+        "Service: connector-hub"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "check errors for emvio-dashboard",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'emvio-dashboard' && (message ~ 'error') | limit 50",
+      "original_query": "check errors for emvio-dashboard",
+      "explanation": [
+        "Filtering for: error",
+        "Service: emvio-dashboard"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "mrrobot-auth-rest errors",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'mrrobot-auth-rest' && (message ~ 'error') | limit 50",
+      "original_query": "mrrobot-auth-rest errors",
+      "explanation": [
+        "Filtering for: error",
+        "Service: mrrobot-auth-rest"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "payment service issues",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'emvio-payment-service' | limit 50",
+      "original_query": "payment service issues",
+      "explanation": [
+        "Service: emvio-payment-service"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "504 timeouts in connector-hub staging",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ '-staging' && logGroup ~ 'connector-hub' && message ~ '504' && message ~ 'timeout' | limit 50",
+      "original_query": "504 timeouts in connector-hub staging",
+      "explanation": [
+        "Environment: staging",
+        "Service: connector-hub",
+        "HTTP status: 504",
+        "Technical term: timeout"
+      ],
+      "environment": "staging"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "ECONNREFUSED in payment-service prod",
+    "response": {
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'payment-service' && message ~ 'ECONNREFUSED' | limit 50",
+      "original_query": "ECONNREFUSED in payment-service prod",
+      "explanation": [
+        "Environment: prod",
+        "Service: payment-service",
+        "Technical term: ECONNREFUSED"
+      ],
+      "environment": "prod"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "lambda cold starts in dev",
+    "response": {
+      "dataprime_query": "source logs | filter (logGroup ~ '-dev' || logGroup ~ '-development') && logGroup ~ 'cforce-service' && message ~ 'lambda' && message ~ 'cold start' | limit 50",
+      "original_query": "lambda cold starts in dev",
+      "explanation": [
+        "Environment: dev",
+        "Service: cforce-service",
+        "Technical term: lambda",
+        "Technical term: cold start"
+      ],
+      "environment": "dev"
+    }
+  },
+  {
+    "test_type": "dataprime_conversion",
+    "query": "OOM errors in emvio-batch",
+    "response": {
+      "dataprime_query": "source logs | filter logGroup ~ 'emvio-batch' && (message ~ 'error') && message ~ 'OOM' | limit 50",
+      "original_query": "OOM errors in emvio-batch",
+      "explanation": [
+        "Filtering for: error",
+        "Service: emvio-batch",
+        "Technical term: OOM"
+      ],
+      "environment": null
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "errors in cast-core prod",
+    "hours_back": 1,
+    "limit": 10,
+    "response": {
+      "query": "errors in cast-core prod",
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'cast-core' && (message ~ 'error') | limit 10",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: prod",
+        "Service: cast-core"
+      ],
+      "time_range": "Last 1 hour(s)",
+      "total_results": 10,
+      "environment_searched": "prod",
+      "logs_sample": [
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "prod",
+          "errorMessage": "warn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "ingestId": "3568f488-df69-44c3-9a79-fe00f8f1b1b6",
+          "ingestRegion": "us-west-2",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-prod",
+          "logStream": "2025/12/22/[$LATEST]ef3a9ca92d2d42758b3e66eb31fcfc8c",
+          "message": "ERROR\twarn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "requestID": "f993c0ce-969b-4f80-8cd3-471e17502a9a",
+          "s3Prefix": "cloudwatch/prod/aws-lambda/v3/aws-lambda-mrrobot-cast-core-prod/2025/12/22/05/",
+          "timestamp": 1766380988170
+        },
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "prod",
+          "errorMessage": "error: [LaunchDarkly] Unknown feature flag \\\"termsAndConditions\\\"; returning default value",
+          "ingestId": "f27956cd-eccd-4ed0-9b06-90979d3ee36d",
+          "ingestRegion": "us-west-2",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-prod",
+          "logStream": "2025/12/22/[$LATEST]ef3a9ca92d2d42758b3e66eb31fcfc8c",
+          "message": "ERROR\terror: [LaunchDarkly] Unknown feature flag \"termsAndConditions\"; returning default value",
+          "requestID": "d59dfb64-619a-4c4e-aa81-8859daab9835",
+          "s3Prefix": "cloudwatch/prod/aws-lambda/v3/aws-lambda-mrrobot-cast-core-prod/2025/12/22/05/",
+          "timestamp": 1766380625148
+        },
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "prod",
+          "errorMessage": "warn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "ingestId": "c74b1dad-1a42-451d-8ebb-9c07f257f1c4",
+          "ingestRegion": "us-west-2",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-prod",
+          "logStream": "2025/12/22/[$LATEST]ef3a9ca92d2d42758b3e66eb31fcfc8c",
+          "message": "ERROR\twarn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "requestID": "5da789b2-e98b-4faa-be67-d84b4dc68559",
+          "s3Prefix": "cloudwatch/prod/aws-lambda/v3/aws-lambda-mrrobot-cast-core-prod/2025/12/22/05/",
+          "timestamp": 1766382794742
+        }
+      ],
+      "logs_count": 10
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "connector-hub staging logs",
+    "hours_back": 1,
+    "limit": 10,
+    "response": {
+      "query": "connector-hub staging logs",
+      "dataprime_query": "source logs | filter logGroup ~ '-staging' && logGroup ~ 'connector-hub' | limit 10",
+      "explanation": [
+        "Environment: staging",
+        "Service: connector-hub"
+      ],
+      "time_range": "Last 1 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": "staging"
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "errors in payment-service",
+    "hours_back": 1,
+    "limit": 10,
+    "response": {
+      "query": "errors in payment-service",
+      "dataprime_query": "source logs | filter logGroup ~ 'payment-service' && (message ~ 'error') | limit 10",
+      "explanation": [
+        "Filtering for: error",
+        "Service: payment-service"
+      ],
+      "time_range": "Last 1 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": null,
+      "missing_environment": true,
+      "note": "No environment specified. Ask user which environment to search (prod, staging, dev, sandbox)."
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "cast-core timeouts",
+    "hours_back": 1,
+    "limit": 10,
+    "response": {
+      "query": "cast-core timeouts",
+      "dataprime_query": "source logs | filter logGroup ~ 'cast-core' && message ~ 'timeout' | limit 10",
+      "explanation": [
+        "Service: cast-core",
+        "Technical term: timeout"
+      ],
+      "time_range": "Last 1 hour(s)",
+      "total_results": 10,
+      "environment_searched": null,
+      "missing_environment": true,
+      "note": "No environment specified. Ask user which environment to search (prod, staging, dev, sandbox).",
+      "logs_sample": [
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "prod",
+          "errorMessage": "warn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "ingestId": "3568f488-df69-44c3-9a79-fe00f8f1b1b6",
+          "ingestRegion": "us-west-2",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-prod",
+          "logStream": "2025/12/22/[$LATEST]ef3a9ca92d2d42758b3e66eb31fcfc8c",
+          "message": "ERROR\twarn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "requestID": "f993c0ce-969b-4f80-8cd3-471e17502a9a",
+          "s3Prefix": "cloudwatch/prod/aws-lambda/v3/aws-lambda-mrrobot-cast-core-prod/2025/12/22/05/",
+          "timestamp": 1766380988170
+        },
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "prod",
+          "errorMessage": "warn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "ingestId": "c74b1dad-1a42-451d-8ebb-9c07f257f1c4",
+          "ingestRegion": "us-west-2",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-prod",
+          "logStream": "2025/12/22/[$LATEST]ef3a9ca92d2d42758b3e66eb31fcfc8c",
+          "message": "ERROR\twarn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "requestID": "5da789b2-e98b-4faa-be67-d84b4dc68559",
+          "s3Prefix": "cloudwatch/prod/aws-lambda/v3/aws-lambda-mrrobot-cast-core-prod/2025/12/22/05/",
+          "timestamp": 1766382794742
+        },
+        {
+          "creditCardFound": false,
+          "cvvFound": false,
+          "environment": "staging",
+          "errorMessage": "warn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "ingestId": "23f4c87e-6653-4385-8dc8-9548b171f69a",
+          "ingestRegion": "us-east-1",
+          "ingestVersion": "v3",
+          "logGroup": "/aws/lambda/mrrobot-cast-core-staging",
+          "logStream": "2025/12/22/[$LATEST]773e1dd3d8884679978bcd2af50cf2cf",
+          "message": "ERROR\twarn: [LaunchDarkly] Received I/O error (Read timeout, received no data in 300000ms, assuming connection is dead) for streaming request - will retry",
+          "requestID": "d4141add-12b6-4bb4-bf4f-5485b5a23b68",
+          "s3Prefix": "cloudwatch/staging/aws-lambda/v3/aws-lambda-mrrobot-cast-core-staging/2025/12/22/05/",
+          "timestamp": 1766380506642
+        }
+      ],
+      "logs_count": 10
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "mrrobot-auth-rest errors prod",
+    "hours_back": 4,
+    "limit": 20,
+    "response": {
+      "query": "mrrobot-auth-rest errors prod",
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'mrrobot-auth-rest' && (message ~ 'error') | limit 20",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: prod",
+        "Service: mrrobot-auth-rest"
+      ],
+      "time_range": "Last 4 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": "prod"
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "emvio-dashboard errors staging",
+    "hours_back": 2,
+    "limit": 15,
+    "response": {
+      "query": "emvio-dashboard errors staging",
+      "dataprime_query": "source logs | filter logGroup ~ '-staging' && logGroup ~ 'emvio-dashboard' && (message ~ 'error') | limit 15",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: staging",
+        "Service: emvio-dashboard"
+      ],
+      "time_range": "Last 2 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": "staging"
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "504 errors in connector-hub prod",
+    "hours_back": 4,
+    "limit": 20,
+    "response": {
+      "query": "504 errors in connector-hub prod",
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'connector-hub' && (message ~ 'error') && message ~ '504' | limit 20",
+      "explanation": [
+        "Filtering for: error",
+        "Environment: prod",
+        "Service: connector-hub",
+        "HTTP status: 504"
+      ],
+      "time_range": "Last 4 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": "prod"
+    }
+  },
+  {
+    "test_type": "coralogix_live",
+    "query": "OOM in emvio-batch prod",
+    "hours_back": 2,
+    "limit": 10,
+    "response": {
+      "query": "OOM in emvio-batch prod",
+      "dataprime_query": "source logs | filter (logGroup ~ '-prod' || logGroup ~ '-production') && logGroup ~ 'emvio-batch' && message ~ 'OOM' | limit 10",
+      "explanation": [
+        "Environment: prod",
+        "Service: emvio-batch",
+        "Technical term: OOM"
+      ],
+      "time_range": "Last 2 hour(s)",
+      "total_results": 0,
+      "logs": [],
+      "environment_searched": "prod"
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "how does authentication work",
+    "response": {
+      "results": [
+        {
+          "repo": "mrrobot-rest-utils-npm",
+          "file": "src/rest/middleware/authenticate.middleware.js",
+          "score": 0.452
+        },
+        {
+          "repo": "emvio-tutorials",
+          "file": "docs/tutorials.md",
+          "score": 0.44
+        },
+        {
+          "repo": "mrrobot-auth-rest",
+          "file": "service/src/apis/api/v1/auth/m2mAuthenticate.js",
+          "score": 0.432
+        },
+        {
+          "repo": "mrrobot-sdk-npm",
+          "file": "src/auth/InternalAuth.js",
+          "score": 0.43
+        },
+        {
+          "repo": "emvio-tutorials",
+          "file": "docs/3d_secure/using_3d_secure.md",
+          "score": 0.429
+        }
+      ],
+      "query": "how does authentication work",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "webhook handling code",
+    "response": {
+      "results": [
+        {
+          "repo": "emvio-developer-tools",
+          "file": "docs/webhooks/receiving.md",
+          "score": 0.545
+        },
+        {
+          "repo": "emvio-developer-tools",
+          "file": "docs/webhooks/webhooks.md",
+          "score": 0.541
+        },
+        {
+          "repo": "emvio-developer-tools",
+          "file": "docs/webhooks/webhooks_simple.md",
+          "score": 0.525
+        },
+        {
+          "repo": "emvio-developer-tools",
+          "file": "docs/webhooks/receiving.md",
+          "score": 0.523
+        },
+        {
+          "repo": "apm-checkout-provider",
+          "file": "src/sofort/handleWebhook.ts",
+          "score": 0.522
+        }
+      ],
+      "query": "webhook handling code",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "database connection patterns",
+    "response": {
+      "results": [
+        {
+          "repo": "cast-support-portal-service",
+          "file": "service/src/database/connections.js",
+          "score": 0.446
+        },
+        {
+          "repo": "emvio-reserve-service",
+          "file": "src/database/dbUtil.js",
+          "score": 0.441
+        },
+        {
+          "repo": "emvio-reserve-service",
+          "file": "src/database/db.js",
+          "score": 0.432
+        },
+        {
+          "repo": "etl-fdr-ndf-service",
+          "file": "src/database/db.js",
+          "score": 0.429
+        },
+        {
+          "repo": "mrrobot-risk-rest",
+          "file": "service/src/database/db.js",
+          "score": 0.426
+        }
+      ],
+      "query": "database connection patterns",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "lambda function handler",
+    "response": {
+      "results": [
+        {
+          "repo": "emvio-util-service",
+          "file": "src/lambda/setupLambda.js",
+          "score": 0.556
+        },
+        {
+          "repo": "emvio-util-service",
+          "file": "src/lambda/setupLambda.js",
+          "score": 0.539
+        },
+        {
+          "repo": "service-util-ts",
+          "file": "src/setupLambda.d.ts",
+          "score": 0.539
+        },
+        {
+          "repo": "emvio-util-service",
+          "file": "src/lambda/setupLambda.js",
+          "score": 0.535
+        },
+        {
+          "repo": "pci-file-scanner",
+          "file": "file_scanner/file_scanner.py",
+          "score": 0.518
+        }
+      ],
+      "query": "lambda function handler",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "error handling",
+    "response": {
+      "results": [
+        {
+          "repo": "nexigrunt",
+          "file": "src/tools/error-handler.js",
+          "score": 0.49
+        },
+        {
+          "repo": "mrrobot-rest-utils-npm",
+          "file": "src/rest/middleware/errorHandler.js",
+          "score": 0.475
+        },
+        {
+          "repo": "emvio-user-mgt-service",
+          "file": "src/util/errorHandler.test.js",
+          "score": 0.469
+        },
+        {
+          "repo": "emvio-payment-service",
+          "file": "src/tokenex/processPayment.js",
+          "score": 0.464
+        },
+        {
+          "repo": "fast-api-poc",
+          "file": "applied-ai/app/lib/handle_errors.py",
+          "score": 0.461
+        }
+      ],
+      "query": "error handling",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "cast integration quickbooks",
+    "response": {
+      "results": [
+        {
+          "repo": "cast-service-titan-service",
+          "file": "service/src/integrations/integrations.d.ts",
+          "score": 0.532
+        },
+        {
+          "repo": "cast-quickbooks-service",
+          "file": "service/src/integrationUpdates.js",
+          "score": 0.527
+        },
+        {
+          "repo": "cast-app",
+          "file": "src/contexts/IntegrationsProvider.jsx",
+          "score": 0.51
+        },
+        {
+          "repo": "cast-quickbooks-service",
+          "file": "service/src/_quickbooksLegacy.js",
+          "score": 0.503
+        },
+        {
+          "repo": "cast-app",
+          "file": "src/App/pages/Connections/ConnectionsPage.jsx",
+          "score": 0.499
+        }
+      ],
+      "query": "cast integration quickbooks",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "payment processing flow",
+    "response": {
+      "results": [
+        {
+          "repo": "cforce",
+          "file": "modules/tools/merchant_apps/forms/crestfinancial.html",
+          "score": 0.533
+        },
+        {
+          "repo": "emvio-developer-tools",
+          "file": "docs/reference/constant_values.md",
+          "score": 0.526
+        },
+        {
+          "repo": "cforce",
+          "file": "modules/tools/merchant_apps/forms/zdsfinancial.html",
+          "score": 0.523
+        }
+      ],
+      "query": "payment processing flow",
+      "total_found": 3,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "DynamoDB operations",
+    "response": {
+      "results": [
+        {
+          "repo": "emvio-payment-service",
+          "file": "src/database/dynamo.js",
+          "score": 0.575
+        },
+        {
+          "repo": "emvio-payment-service",
+          "file": "src/database/dynamo.js",
+          "score": 0.551
+        },
+        {
+          "repo": "emvio-dynamo-util",
+          "file": "src/dynamo.js",
+          "score": 0.543
+        },
+        {
+          "repo": "emvio-dynamo-util",
+          "file": "index.d.ts",
+          "score": 0.538
+        },
+        {
+          "repo": "emvio-payment-service",
+          "file": "src/database/dynamo.js",
+          "score": 0.526
+        }
+      ],
+      "query": "DynamoDB operations",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "S3 file upload",
+    "response": {
+      "results": [
+        {
+          "repo": "cast-core-service",
+          "file": "service/src/s3/s3Utils.js",
+          "score": 0.562
+        },
+        {
+          "repo": "mrrobot-connector-hub",
+          "file": "service/tests/shared/integrationTestUtils.js",
+          "score": 0.551
+        },
+        {
+          "repo": "mrrobot-get-tsys-raw-files",
+          "file": "glue/getTsysRawFiles.py",
+          "score": 0.538
+        },
+        {
+          "repo": "emvio-apm-service",
+          "file": "util/dynamoActions/s3Actions.ts",
+          "score": 0.528
+        },
+        {
+          "repo": "etl-pci-compliance-script",
+          "file": "src/s3/utils.js",
+          "score": 0.525
+        }
+      ],
+      "query": "S3 file upload",
+      "total_found": 5,
+      "requested": 5
+    }
+  },
+  {
+    "test_type": "code_search",
+    "query": "Slack notification",
+    "response": {
+      "results": [
+        {
+          "repo": "mrrobot-service-observability",
+          "file": "service/src/apis/api/manualInvocationMonitor/index.js",
+          "score": 0.514
+        },
+        {
+          "repo": "mrrobot-service-observability",
+          "file": "service/src/apis/api/manualInvocationMonitor/index.js",
+          "score": 0.514
+        },
+        {
+          "repo": "AWS-utility",
+          "file": "src/awsAlarmNotificationFromSNS.js",
+          "score": 0.51
+        },
+        {
+          "repo": "emvio-monitoring-service",
+          "file": "src/checkBrokerCounts.js",
+          "score": 0.474
+        },
+        {
+          "repo": "mrrobot-service-observability",
+          "file": "README.md",
+          "score": 0.474
+        }
+      ],
+      "query": "Slack notification",
+      "total_found": 5,
+      "requested": 5
+    }
+  }
+]

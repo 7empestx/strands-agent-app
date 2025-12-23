@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "mrrobot": {
+      "type": "stdio",
+      "command": "/Users/gstarkman/Mine/strands-agent-app/.venv/bin/python",
+      "args": ["-m", "src.mcp_server.server"],
+      "cwd": "/Users/gstarkman/Mine/strands-agent-app",
+      "env": {
+        "AWS_PROFILE": "dev"
+      }
+    }
+  }
+}
