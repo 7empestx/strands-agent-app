@@ -9,6 +9,7 @@ const route53 = require('aws-cdk-lib/aws-route53');
 const route53targets = require('aws-cdk-lib/aws-route53-targets');
 const acm = require('aws-cdk-lib/aws-certificatemanager');
 const dynamodb = require('aws-cdk-lib/aws-dynamodb');
+const secretsmanager = require('aws-cdk-lib/aws-secretsmanager');
 const { addOfficeIngressRules } = require('./constants/office-ips');
 
 // DNS Configuration
@@ -244,6 +245,9 @@ class StrandsAgentECSStack extends cdk.Stack {
       }
     });
 
+    // Reference to secrets in Secrets Manager
+    const appSecrets = secretsmanager.Secret.fromSecretNameV2(this, 'AppSecrets', 'mrrobot-ai-core/secrets');
+
     const mcpContainer = mcpTaskDefinition.addContainer('McpServerContainer', {
       image: ecs.ContainerImage.fromEcrRepository(mcpServerRepo, 'latest'),
       containerName: 'mcp-server',
@@ -260,6 +264,23 @@ class StrandsAgentECSStack extends cdk.Stack {
       environment: {
         'AWS_REGION': 'us-east-1',
         'CODE_KB_ID': 'SAJJWYFTNG'
+      },
+      secrets: {
+        // Bitbucket API credentials
+        'BITBUCKET_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_TOKEN'),
+        'BITBUCKET_AUTH_TYPE': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_AUTH_TYPE'),
+        'BITBUCKET_EMAIL': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_EMAIL'),
+        // Coralogix API
+        'CORALOGIX_AGENT_KEY': ecs.Secret.fromSecretsManager(appSecrets, 'CORALOGIX_AGENT_KEY'),
+        // Slack API
+        'SLACK_BOT_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'SLACK_BOT_TOKEN'),
+        'SLACK_APP_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'SLACK_APP_TOKEN'),
+        // Jira API
+        'JIRA_API_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'JIRA_API_TOKEN'),
+        // PagerDuty API
+        'PAGERDUTY_API_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'PAGERDUTY_API_TOKEN'),
+        // Atlassian API (for Confluence)
+        'ATLASSIAN_API_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'ATLASSIAN_API_TOKEN'),
       }
     });
 

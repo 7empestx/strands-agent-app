@@ -22,18 +22,22 @@ Universal AI tool server for Cursor, Claude Code, and other MCP-compatible IDEs:
 | **Coralogix** | 5 | Log analysis, error tracking, service health |
 | **Atlassian** | 12 | User/group management for onboarding/offboarding |
 | **Bitbucket** | 6 | PRs, pipelines, repos, branches, commits |
-| **CloudWatch** | 7 | Metrics, alarms, logs |
 | **AWS CLI** | 1 | Read-only AWS queries (WAF, ALB, ECS, etc.) |
 
 ### Streamlit Dashboard
 Web interface with specialized AI agents:
 
-| Agent | Description |
-|-------|-------------|
-| **DevOps** | Orchestrator for observability + user management |
-| **Coralogix** | Log analysis with AI-powered search |
-| **Bitbucket** | Repository management, PR reviews |
-| **CVE/Vulnerability** | Security vulnerability tracking |
+| Agent | Description | Status |
+|-------|-------------|--------|
+| **DevOps** | Orchestrator for observability + user management | Active |
+| **Coralogix** | Log analysis with AI-powered search | Active |
+| **Bitbucket** | Repository management, PR reviews | Active |
+| **CVE/Vulnerability** | Security vulnerability tracking | Active |
+| **Confluence** | Documentation and knowledge base search | Planned |
+| **Database** | Database queries and health monitoring | Planned |
+| **HR** | HR policies and employee information | Planned |
+| **Risk** | Underwriting and risk assessment | Planned |
+| **Transaction** | Merchant transaction insights | Active |
 
 ## Quick Start
 
@@ -96,21 +100,44 @@ strands-agent-app/
 ├── src/
 │   ├── mcp_server/              # MCP Server + Slack Bot
 │   │   ├── server.py            # FastMCP server (30+ tools)
-│   │   └── slack_bot.py         # Slack bot (Clippy)
+│   │   ├── clippy_tools.py      # Tool definitions for Clippy
+│   │   └── slack_bot/           # Slack bot (Clippy) - modular package
+│   │       ├── bot.py           # Main bot logic & message handling
+│   │       ├── tool_executor.py # Tool execution routing
+│   │       ├── claude_tools.py  # Claude tool definitions
+│   │       ├── prompt_enhancer.py # AI context extraction
+│   │       ├── formatters.py    # Response formatting
+│   │       ├── bedrock_client.py # Bedrock API client
+│   │       ├── alerting.py      # Error alerting
+│   │       └── metrics.py       # Request metrics
 │   ├── streamlit/               # Streamlit UI + Agents
 │   │   ├── app.py               # Main dashboard
 │   │   ├── devops_agent.py      # DevOps orchestrator
 │   │   ├── coralogix_agent.py   # Log analysis agent
 │   │   ├── bitbucket_agent.py   # Repo management agent
-│   │   └── ...                  # Other specialized agents
+│   │   ├── cve_agent.py         # CVE vulnerability tracking
+│   │   ├── vulnerability_agent.py # Security vulnerability agent
+│   │   ├── confluence_agent.py  # Documentation search (planned)
+│   │   ├── database_agent.py    # Database queries (planned)
+│   │   ├── hr_agent.py          # HR assistant (planned)
+│   │   ├── risk_agent.py        # Risk assessment (planned)
+│   │   └── transaction_agent.py # Transaction insights
 │   └── lib/                     # Shared libraries (no framework deps)
 │       ├── coralogix.py         # Coralogix API handlers
 │       ├── bitbucket.py         # Bitbucket API handlers
-│       ├── cloudwatch.py        # CloudWatch handlers
 │       ├── code_search.py       # Bedrock KB search
 │       ├── atlassian.py         # Atlassian Admin API
 │       ├── aws_cli.py           # Safe AWS CLI wrapper
+│       ├── jira.py              # Jira API handlers
+│       ├── pagerduty.py         # PagerDuty API handlers
+│       ├── confluence.py        # Confluence API handlers
+│       ├── config_loader.py     # Service registry & S3 config
+│       ├── investigation_agent.py # Multi-step investigation orchestrator
 │       └── utils/               # AWS clients, config, secrets
+│           ├── aws.py           # AWS client factory
+│           ├── config.py        # Configuration constants
+│           ├── secrets.py       # Secrets Manager access
+│           └── time_utils.py    # Time manipulation utilities
 ├── infra/                       # AWS CDK (JavaScript)
 │   └── lib/
 │       ├── ecs-fargate-stack.js     # ECS infrastructure
@@ -119,7 +146,8 @@ strands-agent-app/
 │   ├── deploy-to-ecs.sh         # Deploy to ECS Fargate
 │   └── sync-repos-to-s3.py      # Sync code to KB bucket
 ├── tests/
-│   └── clippy_test_prompts.py   # Slack bot test harness
+│   ├── clippy_test_prompts.py   # Slack bot interactive test harness
+│   └── test_clippy_tools.py     # Comprehensive tool tests
 ├── Dockerfile.mcp               # MCP Server container
 ├── Dockerfile.streamlit         # Streamlit container
 └── bitbucket-pipelines.yml      # CI/CD pipeline

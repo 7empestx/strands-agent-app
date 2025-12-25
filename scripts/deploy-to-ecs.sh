@@ -82,33 +82,102 @@ echo ""
 # =========================================================================
 echo "[5/5] Updating ECS services..."
 
-# Force new deployment for Streamlit
+# Force new deployment for Streamlit (desired count = 1 to avoid duplicate tasks)
 echo "  → Updating Streamlit service..."
 aws ecs update-service \
   --cluster "$CLUSTER_NAME" \
   --service "$STREAMLIT_SERVICE" \
+  --desired-count 1 \
   --force-new-deployment \
   --region "$AWS_REGION" \
   --profile "$AWS_PROFILE" \
   > /dev/null
 
-# Force new deployment for MCP Server
+# Force new deployment for MCP Server (desired count = 1 to avoid duplicate tasks)
 echo "  → Updating MCP Server service..."
 aws ecs update-service \
   --cluster "$CLUSTER_NAME" \
   --service "$MCP_SERVICE" \
+  --desired-count 1 \
   --force-new-deployment \
   --region "$AWS_REGION" \
   --profile "$AWS_PROFILE" \
   > /dev/null
 
-echo "✓ ECS services updated"
+echo "✓ ECS services updated (desired count: 1 per service)"
 echo ""
 
 # =========================================================================
-# Step 6: Verify deployment
+# Step 6: Wait for user verification
 # =========================================================================
-echo "[6/6] Verifying deployment..."
+echo "[6/7] Waiting for ECS tasks to stabilize..."
+echo ""
+echo "Current task count:"
+aws ecs describe-services \
+  --cluster "$CLUSTER_NAME" \
+  --services "$STREAMLIT_SERVICE" "$MCP_SERVICE" \
+  --region "$AWS_REGION" \
+  --profile "$AWS_PROFILE" \
+  --query 'services[*].{Service:serviceName,Desired:desiredCount,Running:runningCount,Pending:pendingCount}' \
+  --output table
+
+echo ""
+echo "Waiting for old tasks to drain (this may take 1-2 minutes)..."
+echo "You can monitor in AWS Console: https://console.aws.amazon.com/ecs/home?region=${AWS_REGION}#/clusters/${CLUSTER_NAME}/services"
+echo ""
+
+# Wait for running count to match desired count
+MAX_WAIT=180
+WAITED=0
+while [ $WAITED -lt $MAX_WAIT ]; do
+  STREAMLIT_RUNNING=$(aws ecs describe-services \
+    --cluster "$CLUSTER_NAME" \
+    --services "$STREAMLIT_SERVICE" \
+    --region "$AWS_REGION" \
+    --profile "$AWS_PROFILE" \
+    --query 'services[0].runningCount' \
+    --output text 2>/dev/null)
+
+  MCP_RUNNING=$(aws ecs describe-services \
+    --cluster "$CLUSTER_NAME" \
+    --services "$MCP_SERVICE" \
+    --region "$AWS_REGION" \
+    --profile "$AWS_PROFILE" \
+    --query 'services[0].runningCount' \
+    --output text 2>/dev/null)
+
+  if [ "$STREAMLIT_RUNNING" == "1" ] && [ "$MCP_RUNNING" == "1" ]; then
+    echo "✓ Both services stabilized at 1 task each"
+    break
+  fi
+
+  echo "  ... waiting (${WAITED}s) - streamlit: ${STREAMLIT_RUNNING}, mcp: ${MCP_RUNNING}"
+  sleep 10
+  WAITED=$((WAITED + 10))
+done
+
+if [ $WAITED -ge $MAX_WAIT ]; then
+  echo "⚠ Timeout waiting for tasks to stabilize. Please check ECS console."
+fi
+
+echo ""
+echo "Final task count:"
+aws ecs describe-services \
+  --cluster "$CLUSTER_NAME" \
+  --services "$STREAMLIT_SERVICE" "$MCP_SERVICE" \
+  --region "$AWS_REGION" \
+  --profile "$AWS_PROFILE" \
+  --query 'services[*].{Service:serviceName,Desired:desiredCount,Running:runningCount,Pending:pendingCount}' \
+  --output table
+
+echo ""
+read -p "Press Enter to continue once you've verified the tasks in AWS Console, or Ctrl+C to abort... "
+echo ""
+
+# =========================================================================
+# Step 7: Verify deployment
+# =========================================================================
+echo "[7/7] Verifying deployment..."
 
 # Get the digest we just pushed
 PUSHED_DIGEST=$(aws ecr describe-images \

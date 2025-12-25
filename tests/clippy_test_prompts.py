@@ -17,8 +17,8 @@ import os
 import sys
 from datetime import datetime
 
-# Add mcp-servers to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp-servers"))
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Test prompts organized by category
 TEST_PROMPTS = {
@@ -76,6 +76,27 @@ TEST_PROMPTS = {
         ("No Details", "it's not working"),
         ("Help Request", "can someone help?"),
         ("Partial Info", "prod is down"),
+    ],
+    "monitoring": [
+        ("CloudWatch Alarms", "Are there any CloudWatch alarms firing right now?"),
+        ("ECS Metrics", "What's the CPU usage on mrrobot-mcp-server?"),
+        ("Recent Errors", "Show me recent errors across all services"),
+        ("Service Health", "Is cast-core healthy in prod?"),
+        ("CloudFront Status", "Check if our CloudFront distributions are working"),
+    ],
+    "jira_pagerduty": [
+        ("Open CVEs", "What CVE tickets do we have open?"),
+        ("Active Incidents", "Are there any active PagerDuty incidents?"),
+        ("Jira Search", "Find Jira tickets about authentication issues"),
+        ("Recent Incidents", "What PagerDuty incidents happened this week?"),
+        ("Ticket Details", "Get details on DEVOPS-500"),
+    ],
+    "bitbucket_specific": [
+        ("Pipeline Status", "What's the pipeline status for cast-core-service?"),
+        ("Open PRs", "Show me open PRs in mrrobot-auth-rest"),
+        ("Build Failure", "Why did the last build fail on emvio-dashboard-app?"),
+        ("Recent Deploys", "What was deployed to cast-core in the last 24 hours?"),
+        ("PR Details", "Get details on PR 717 in cast-core-service"),
     ],
 }
 
@@ -142,7 +163,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
         verbose: Print full responses
         save_results: Save results to JSON file
     """
-    from slack_bot import invoke_claude_with_tools
+    from src.mcp_server.slack_bot import invoke_claude_with_tools
 
     metrics = TestMetrics()
     results = []
@@ -229,7 +250,7 @@ def run_tests(categories=None, verbose=True, save_results=False):
 
 def run_single_prompt(prompt: str, thread_context: list = None):
     """Test a single prompt with optional thread context."""
-    from slack_bot import invoke_claude_with_tools
+    from src.mcp_server.slack_bot import invoke_claude_with_tools
 
     print(f"\nPROMPT: {prompt}")
     if thread_context:
@@ -254,7 +275,7 @@ def interactive_mode():
 
     Supports simulated thread context for testing follow-ups.
     """
-    from slack_bot import invoke_claude_with_tools
+    from src.mcp_server.slack_bot import invoke_claude_with_tools
 
     print("\n" + "=" * 60)
     print("CLIPPY INTERACTIVE TEST MODE")
@@ -405,6 +426,144 @@ def test_follow_up_scenario():
         thread_context.append(f"Clippy: {response[:500]}")
 
 
+def run_tests_with_ecs_config(categories=None, verbose=True, save_results=False, delay_seconds=3):
+    """Run test prompts using the same config as ECS (Secrets Manager).
+
+    This tests the Clippy logic locally but uses production credentials
+    from AWS Secrets Manager, just like the ECS service does.
+
+    Args:
+        categories: List of categories to test (None = all)
+        verbose: Print full responses
+        save_results: Save results to JSON file
+        delay_seconds: Delay between tests to avoid rate limiting (default: 3s)
+    """
+    import time
+
+    import requests
+
+    from src.mcp_server.slack_bot import invoke_claude_with_tools
+
+    metrics = TestMetrics()
+    results = []
+
+    print(f"\n{'='*80}")
+    print("ECS CONFIG TEST - Using Secrets Manager credentials")
+    print("=" * 80)
+
+    # Verify we can load secrets (same as ECS does)
+    try:
+        from src.lib.utils.secrets import get_secret
+
+        bb_token = get_secret("BITBUCKET_TOKEN")
+        bb_auth_type = get_secret("BITBUCKET_AUTH_TYPE")
+        print(f"✓ Loaded Bitbucket token from Secrets Manager")
+        print(f"  Auth type: {bb_auth_type}")
+        print(f"  Token prefix: {bb_token[:20]}..." if bb_token else "  Token: NOT SET")
+    except Exception as e:
+        print(f"✗ Failed to load secrets: {e}")
+        print("  Make sure AWS_PROFILE=dev is set or running in ECS")
+        return [], metrics
+
+    # Check ECS service health for comparison
+    try:
+        health_resp = requests.get("https://mcp.mrrobot.dev/health", timeout=10)
+        if health_resp.status_code == 200:
+            data = health_resp.json()
+            print(f"✓ ECS service healthy (uptime: {data.get('uptime_seconds', 0):.0f}s)")
+    except Exception as e:
+        print(f"⚠ Could not reach ECS service: {e}")
+
+    total_prompts = sum(len(prompts) for cat, prompts in TEST_PROMPTS.items() if not categories or cat in categories)
+    current = 0
+
+    for category, prompts in TEST_PROMPTS.items():
+        if categories and category not in categories:
+            continue
+
+        print(f"\n{'='*80}")
+        print(f"CATEGORY: {category.upper()}")
+        print("=" * 80)
+
+        for name, prompt in prompts:
+            current += 1
+            print(f"\n[{current}/{total_prompts}] {name}")
+            print(f"PROMPT: {prompt[:70]}{'...' if len(prompt) > 70 else ''}")
+            print("-" * 60)
+
+            try:
+                result = invoke_claude_with_tools(prompt)
+                tool = result.get("tool_used") or "respond_directly"
+                all_tools = result.get("all_tools_used", [])
+                response = result.get("response", "No response")
+
+                was_truncated = "truncated" in response.lower() or result.get("was_truncated")
+                hit_limit = "need more information" in response.lower()
+
+                print(f"TOOL: {tool}")
+                if len(all_tools) > 1:
+                    print(f"ALL TOOLS: {' -> '.join(all_tools)}")
+
+                if was_truncated:
+                    print("WARNING: Results were truncated")
+                if hit_limit:
+                    print("WARNING: Hit max tool call limit")
+
+                if verbose:
+                    print(f"\nRESPONSE:\n{response[:600]}")
+                    if len(response) > 600:
+                        print(f"... [{len(response) - 600} more chars]")
+
+                result_record = {
+                    "category": category,
+                    "name": name,
+                    "prompt": prompt,
+                    "tool_used": tool,
+                    "all_tools_used": all_tools,
+                    "response": response,
+                    "was_truncated": was_truncated,
+                    "hit_tool_limit": hit_limit,
+                    "success": "error" not in response.lower() and "encountered an error" not in response.lower(),
+                    "ecs_config": True,
+                }
+
+                results.append(result_record)
+                metrics.record(result_record)
+
+            except Exception as e:
+                print(f"ERROR: {e}")
+                import traceback
+
+                traceback.print_exc()
+
+                result_record = {
+                    "category": category,
+                    "name": name,
+                    "prompt": prompt,
+                    "tool_used": "error",
+                    "response": str(e),
+                    "success": False,
+                    "ecs_config": True,
+                }
+                results.append(result_record)
+                metrics.record(result_record)
+
+            # Rate limit protection - delay between tests
+            if delay_seconds > 0 and current < total_prompts:
+                print(f"  (waiting {delay_seconds}s to avoid rate limits...)")
+                time.sleep(delay_seconds)
+
+    print(metrics.summary())
+
+    if save_results:
+        filename = f"test_results_ecs_config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(filename, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"\nResults saved to {filename}")
+
+    return results, metrics
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -416,20 +575,27 @@ if __name__ == "__main__":
     parser.add_argument("--interactive", "-i", action="store_true", help="Interactive mode")
     parser.add_argument("--save", "-s", action="store_true", help="Save results to JSON")
     parser.add_argument("--followup", "-f", action="store_true", help="Test follow-up scenario")
+    parser.add_argument("--remote", "-r", action="store_true", help="Test with ECS config (Secrets Manager)")
 
     args = parser.parse_args()
 
     if args.list:
+        total = 0
         for category, prompts in TEST_PROMPTS.items():
-            print(f"\n{category}:")
+            print(f"\n{category} ({len(prompts)} prompts):")
             for name, prompt in prompts:
                 print(f"  - {name}: {prompt[:50]}...")
+            total += len(prompts)
+        print(f"\nTotal: {total} prompts")
     elif args.interactive:
         interactive_mode()
     elif args.followup:
         test_follow_up_scenario()
     elif args.prompt:
         run_single_prompt(args.prompt)
+    elif args.remote:
+        categories = [args.category] if args.category else None
+        run_tests_with_ecs_config(categories=categories, verbose=not args.quiet, save_results=args.save)
     else:
         categories = [args.category] if args.category else None
         run_tests(categories=categories, verbose=not args.quiet, save_results=args.save)

@@ -11,13 +11,46 @@ import requests
 # Add project root to path to import shared utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.lib.utils.config import BITBUCKET_EMAIL, BITBUCKET_WORKSPACE
+from src.lib.utils.config import BITBUCKET_WORKSPACE
 from src.lib.utils.secrets import get_secret
 
 
 def _get_bitbucket_token() -> str:
     """Get Bitbucket token from Secrets Manager."""
     return get_secret("BITBUCKET_TOKEN")
+
+
+def _get_bitbucket_auth_type() -> str:
+    """Get Bitbucket auth type from Secrets Manager.
+
+    Returns 'bearer' for Bearer token auth (workspace access tokens)
+    or 'basic' for Basic auth (personal API tokens with email).
+    """
+    return get_secret("BITBUCKET_AUTH_TYPE") or "basic"
+
+
+def _get_bitbucket_email() -> str:
+    """Get Bitbucket email from Secrets Manager.
+
+    For workspace access tokens, this should be the bot email (xxx@bots.bitbucket.org).
+    For personal API tokens, this should be your Atlassian email.
+    Note: Not needed when using Bearer auth.
+    """
+    return get_secret("BITBUCKET_EMAIL") or "gstarkman@nex.io"
+
+
+def _get_auth_kwargs(token: str) -> dict:
+    """Get the appropriate auth kwargs for requests based on auth type.
+
+    Returns either:
+    - {'headers': {'Authorization': 'Bearer <token>'}} for Bearer auth
+    - {'auth': (email, token)} for Basic auth
+    """
+    auth_type = _get_bitbucket_auth_type()
+    if auth_type == "bearer":
+        return {"headers": {"Authorization": f"Bearer {token}"}}
+    else:
+        return {"auth": (_get_bitbucket_email(), token)}
 
 
 def _fetch_pipeline_log(endpoint: str) -> str:
@@ -32,7 +65,8 @@ def _fetch_pipeline_log(endpoint: str) -> str:
         url = f"https://api.bitbucket.org/2.0/{endpoint}"
         print(f"[Bitbucket] Fetching log: {endpoint}")
         start = time.time()
-        response = requests.get(url, auth=(BITBUCKET_EMAIL, token), timeout=10)
+        auth_kwargs = _get_auth_kwargs(token)
+        response = requests.get(url, **auth_kwargs, timeout=10)
         elapsed = time.time() - start
         print(f"[Bitbucket] Log response: {response.status_code} in {elapsed:.1f}s")
 
@@ -56,7 +90,8 @@ def _make_bitbucket_request(endpoint: str, params: dict = None) -> dict:
         url = f"https://api.bitbucket.org/2.0/{endpoint}"
         print(f"[Bitbucket] Requesting: {endpoint}")
         start = time.time()
-        response = requests.get(url, auth=(BITBUCKET_EMAIL, token), params=params, timeout=10)
+        auth_kwargs = _get_auth_kwargs(token)
+        response = requests.get(url, **auth_kwargs, params=params, timeout=10)
 
         elapsed = time.time() - start
         print(f"[Bitbucket] Response: {response.status_code} in {elapsed:.1f}s")
@@ -68,7 +103,13 @@ def _make_bitbucket_request(endpoint: str, params: dict = None) -> dict:
                 "error": "Bitbucket API returned 403 Forbidden. The mrrobot-labs workspace requires VPN access, and this server isn't on the VPN. PR details can't be fetched automatically - please use the Bitbucket link directly."
             }
         elif response.status_code == 401:
-            return {"error": "Bitbucket API error: 401 Unauthorized. Check BITBUCKET_TOKEN in Secrets Manager."}
+            return {
+                "error": "CRITICAL: Bitbucket API returned 401 Unauthorized. Cannot fetch any pipeline or PR data.",
+                "auth_failed": True,
+                "no_data_available": True,
+                "action_required": "Check BITBUCKET_TOKEN and BITBUCKET_EMAIL in Secrets Manager.",
+                "warning": "DO NOT make up or guess pipeline/PR information. Tell the user the API is unavailable.",
+            }
         elif response.status_code != 200:
             return {"error": f"Bitbucket API error: {response.status_code}"}
 
@@ -90,40 +131,71 @@ def list_pull_requests(repo_slug: str = "", state: str = "OPEN", limit: int = 20
     """List pull requests from Bitbucket.
 
     Args:
-        repo_slug: Repository slug (e.g., 'emvio-dashboard-app'). Empty = all repos
+        repo_slug: Repository slug (e.g., 'emvio-dashboard-app'). Empty = search active repos
         state: PR state - OPEN, MERGED, DECLINED, or ALL
         limit: Maximum number of PRs to return
 
     Returns:
         dict with 'pull_requests' list or 'error'
     """
-    if repo_slug:
-        endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pullrequests"
-    else:
-        endpoint = f"pullrequests/{BITBUCKET_WORKSPACE}"
-
-    data = _make_bitbucket_request(endpoint, {"state": state, "pagelen": limit})
-
-    if "error" in data:
-        return data
-
     prs = []
-    for pr in data.get("values", [])[:limit]:
-        prs.append(
-            {
-                "id": pr.get("id"),
-                "title": pr.get("title", "No title"),
-                "author": pr.get("author", {}).get("display_name", "Unknown"),
-                "created": pr.get("created_on", "")[:10],
-                "state": pr.get("state", ""),
-                "repo": pr.get("destination", {}).get("repository", {}).get("name", ""),
-                "source_branch": pr.get("source", {}).get("branch", {}).get("name", ""),
-                "dest_branch": pr.get("destination", {}).get("branch", {}).get("name", ""),
-                "url": pr.get("links", {}).get("html", {}).get("href", ""),
-            }
+
+    if repo_slug:
+        # Single repo query
+        endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pullrequests"
+        data = _make_bitbucket_request(endpoint, {"state": state, "pagelen": limit})
+
+        if "error" in data:
+            return data
+
+        for pr in data.get("values", [])[:limit]:
+            prs.append(_format_pr(pr))
+    else:
+        # Query multiple active repos to find PRs across workspace
+        # Get recently updated repos first
+        repos_data = _make_bitbucket_request(
+            f"repositories/{BITBUCKET_WORKSPACE}",
+            {"pagelen": 50, "sort": "-updated_on"},
         )
 
-    return {"pull_requests": prs, "state": state, "count": len(prs)}
+        if "error" in repos_data:
+            return repos_data
+
+        # Check each repo for PRs (stop early if we have enough)
+        for repo in repos_data.get("values", []):
+            if len(prs) >= limit:
+                break
+
+            repo_name = repo.get("slug", "")
+            endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_name}/pullrequests"
+            pr_data = _make_bitbucket_request(endpoint, {"state": state, "pagelen": 10})
+
+            if "error" not in pr_data:
+                for pr in pr_data.get("values", []):
+                    prs.append(_format_pr(pr))
+                    if len(prs) >= limit:
+                        break
+
+    return {"pull_requests": prs[:limit], "state": state, "count": len(prs[:limit])}
+
+
+def _format_pr(pr: dict) -> dict:
+    """Format a PR response into a consistent structure."""
+    from src.lib.utils.time_utils import format_relative_time
+
+    created_on = pr.get("created_on", "")
+    return {
+        "id": pr.get("id"),
+        "title": pr.get("title", "No title"),
+        "author": pr.get("author", {}).get("display_name", "Unknown"),
+        "created": created_on[:10] if created_on else "",
+        "created_relative": format_relative_time(created_on) if created_on else None,
+        "state": pr.get("state", ""),
+        "repo": pr.get("destination", {}).get("repository", {}).get("name", ""),
+        "source_branch": pr.get("source", {}).get("branch", {}).get("name", ""),
+        "dest_branch": pr.get("destination", {}).get("branch", {}).get("name", ""),
+        "url": pr.get("links", {}).get("html", {}).get("href", ""),
+    }
 
 
 def get_open_prs(repo_slug: str, limit: int = 5) -> dict:
@@ -236,7 +308,13 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> dict:
 
     Returns:
         dict with 'pipelines' list or 'error'
+
+    Note:
+        This returns BUILD status, not deployment status. A successful build
+        means code was built/tested, not necessarily deployed to production.
     """
+    from src.lib.utils.time_utils import format_relative_time
+
     endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pipelines/"
     data = _make_bitbucket_request(endpoint, {"pagelen": limit, "sort": "-created_on"})
 
@@ -247,20 +325,26 @@ def get_pipeline_status(repo_slug: str, limit: int = 5) -> dict:
     for pipe in data.get("values", []):
         state = pipe.get("state", {}).get("name", "Unknown")
         result = pipe.get("state", {}).get("result", {}).get("name", "")
+        created_on = pipe.get("created_on", "")
 
-        pipelines.append(
-            {
-                "build_number": pipe.get("build_number"),
-                "state": state,
-                "result": result or state,
-                "branch": pipe.get("target", {}).get("ref_name", "N/A"),
-                "created": pipe.get("created_on", "")[:16].replace("T", " "),
-                "duration_seconds": pipe.get("duration_in_seconds"),
-                "url": pipe.get("links", {}).get("html", {}).get("href", ""),
-            }
-        )
+        pipeline_info = {
+            "build_number": pipe.get("build_number"),
+            "state": state,
+            "result": result or state,
+            "branch": pipe.get("target", {}).get("ref_name", "N/A"),
+            "created": created_on[:16].replace("T", " ") if created_on else "",
+            "created_relative": format_relative_time(created_on) if created_on else None,
+            "duration_seconds": pipe.get("duration_in_seconds"),
+            "url": pipe.get("links", {}).get("html", {}).get("href", ""),
+        }
+        pipelines.append(pipeline_info)
 
-    return {"pipelines": pipelines, "repo": repo_slug, "count": len(pipelines)}
+    return {
+        "pipelines": pipelines,
+        "repo": repo_slug,
+        "count": len(pipelines),
+        "note": "This shows BUILD status. A successful build does not mean code was deployed to production.",
+    }
 
 
 def get_pipeline_details(repo_slug: str, pipeline_id: int) -> dict:
@@ -467,6 +551,119 @@ def list_branches(repo_slug: str, limit: int = 25) -> dict:
     return {"branches": branches, "repo": repo_slug, "count": len(branches)}
 
 
+def get_pr_diff(repo_slug: str, pr_id: int, file_path: str = "") -> dict:
+    """Get the actual diff content for a PR.
+
+    Args:
+        repo_slug: Repository slug
+        pr_id: Pull request ID
+        file_path: Optional - specific file to get diff for
+
+    Returns:
+        dict with diff content
+    """
+    import time
+
+    token = _get_bitbucket_token()
+    if not token:
+        return {"error": "BITBUCKET_TOKEN not configured"}
+
+    try:
+        endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pullrequests/{pr_id}/diff"
+        url = f"https://api.bitbucket.org/2.0/{endpoint}"
+
+        print(f"[Bitbucket] Fetching diff: {endpoint}")
+        start = time.time()
+        auth_kwargs = _get_auth_kwargs(token)
+        response = requests.get(url, **auth_kwargs, timeout=15)
+        elapsed = time.time() - start
+        print(f"[Bitbucket] Diff response: {response.status_code} in {elapsed:.1f}s")
+
+        if response.status_code != 200:
+            return {"error": f"Failed to get diff: {response.status_code}"}
+
+        diff_text = response.text
+
+        # If file_path specified, extract just that file's diff
+        if file_path:
+            lines = diff_text.split("\n")
+            file_diff_lines = []
+            in_target_file = False
+
+            for line in lines:
+                if line.startswith("diff --git"):
+                    # Check if this is our target file
+                    in_target_file = file_path in line
+                if in_target_file:
+                    file_diff_lines.append(line)
+
+            if file_diff_lines:
+                diff_text = "\n".join(file_diff_lines)
+            else:
+                return {"error": f"File '{file_path}' not found in diff"}
+
+        # Truncate if too long
+        if len(diff_text) > 15000:
+            diff_text = diff_text[:15000] + "\n\n... [truncated, diff too large] ..."
+
+        return {
+            "repo": repo_slug,
+            "pr_id": pr_id,
+            "file_path": file_path or "all files",
+            "diff": diff_text,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def list_user_prs(author: str, state: str = "OPEN", limit: int = 20) -> dict:
+    """Find all PRs by a specific author across repositories.
+
+    Args:
+        author: Author display name or partial match
+        state: OPEN, MERGED, DECLINED, or ALL
+        limit: Maximum PRs to return
+
+    Returns:
+        dict with PRs by the author
+    """
+    # Get recently updated repos
+    repos_data = _make_bitbucket_request(
+        f"repositories/{BITBUCKET_WORKSPACE}",
+        {"pagelen": 100, "sort": "-updated_on"},
+    )
+
+    if "error" in repos_data:
+        return repos_data
+
+    author_lower = author.lower()
+    user_prs = []
+
+    # Check each repo for PRs by this author
+    for repo in repos_data.get("values", []):
+        if len(user_prs) >= limit:
+            break
+
+        repo_slug = repo.get("slug", "")
+        endpoint = f"repositories/{BITBUCKET_WORKSPACE}/{repo_slug}/pullrequests"
+        pr_data = _make_bitbucket_request(endpoint, {"state": state, "pagelen": 50})
+
+        if "error" not in pr_data:
+            for pr in pr_data.get("values", []):
+                pr_author = pr.get("author", {}).get("display_name", "")
+                if author_lower in pr_author.lower():
+                    user_prs.append(_format_pr(pr))
+                    if len(user_prs) >= limit:
+                        break
+
+    return {
+        "author": author,
+        "state": state,
+        "pull_requests": user_prs[:limit],
+        "count": len(user_prs[:limit]),
+    }
+
+
 # ============================================================================
 # MCP TOOL REGISTRATION
 # ============================================================================
@@ -555,3 +752,47 @@ def register_tools(mcp):
             List of branches with latest commit info
         """
         return list_branches(repo_slug, limit)
+
+    @mcp.tool()
+    def bitbucket_get_pr_details(repo_slug: str, pr_id: int) -> dict:
+        """Get comprehensive PR details including files, comments, and approvals.
+
+        Use this for PR reviews. Returns everything needed to understand a PR:
+        title, description, author, files changed, comments, approvals.
+
+        Args:
+            repo_slug: Repository slug (e.g., 'mrrobot-auth-rest')
+            pr_id: Pull request ID number
+
+        Returns:
+            Full PR details with files_changed, comments, approvals
+        """
+        return get_pr_details(repo_slug, pr_id)
+
+    @mcp.tool()
+    def bitbucket_get_pr_diff(repo_slug: str, pr_id: int, file_path: str = "") -> dict:
+        """Get the actual diff content for a PR.
+
+        Args:
+            repo_slug: Repository slug
+            pr_id: Pull request ID
+            file_path: Optional - specific file to get diff for (empty = all files)
+
+        Returns:
+            Diff content as text
+        """
+        return get_pr_diff(repo_slug, pr_id, file_path)
+
+    @mcp.tool()
+    def bitbucket_list_user_prs(author: str, state: str = "OPEN", limit: int = 20) -> dict:
+        """Find all PRs by a specific author across all repositories.
+
+        Args:
+            author: Author display name or partial match (e.g., 'Grant', 'Starkman')
+            state: OPEN, MERGED, DECLINED, or ALL
+            limit: Maximum PRs to return
+
+        Returns:
+            List of PRs by that author
+        """
+        return list_user_prs(author, state, limit)

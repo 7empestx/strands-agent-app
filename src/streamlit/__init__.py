@@ -12,13 +12,14 @@ ACTIVE AGENTS:
 - transaction_agent: Transaction and merchant analytics
 
 PLACEHOLDER AGENTS (not yet implemented):
-- cloudwatch_agent, confluence_agent, database_agent, hr_agent, risk_agent
+- confluence_agent, database_agent, hr_agent, risk_agent
+
+Note: CloudWatch removed - use Coralogix for all log analysis.
 """
 
 from .bitbucket_agent import BITBUCKET_TOOLS, bitbucket_agent
 
 # Placeholder agents (exported for backwards compatibility)
-from .cloudwatch_agent import CLOUDWATCH_TOOLS, cloudwatch_agent
 from .confluence_agent import CONFLUENCE_TOOLS, confluence_agent
 from .coralogix_agent import coralogix_agent, create_coralogix_agent, run_coralogix_agent
 from .cve_agent import cve_agent, run_cve_agent
@@ -49,8 +50,6 @@ __all__ = [
     "transaction_agent",
     "run_transaction_agent",
     # Placeholder agents
-    "cloudwatch_agent",
-    "CLOUDWATCH_TOOLS",
     "confluence_agent",
     "CONFLUENCE_TOOLS",
     "database_agent",

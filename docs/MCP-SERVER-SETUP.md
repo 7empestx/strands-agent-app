@@ -1,6 +1,6 @@
 # MrRobot Code Knowledge Base - MCP Server Setup Guide
 
-> **Last Updated:** December 2024
+> **Last Updated:** December 2024 (Tools updated)
 > **Status:** Production Ready
 > **Access:** VPN Required
 
@@ -88,9 +88,51 @@ Once connected, you can ask your AI assistant questions about the MrRobot codeba
 
 ## Available Tools
 
+The MCP server provides 30+ tools across multiple categories:
+
+### Code Search (Bedrock Knowledge Base)
 | Tool | Description |
 |------|-------------|
-| `search_code` | Search the entire MrRobot codebase using natural language |
+| `search_mrrobot_repos` | Semantic search across all 254 repos |
+| `search_in_repo` | Search within a specific repository |
+| `find_similar_code` | Find similar code patterns |
+| `get_file_content` | Fetch full file content from Bitbucket |
+| `search_by_file_type` | Search specific file types (e.g., `*.py`, `*.ts`) |
+
+### Coralogix (Log Analysis)
+| Tool | Description |
+|------|-------------|
+| `coralogix_search_logs` | Natural language log search (auto-converts to DataPrime) |
+| `coralogix_get_recent_errors` | Get errors grouped by service |
+| `coralogix_get_service_logs` | Logs for a specific service |
+| `coralogix_get_service_health` | Health overview for services |
+
+### Bitbucket
+| Tool | Description |
+|------|-------------|
+| `bitbucket_list_prs` | List pull requests (open/merged/declined) |
+| `bitbucket_pipeline_status` | Get recent pipeline/deploy status |
+| `bitbucket_get_pr_details` | Get PR diff, comments, reviewers |
+| `bitbucket_get_repo_info` | Repository metadata |
+| `bitbucket_list_branches` | List branches in a repo |
+| `bitbucket_get_commits` | Recent commits |
+
+### Atlassian Admin
+| Tool | Description |
+|------|-------------|
+| `atlassian_list_users` | List users in organization |
+| `atlassian_search_users` | Search users by email/name |
+| `atlassian_list_groups` | List groups |
+| `atlassian_get_user_groups` | Get groups for a user |
+| `atlassian_add_user_to_group` | Add user to group |
+| `atlassian_remove_user_from_group` | Remove user from group |
+
+### AWS CLI (Read-Only)
+| Tool | Description |
+|------|-------------|
+| `aws_cli_command` | Run allowlisted read-only AWS commands |
+
+Blocked commands: `delete`, `terminate`, `create`, `put`, `get-secret-value`
 
 ## Troubleshooting
 

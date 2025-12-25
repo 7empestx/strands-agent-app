@@ -36,11 +36,4 @@ def get_secrets_manager():
     return get_session().client("secretsmanager", config=config)
 
 
-def get_logs_client():
-    """Get CloudWatch Logs client."""
-    return get_session().client("logs")
-
-
-def get_cloudwatch_client():
-    """Get CloudWatch client."""
-    return get_session().client("cloudwatch")
+# CloudWatch removed - use Coralogix for all log analysis

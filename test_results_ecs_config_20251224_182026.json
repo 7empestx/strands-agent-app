@@ -1,0 +1,779 @@
+[
+  {
+    "category": "troubleshooting",
+    "name": "504 Errors",
+    "prompt": "We're seeing 504 errors on Cast staging for syncAll endpoint. Can you check CloudWatch?",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_cloudwatch_logs",
+      "search_devops_history",
+      "search_logs",
+      "search_code"
+    ],
+    "response": "*Here's what I found:*\n\n\u2022 No current 504 errors in CloudWatch logs for Cast staging in the past 4 hours\n\u2022 *We saw this exact same issue in October 2024* - Walter reported identical symptoms: 504s on syncAll endpoint but sync still working for QBO\n\u2022 The syncAll endpoint in `integrationJob.controller.js` calls a Lambda function via `lambdaWrapper(syncAll, req)`\n\n*From the October incident:*\n\u2022 Kyle found CloudWatch logs showed the issue\n\u2022 The sync was still successful despite 504 errors\n\u2022 Specific orgId was involved: `c89580ba-8244-4f09-92ee-c0a9878741b2`\n\n*Key questions:*\n\u2022 Is this for a specific orgId or multiple accounts?\n\u2022 Are you seeing the syncs actually completing successfully in QBO despite the 504s?\n\u2022 When did this start happening today?\n\nThe 504 likely indicates the Lambda function is timing out, but the actual sync process might be completing asynchronously. Let me know the orgId and I can dig deeper into the specific Lambda logs.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "troubleshooting",
+    "name": "Permission Issues",
+    "prompt": "I'm having permissions issues uploading documents on dashboard-app in dev - works locally",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "get_service_info",
+      "search_logs",
+      "search_logs",
+      "get_pipeline_status",
+      "search_devops_history",
+      "search_code"
+    ],
+    "response": "*Here's what I found:*\n\nThis is the *exact same issue* from December 15th! You were having dashboard upload permissions issues in dev that worked locally. Looking at the history:\n\n\u2022 *CORS configuration needed*: Dashboard needs to be added to CORS for the `online-app-attachments` S3 buckets in dev\n\u2022 *Uses presigned URLs*: Dashboard uploads files using PUT method with presigned URLs\n\u2022 *Local vs dev difference*: Works locally because `localhost:3000` is already in allowed origins\n\n*Current CORS config includes:*\n\u2022 `https://dashboard.mrrobotpaydev.com`\n\u2022 `https://localhost:3000` \n\u2022 PUT, POST, GET, HEAD methods\n\n*Next steps:*\n1. Check if your dev dashboard is actually running on `https://dashboard.mrrobotpaydev.com`\n2. Verify the S3 bucket name you're uploading to\n3. A DevOps engineer will need to update the CORS policy if the domain doesn't match\n\nWhat's the exact URL you're testing on in dev, and which S3 bucket are you uploading to? Also, are you seeing any specific error messages in the browser console?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "troubleshooting",
+    "name": "CORS Errors",
+    "prompt": "Getting CORS errors on the S3 bucket for document uploads",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I encountered an error: An error occurred (ThrottlingException) when calling the InvokeModel operation (reached max retries:. Please try again.",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "troubleshooting",
+    "name": "Lambda Timeout",
+    "prompt": "The payment webhook Lambda is timing out in prod",
+    "tool_used": "pagerduty_active_incidents",
+    "all_tools_used": [
+      "search_logs",
+      "search_cloudwatch_logs",
+      "get_recent_errors",
+      "search_devops_history",
+      "search_cloudwatch_logs",
+      "aws_cli",
+      "aws_cli",
+      "search_logs",
+      "aws_cli",
+      "search_logs",
+      "search_cloudwatch_logs",
+      "pagerduty_active_incidents"
+    ],
+    "response": "*Critical findings from investigating the payment webhook Lambda timeouts:*\n\n\u2022 *Multiple Broker Table Issues:* Several high-priority incidents around broker-outgoing-webhook-production table with sustained high latency and high write volume\n\u2022 *Code Evidence:* Found webhook timeout configuration set to 28 seconds with Lambda timeout of 30 seconds (from `handleWebhookFromSns.js`)\n\u2022 *No Recent Timeout Logs:* Not seeing explicit \"Task timed out\" errors in recent logs, but webhook service is active in production\n\u2022 *Related Infrastructure Issues:* Broker table latency problems could be causing webhook processing delays\n\n*Key technical details from the code:*\n```javascript\nAXIOS_TIMEOUT = 28000; //The lambda timeout is 30 seconds\n```\n\nThis suggests webhooks are timing out at the HTTP request level (28s) before hitting the Lambda timeout (30s).\n\n*What exactly are you seeing with the payment webhook timeouts?*\n\u2022 Are you getting specific error messages or just seeing failed webhook deliveries?\n\u2022 What time did the timeouts start occurring?\n\u2022 Are these timeouts for outgoing webhooks TO merchants or incoming webhooks FROM payment processors?\n\nThe broker table issues (incidents #10241-10252) suggest the webhook queue processing may be backed up, which could cause timeouts.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "troubleshooting",
+    "name": "Database Connection",
+    "prompt": "Getting connection refused errors to the RDS instance",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "get_recent_errors",
+      "search_logs",
+      "search_logs",
+      "search_logs",
+      "search_logs",
+      "list_alarms",
+      "aws_cli",
+      "aws_cli",
+      "search_devops_history"
+    ],
+    "response": "Here's what I found investigating your RDS connection issues:\n\n*Current Status:*\n\u2022 No specific \"connection refused\" errors in cast-core logs in the last 6 hours\n\u2022 Only seeing LaunchDarkly timeout warnings (not database related)\n\u2022 All RDS instances appear healthy and available\n\n*RDS Instances Found:*\n\u2022 `db-cast-database-ue1-dev` - Aurora MySQL, *available* status\n\u2022 `db-cast-reporting` - Aurora MySQL, *available* status \n\u2022 `db-cast-reporting-3-31-25` - Aurora MySQL, *available* status\n\n*Past Similar Issues:*\nFound a previous case where Garrett had DB connection issues on the QA EC2 instance - turned out to be a configuration problem.\n\n*To help debug further, I need more details:*\n\n\u2022 Which specific RDS instance are you trying to connect to?\n\u2022 What environment (prod/staging/dev)?\n\u2022 What service/application is getting the connection refused error?\n\u2022 When did this start happening?\n\u2022 Are you seeing this in logs, or is it user-reported?\n\nThe RDS instances themselves look healthy, so this is likely a network/security group/configuration issue rather than the database being down.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "pr_and_deploys",
+    "name": "PR Approval",
+    "prompt": "Can I get an approval on this PR? https://bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/717",
+    "tool_used": "get_pr_details",
+    "all_tools_used": [
+      "get_pr_details"
+    ],
+    "response": "I can't access the PR details right now due to a Bitbucket API authentication issue.\n\nFor PR approvals, you'll need to:\n\u2022 Get approval from another team member directly in Bitbucket\n\u2022 Check with your manager or tech lead if it's a critical change\n\u2022 Make sure all required reviewers have approved before merging\n\nA DevOps engineer will need to fix the API access, but your PR approval can proceed through normal Bitbucket workflows in the meantime.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "pr_and_deploys",
+    "name": "Reenable Pipelines",
+    "prompt": "How do we reenable pipelines for emvio-api-documentation?",
+    "tool_used": "get_pipeline_status",
+    "all_tools_used": [
+      "get_pipeline_status"
+    ],
+    "response": "I can't check the current pipeline status due to a Bitbucket API authentication issue, but I can help with the general process for re-enabling pipelines.\n\nTo re-enable pipelines for emvio-api-documentation:\n\n*Repository Settings:*\n\u2022 Go to the repo in Bitbucket \u2192 Settings \u2192 Pipelines\n\u2022 Toggle \"Enable Pipelines\" to ON\n\u2022 Check that `bitbucket-pipelines.yml` exists in the root\n\n*Common Issues:*\n\u2022 Pipeline was manually disabled after repeated failures\n\u2022 Repository ran out of build minutes\n\u2022 Authentication issues with pipeline steps\n\n*What to Check:*\n\u2022 Recent commits to see if pipelines were working before\n\u2022 Build history for failure patterns\n\u2022 Pipeline configuration file validity\n\nA DevOps engineer will need to access the Bitbucket repository settings directly to re-enable them. The API is currently unavailable for me to check the exact status or recent pipeline history.\n\nWould you like me to search for any documentation on pipeline setup or check if there are similar issues in our DevOps history?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "pr_and_deploys",
+    "name": "Deploy Status",
+    "prompt": "What's the status of recent deploys to staging?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "search_logs",
+      "get_pipeline_status",
+      "get_pipeline_status",
+      "get_pipeline_status",
+      "aws_cli",
+      "search_cloudwatch_logs",
+      "aws_cli",
+      "get_recent_errors",
+      "search_logs",
+      "search_devops_history"
+    ],
+    "response": "I'm having trouble accessing real-time deployment status due to API issues. Here's what I can tell you:\n\n*Current Status:*\n\u2022 Bitbucket API is unavailable (401 error) - can't check recent builds/deploys\n\u2022 No staging deployment logs found in the past 4-6 hours\n\u2022 Available ECS clusters don't include a staging-specific cluster\n\n*From DevOps History:*\n\u2022 Recent staging PRs mentioned for cast-core-service and emvio-dashboard-app\n\u2022 Typical flow seems to be dev \u2192 staging approval process\n\n*What I can check:*\n\u2022 Specific service logs if you tell me which service you're concerned about\n\u2022 CloudWatch alarms to see if anything's alerting\n\u2022 Individual repo build status once the Bitbucket API is fixed\n\nWhich specific services are you most concerned about for staging deployments? I can dig deeper into those particular services.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "pr_and_deploys",
+    "name": "Failed Build",
+    "prompt": "The latest build on mrrobot-auth-rest is failing, can you check?",
+    "tool_used": "get_recent_errors",
+    "all_tools_used": [
+      "get_pipeline_status",
+      "search_devops_history",
+      "search_logs",
+      "get_recent_errors"
+    ],
+    "response": "I'm hitting API issues with both Bitbucket and the logs system. Here's what I can tell you based on the DevOps history:\n\n*Previous mrrobot-auth-rest build issues:*\n\u2022 Integration tests failing in devopslocal due to setupTest execution errors (Dec 9)\n\u2022 Recent PR #327 was merged to prod on Dec 15 (password validation changes + removed sumo logic)\n\n*To check the current build failure:*\n\u2022 Visit the <https://bitbucket.org/mrrobot-labs/mrrobot-auth-rest/addon/pipelines/home|pipelines page> directly\n\u2022 Look at the latest build logs for specific error messages\n\u2022 Common auth service build issues: integration test setup, environment config, or dependency problems\n\nA DevOps engineer should be able to help diagnose the specific failure once the APIs are back up. What error are you seeing in the build logs?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "pr_and_deploys",
+    "name": "PR Review",
+    "prompt": "Can you review this PR? https://bitbucket.org/mrrobot-labs/emvio-gateway/pull-requests/123",
+    "tool_used": "get_pr_details",
+    "all_tools_used": [
+      "get_pr_details"
+    ],
+    "response": "I hit an error checking that PR - our Bitbucket API access is currently unavailable (401 Unauthorized). \n\nYou'll need to review the PR directly in Bitbucket at that link. A DevOps engineer will need to fix the API token issue in our system.\n\nFor now, you can:\n\u2022 Check the PR files and changes directly in Bitbucket\n\u2022 Look at the build status in the PR\n\u2022 Review any comments from other team members\n\nIs there something specific about the code changes you'd like help understanding?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "history_and_precedent",
+    "name": "Past 504s",
+    "prompt": "How did we handle the 504 errors on Cast before?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "search_devops_history"
+    ],
+    "response": "I found a relevant past conversation about 504 errors on Cast! Here's what happened before:\n\n*October 7, 2025 - Cast Staging 504 Errors:*\n\u2022 Walter Guerrero reported 504 errors on Cast staging for the syncAll endpoint (`v1/integrationJob/syncAll`)\n\u2022 The sync was still working successfully (data was getting synced to QuickBooks)  \n\u2022 Couldn't find errors in Sumo logs, so they asked DevOps to check CloudWatch\n\u2022 Specific org affected: `c89580ba-8244-4f09-92ee-c0a9878741b2`\n\n*Key insight:* The 504 errors were happening but the actual sync process was still completing successfully - it was likely a timeout issue on the endpoint response, not a functional failure.\n\nWant me to check current Cast logs or CloudWatch to see if you're experiencing something similar?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "history_and_precedent",
+    "name": "S3 Issues",
+    "prompt": "Have we seen S3 permission issues on dashboard-app before?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "search_devops_history"
+    ],
+    "response": "Yes, we've seen S3 permission issues with dashboard-app before! Here's what I found:\n\n**Recent S3 Permission Issues:**\n\n\u2022 *December 15th* - Timothy reported upload permission issues on dev environment that worked locally\n  - Issue with document uploads specifically\n  - Permissions JSON mentioned PUT/POST methods\n\n\u2022 *December 12th* - Timothy requested CORS setup for dashboard-app to access online-app-attachments S3 buckets\n  - Bryce asked about presigned URLs and specific CORS headers needed\n\n**Key Infrastructure Details:**\n\u2022 Dashboard-app uses S3 bucket: `mrrobot-dashboard-ui-{region}-{environment}`\n\u2022 CORS configuration seems to be a recurring theme\n\u2022 Environment-specific permission differences (dev vs local)\n\nThe most recent issue was just a few days ago with upload permissions on the dev environment. Are you seeing similar upload issues, or is this a different S3 permission problem?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "history_and_precedent",
+    "name": "Readme Auth",
+    "prompt": "What was the resolution for the readme.com authentication issue?",
+    "tool_used": "jira_search",
+    "all_tools_used": [
+      "search_devops_history",
+      "search_devops_history",
+      "get_pr_details",
+      "search_confluence",
+      "jira_search"
+    ],
+    "response": "Based on the DevOps history, I found references to a readme.com authentication issue that was addressed in the auth service:\n\n*Key Findings:*\n\u2022 Joseph Jones created <https://bitbucket.org/mrrobot-labs/mrrobot-auth-rest/pull-requests/312|Auth Service PR #312> on Nov 4th to address an issue Nick pointed out\n\u2022 The PR was related to readme authentication functionality in the `mrrobot-auth-rest` service\n\u2022 Code shows there's a `createReadmeToken` function that handles username/password authentication for readme.com integration\n\n*Unfortunately:*\n\u2022 Bitbucket API is currently unavailable, so I can't pull the specific PR details to see the exact resolution\n\u2022 No documentation found in Confluence about this specific issue\n\nThe auth service handles readme.com token creation through the `createReadmeToken` function, but I'd need access to PR #312 to see what specific authentication issue was fixed and how it was resolved.\n\nWould you like me to check recent logs from the auth service or search for any related authentication errors?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "history_and_precedent",
+    "name": "Similar Outage",
+    "prompt": "Have we had this type of outage before?",
+    "tool_used": "pagerduty_recent_incidents",
+    "all_tools_used": [
+      "search_devops_history",
+      "search_devops_history",
+      "pagerduty_recent_incidents"
+    ],
+    "response": "Based on the DevOps history, *yes - we've had similar Cast Core issues before*:\n\n*Previous Cast Core 504 Issues:*\n\u2022 *Oct 7, 2025*: Walter reported 504 Gateway Timeout errors on Cast staging syncAll endpoint (`/api/v1/integrationJob/syncAll`)\n\u2022 The sync was still working but throwing 504s - similar pattern to what you might be seeing\n\u2022 DevOps checked CloudWatch logs to investigate\n\n*Current Pattern Analysis:*\n\u2022 Recent PagerDuty incidents show ongoing Cast uptime test failures (QACastUptimeTest)\n\u2022 Multiple broker table latency issues in production\n\u2022 Several CSP violations across Cast services\n\n*What was tried before:*\n\u2022 CloudWatch log analysis for the 504 errors\n\u2022 The issue appeared to be timeout-related on specific endpoints\n\u2022 Sync functionality continued working despite the 504 responses\n\nThe Oct 7 incident with 504 timeouts on syncAll looks very similar to current patterns. What specific symptoms are you seeing with the current outage? Are you getting 504s on specific endpoints, or is the service completely down?",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "history_and_precedent",
+    "name": "Past Solution",
+    "prompt": "How did we fix the CORS issue last time?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "search_devops_history"
+    ],
+    "response": "I found a recent CORS issue fix! Here's how it was resolved:\n\n*Cast App CORS Fix (Nov 21):*\n\u2022 Kyle Barnes fixed a CORS issue by adding the support backend as a \"known origin\" \n\u2022 The fix was implemented in PR #1062 for cast-app\n\u2022 <https://bitbucket.org/mrrobot-labs/cast-app/pull-requests/1062/overview|Cast App PR #1062>\n\n*Other CORS Solutions from History:*\n\u2022 *S3 Bucket CORS:* For dashboard app accessing S3 buckets, DevOps configures allowed headers, methods, and max age settings\n\u2022 *API CORS:* For emvio-dashboard-app accessing underwriting endpoints, CORS headers need to be configured on the API side\n\nThe most common fix is adding the requesting domain/service as an allowed origin in the backend service's CORS configuration. Which service are you having CORS issues with?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "access_requests",
+    "name": "SFTP Setup",
+    "prompt": "Can someone set up an SFTP user with root access for a new merchant?",
+    "tool_used": "search_confluence",
+    "all_tools_used": [
+      "search_devops_history",
+      "search_confluence",
+      "search_confluence"
+    ],
+    "response": "Based on the DevOps history, I can see this is a common request. However, *I cannot create SFTP users or provide root access directly* - this requires proper infrastructure access and security approval.\n\n*What I found from past cases:*\n\u2022 Previous SFTP user setups have been handled by the DevOps team\n\u2022 There's automated SFTP user creation via Lambda functions (`sftpAutomation.js`, `createUser.js`)\n\u2022 SFTP users get specific IAM roles: `mrrobot-sftp-user-role`\n\n*For SFTP user setup with root access:*\n\u2022 This requires AWS Transfer Family permissions\n\u2022 Root folder access needs specific IAM role configuration\n\u2022 SSH keys must be properly managed and associated\n\n*Next steps:*\n1. A DevOps engineer will need to handle this request directly\n2. They'll need:\n   - Merchant name/identifier\n   - Required folder access permissions\n   - SSH public key from the merchant\n   - Environment (prod/staging)\n\n*Security note:* Root access should be carefully scoped - typically merchants only need access to their specific folders, not true \"root\" access to all SFTP directories.\n\nA DevOps engineer will reach out to help with the SFTP user creation and proper permission setup.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "access_requests",
+    "name": "New User",
+    "prompt": "Can we get a new AWS IAM user for the contractor?",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I can't create AWS IAM users directly - that's a security-sensitive task that requires proper DevOps access and approval.\n\n*Here's what you need to do:*\n\n\u2022 Create a Jira ticket in the DEVOPS project with:\n  - Contractor's name and company\n  - Required AWS permissions/services they need access to\n  - Duration of access needed\n  - Manager approval\n\n\u2022 Tag the DevOps team in #devops-alerts or assign the ticket to the DevOps team\n\n\u2022 They'll handle the user creation, set up appropriate IAM policies, and provide secure credential delivery\n\n*Why we can't do this directly:*\n\u2022 IAM user creation requires administrative AWS access\n\u2022 Contractor access needs proper security review and time-limited permissions\n\u2022 Credentials must be delivered securely through approved channels\n\nA DevOps engineer will reach out via DM for any additional details once the ticket is created.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "access_requests",
+    "name": "VPN Access",
+    "prompt": "I need VPN access for a new team member",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "search_confluence",
+      "search_confluence",
+      "search_devops_history"
+    ],
+    "response": "The DevOps history doesn't show VPN-specific guidance. Based on the Confluence results, I found some VPN documentation but it appears to be for partner connectivity rather than employee access.\n\n*VPN Access Setup for New Team Member:*\n\nI found limited VPN documentation in Confluence - mostly related to partner connectivity rather than employee onboarding. Here's what you'll need to do:\n\n\u2022 *Contact DevOps team directly* - VPN access setup requires infrastructure privileges I can't handle\n\u2022 *Employee info needed*:\n  - Full name and email\n  - Department/team\n  - Start date\n  - Required access level\n\n*Next steps:*\n1. A DevOps engineer will reach out via DM to gather the employee details\n2. They'll provision the VPN client and credentials\n3. Setup typically includes client software installation guide\n\nThe available VPN docs I found are for:\n\u2022 <https://completemerchantsolutions.atlassian.net/wiki/spaces/EMVIO/pages/84639793/VPN+Connection+From+Office+to+AWS|AWS office connectivity> (older)\n\u2022 Partner-specific connectivity guides\n\nFor standard employee VPN access, the DevOps team handles this through their internal provisioning process.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "access_requests",
+    "name": "SSH Key",
+    "prompt": "I accidentally overwrote my SSH key, can someone help?",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I can't restore SSH keys directly, but here's what you need to do:\n\n*Immediate steps:*\n\u2022 Generate a new SSH key pair: `ssh-keygen -t ed25519 -C \"your-email@mrrobot.com\"`\n\u2022 Add the public key to your GitHub/Bitbucket accounts\n\u2022 If you need server access, a DevOps engineer will need to add your new public key to the servers\n\n*For server access:*\n\u2022 Post in #devops-alerts with your new public key\n\u2022 Include which servers/environments you need access to\n\u2022 A DevOps engineer will handle the server configuration\n\n*To prevent this again:*\n\u2022 Back up your `~/.ssh/` directory\n\u2022 Consider using a password manager that can store SSH keys\n\nNeed immediate server access for an urgent issue? Let me know what you're trying to access and I can help escalate to the on-call engineer.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "access_requests",
+    "name": "API Credentials",
+    "prompt": "Need API credentials for the new integration",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I cannot provide API credentials directly through Slack for security reasons. A DevOps engineer will reach out via DM with the credentials you need for the new integration.\n\nFor future reference, API credentials should be requested through:\n\u2022 Your manager or team lead\n\u2022 #devops-requests channel with proper justification\n\u2022 Internal credential management system\n\nIf this is urgent, ping @devops in #general or contact your manager directly.",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "code_search",
+    "name": "Find Config",
+    "prompt": "Where is the S3 bucket configuration for document uploads?",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code"
+    ],
+    "response": "*Here's the S3 bucket configuration for document uploads:*\n\nThe main S3 bucket configuration is in the **cforce-service** repository:\n\n\u2022 *Primary Config:* <https://bitbucket.org/mrrobot-labs/cforce-service/src/master/serverless-resources.json|serverless-resources.json> - defines the `applicationAttachmentsBucket` CloudFormation resource\n\u2022 *Environment Config:* <https://bitbucket.org/mrrobot-labs/cforce-service/src/master/config/serverlessConfig.js|config/serverlessConfig.js> - sets bucket names per environment\n\n*Bucket Names by Environment:*\n\u2022 **Test:** `online-app-attachments-test`\n\u2022 **Development:** `online-app-attachments-development` \n\u2022 **Production:** `online-app-attachments-production`\n\n*Usage Across Services:*\n\u2022 **cforce-service** - Creates and manages the bucket, handles DocuSign uploads\n\u2022 **emvio-underwriting-service** - Uses `applicationAttachmentsBucket` config for pending list uploads, has IAM permissions defined in <https://bitbucket.org/mrrobot-labs/emvio-underwriting-service/src/master/terraform/modules/mrrobot-underwriting-rest/iam.tf|iam.tf>\n\u2022 **emvio-dashboard-app** - Frontend that uploads via presigned URLs, CORS configured for this bucket\n\nThe bucket is primarily managed in the cforce-service repo's serverless resources, but permissions and usage span multiple services for the document upload workflow.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "code_search",
+    "name": "Auth Flow",
+    "prompt": "How does authentication work in mrrobot-auth-rest?",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_code",
+      "search_code",
+      "search_code"
+    ],
+    "response": "Here's how authentication works in mrrobot-auth-rest:\n\n*mrrobot-auth-rest* is MrRobot's centralized authentication service that provides JWT-based authentication for all other services.\n\n## *Authentication Flow:*\n\n**1. Service Authentication (M2M)**\n\u2022 Services use `accessKey` and `secretKey` to call `/api/v1/auth/m2m/authenticate`\n\u2022 Returns a JWT token with configurable TTL (15 minutes default, max 1 day)\n\u2022 JWT is used for subsequent API calls across all MrRobot services\n\n**2. User Login**\n\u2022 Username/password authentication via `/api/v1/auth/login`\n\u2022 Passwords hashed with Argon2 for security\n\u2022 Returns JWT token for user sessions\n\n**3. Token Verification**\n\u2022 Other services verify JWTs via `/api/v1/auth/verify` endpoint\n\u2022 Uses the authentication middleware from `mrrobot-rest-utils`\n\n## *Key Components:*\n\n\u2022 **JWT Generation**: Custom JWT tools in `service/src/tools/jwt`\n\u2022 **Session Storage**: DynamoDB tables for sessions and credentials\n\u2022 **Middleware**: Authentication middleware validates tokens on protected endpoints\n\u2022 **Security**: Argon2 password hashing, configurable token TTLs\n\n## *Environment Endpoints:*\n\u2022 **Prod**: `https://auth.nex.io`\n\u2022 **Staging**: `https://auth.mrrobotstaging.com` \n\u2022 **Sandbox**: `https://auth.mrrobotsandbox.com`\n\nKey files to examine:\n\u2022 <https://bitbucket.org/mrrobot-labs/mrrobot-auth-rest/src/master/service/src/apis/api/v1/auth/m2mAuthenticate.js|M2M Authentication>\n\u2022 <https://bitbucket.org/mrrobot-labs/mrrobot-auth-rest/src/master/service/src/apis/api/v1/auth/login.js|User Login>\n\u2022 <https://bitbucket.org/mrrobot-labs/mrrobot-rest-utils-npm/src/master/src/rest/middleware/authenticate.middleware.js|Auth Middleware>",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "code_search",
+    "name": "Lambda Handler",
+    "prompt": "Find the Lambda handler for payment webhooks",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_code"
+    ],
+    "response": "*Payment webhook handlers found:*\n\nHere's the main payment webhook Lambda handler and how it works:\n\n**Primary Handler:** `cast-core-service/paymentsWebhookHandler.js`\n\u2022 Entry point: `/api/v1/webhooks/:orgId` endpoint in webhooks controller\n\u2022 Processes payment status changes (pending, settled, failed)\n\u2022 Updates invoices, payments, and transaction records\n\n**Handler Flow:**\n1. **Controller** (`webhooks.controller.js`) receives POST to `/api/v1/webhooks/:orgId`\n2. **Lambda Wrapper** calls `paymentsWebhookHandler` with the request\n3. **Handler** (`paymentsWebhookHandler.js`) processes the webhook payload:\n   - Validates `eventType`, `mrrobotPaymentId`, `transactionStatus`\n   - Updates payment records via Cast connections\n   - Triggers invoice status updates\n   - Handles transaction metadata\n\n**Key files:**\n\u2022 <https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/src/controllers/webhooks.controller.js|webhooks.controller.js> - Express endpoint\n\u2022 <https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/src/apis/api/v1/webhooks/paymentsWebhookHandler.js|paymentsWebhookHandler.js> - Main processing logic\n\n**Other webhook handlers:**\n\u2022 APM providers (SpeedPay, etc.) have separate webhook handlers\n\u2022 Payout service has its own webhook listener for payout events\n\nThe main payment webhook handler processes MrRobot payment status updates and keeps Cast invoices/payments in sync.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "code_search",
+    "name": "Database Schema",
+    "prompt": "Where are the database migrations for the user table?",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_code"
+    ],
+    "response": "Here are the database migrations for user-related tables across our services:\n\n*Main User Table Migrations:*\n\n\u2022 *Cast Support Portal* - Creates the main users table:\n  <https://bitbucket.org/mrrobot-labs/cast-support-portal-service/src/master/service/migrations/20251016202443-create-users-table.js|20251016202443-create-users-table.js>\n\n\u2022 *Partner Portal* - Creates Users, Accounts, UserTypes tables:\n  <https://bitbucket.org/mrrobot-labs/mrrobot-partner-portal-service/src/master/service/migrations/20240925174927-add-account-and-user-tables.js|20240925174927-add-account-and-user-tables.js>\n\n*Cast Core Service User-Related Migrations:*\n\n\u2022 *User Details Field* - Adds userDetails JSON field to multiple tables:\n  <https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/migrations/20250417205459-add-user-details-field.cjs|20250417205459-add-user-details-field.cjs>\n\n\u2022 *Profiles Table* - Creates user profiles (not direct user table but related):\n  <https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/migrations/20250417155810-create-profiles-table.cjs|20250417155810-create-profiles-table.cjs>\n\nWhich specific user table are you looking for? The cast-support-portal has the main `Users` table creation, while partner-portal has its own user management system.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "code_search",
+    "name": "API Endpoint",
+    "prompt": "Where is the syncAll endpoint defined in cast-core?",
+    "tool_used": "search_code",
+    "all_tools_used": [
+      "search_code"
+    ],
+    "response": "The `syncAll` endpoint in cast-core is defined in:\n\n*Primary Definition:*\n<https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/src/controllers/integrationJob.controller.js|integrationJob.controller.js>\n\n*Here's how it works:*\n\n1. **Endpoint route:** `POST /api/v1/integrationJob/syncAll`\n2. **Authentication:** Requires valid JWT token\n3. **Authorization:** User needs `cast:SyncAll` permission for their organization\n4. **Implementation:** Located at <https://bitbucket.org/mrrobot-labs/cast-core-service/src/master/service/src/apis/api/v1/integrationJob/syncAll.js|syncAll.js>\n\n*Key implementation details:*\n\u2022 Gets organization ID from auth headers\n\u2022 Fetches all integrations for the organization\n\u2022 Creates background jobs to sync data from each integration\n\u2022 Returns job promises and results\n\n*Frontend usage:*\nThe endpoint is called from the onboarding app and cast-app as a POST request to `/integrationJob/syncAll` for triggering data synchronization across all configured integrations.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "conversational",
+    "name": "Greeting",
+    "prompt": "Hi Clippy!",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "Hey there! I'm Clippy, your MrRobot DevOps assistant. I can help you with:\n\n\u2022 *Troubleshooting* - Check logs, errors, deployments across services\n\u2022 *Code & Architecture* - Search repos, explain how systems work\n\u2022 *Documentation* - Find runbooks, policies, onboarding guides\n\u2022 *Incidents* - PagerDuty alerts, Jira tickets, on-call status\n\u2022 *Infrastructure* - AWS resources, pipelines, monitoring\n\nJust tell me what's going on or what you need help with!",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "conversational",
+    "name": "Help",
+    "prompt": "What can you help me with?",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I'm Clippy, your MrRobot DevOps assistant! Here's what I can help with:\n\n*DevOps & Infrastructure:*\n\u2022 Check logs and errors across services (Coralogix/CloudWatch)\n\u2022 Pipeline status, PR reviews, deployment issues\n\u2022 PagerDuty incidents and on-call alerts\n\u2022 AWS infrastructure troubleshooting\n\n*Code & Architecture:*\n\u2022 Search 254 MrRobot repos for implementations\n\u2022 Explain how systems connect and work\n\u2022 Find code patterns and examples\n\n*Documentation:*\n\u2022 Search Confluence for runbooks, policies, guides\n\u2022 PRDs, test plans, architecture docs\n\u2022 Onboarding materials and processes\n\n*Tickets & Issues:*\n\u2022 Search and view Jira tickets\n\u2022 CVE/security vulnerability tracking\n\nJust tell me what's broken, what you're looking for, or paste a PR/incident URL and I'll investigate!",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "conversational",
+    "name": "Thanks",
+    "prompt": "Thanks for the help!",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "You're welcome! Hit me up anytime you need help with logs, deployments, docs, or debugging issues.",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "conversational",
+    "name": "Unclear Request",
+    "prompt": "There's an issue",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "investigate_issue",
+      "get_recent_errors",
+      "search_logs",
+      "get_pipeline_status",
+      "list_alarms",
+      "search_devops_history"
+    ],
+    "response": "*Here's what I found with cast-core in production:*\n\n*Current Issues:*\n\u2022 *LaunchDarkly connection timeouts* - frequent \"Read timeout, received no data in 300000ms\" errors\n\u2022 *Missing feature flag* - \"termsAndConditions\" flag not found, returning default values\n\u2022 These are ongoing for the last 4 hours\n\n*Good News:*\n\u2022 No critical CloudWatch alarms for cast-core specifically\n\u2022 The errors appear to be LaunchDarkly connectivity issues, not core application failures\n\n*Can't Check:*\n\u2022 Recent deployments (Bitbucket API is down)\n\u2022 Detailed pipeline status\n\n*What exactly are you seeing?* Are users reporting specific functionality not working, or did you notice these LaunchDarkly errors in monitoring? The timeouts suggest the service is still running but having trouble with feature flag connections.\n\nThe \"termsAndConditions\" feature flag issue might be affecting user-facing functionality. Have you noticed any specific features not working properly?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "conversational",
+    "name": "Follow Up",
+    "prompt": "Can you tell me more about that?",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I don't see any previous context in our conversation. What would you like to know more about? I can help with:\n\n\u2022 *Logs & Errors* - Check what's broken across services\n\u2022 *Deployments* - Recent pipeline status and builds  \n\u2022 *Documentation* - Search Confluence for guides, runbooks, policies\n\u2022 *Code Search* - Find implementations across 254 repos\n\u2022 *Jira Tickets* - Search issues, CVEs, or get ticket details\n\u2022 *Incidents* - Active PagerDuty alerts or recent issues\n\nWhat are you looking to investigate?",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "vague_requests",
+    "name": "Generic Issue",
+    "prompt": "something's broken",
+    "tool_used": "list_alarms",
+    "all_tools_used": [
+      "get_recent_errors",
+      "pagerduty_active_incidents",
+      "search_logs",
+      "search_logs",
+      "list_alarms"
+    ],
+    "response": "*Here's what I found broken:*\n\n*CRITICAL ISSUES:*\n\u2022 *21 active PagerDuty incidents* - mostly BROKER TABLES with high latency & write volume\n\u2022 *Multiple Cast uptime test failures* - QA tests failing Dec 2, 3, 5, & 9\n\n*TOP PRIORITY:*\n\u2022 *<https://nex-io.pagerduty.com/incidents/Q3O7W9402W9GSZ|Broker Tables High Latency>* (Critical, assigned to Grant)\n\u2022 *<https://nex-io.pagerduty.com/incidents/Q3FR1Y4UFLZ5R3|Broker Tables High Write Volume>* (Critical, assigned to Grant)\n\n*ONGOING ISSUES:*\n\u2022 Missing ACH files alerts (acknowledged by Kevin/Guillermo)\n\u2022 CSP violations in staging (emvio-dashboard, emvio-retail-iframe, cast-app)\n\u2022 SFTP ACH Alert (acknowledged by Kevin)\n\n*What specifically are you seeing broken?* Are you getting:\n- API timeouts/errors?\n- Website not loading?\n- Payment processing issues?\n- Something else?\n\nThe broker database seems to be the main culprit - high latency could be affecting multiple services.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "vague_requests",
+    "name": "Unspecified Error",
+    "prompt": "getting errors",
+    "tool_used": "pagerduty_active_incidents",
+    "all_tools_used": [
+      "get_recent_errors",
+      "search_logs",
+      "search_logs",
+      "pagerduty_active_incidents"
+    ],
+    "response": "*Major Issues Found:*\n\n\u2022 *21 active incidents* - mostly broker tables and monitoring alerts\n\u2022 *Critical Production Issues*: Broker tables showing sustained high latency & high write volume\n\u2022 *QA Test Failures*: Cast uptime tests failing repeatedly since Dec 2\n\u2022 *CSP Violations*: Staging environments having content security policy issues\n\n*Top Priority Issues:*\n\u2022 *Broker Tables [PROD]*: Multiple critical alerts for high latency/write volume (assigned to Grant)\n\u2022 *Missing ACH Files*: Expected \u22653 files, only found 0 (assigned to Guillermo)\n\u2022 *Cast QA Tests*: Uptime tests failing consistently (assigned to Erin)\n\nWhat specific errors are you seeing? Are they related to any of these active incidents, or is this something new?",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "vague_requests",
+    "name": "No Details",
+    "prompt": "it's not working",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "investigate_issue",
+      "get_recent_errors",
+      "search_logs",
+      "search_logs",
+      "get_pipeline_status",
+      "search_devops_history"
+    ],
+    "response": "Here's what I found with cast-core in prod:\n\n*Current Issues:*\n\u2022 *LaunchDarkly connection timeouts* - Seeing repeated \"Read timeout, received no data in 300000ms\" errors\n\u2022 *Missing feature flag* - \"termsAndConditions\" flag not found, returning default values\n\u2022 These errors are happening consistently over the last 4 hours\n\n*The LaunchDarkly timeouts are likely the main issue* - the service can't connect to feature flags properly.\n\nI can't check recent deployments right now (Bitbucket API is down), but the DevOps history shows cast-core has had LaunchDarkly integration issues before.\n\nWhat exactly are you seeing that's not working? Are you getting:\n\u2022 Specific error messages?\n\u2022 Timeouts on certain features?\n\u2022 Complete service unavailability?\n\nThis will help determine if it's just the LaunchDarkly connectivity or something more serious.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "vague_requests",
+    "name": "Help Request",
+    "prompt": "can someone help?",
+    "tool_used": "respond_directly",
+    "all_tools_used": [],
+    "response": "I'm here to help! I can assist with:\n\n\u2022 *DevOps issues* - logs, errors, deployments, pipeline failures\n\u2022 *Code questions* - search across 254 MrRobot repos for implementations\n\u2022 *Documentation* - find runbooks, policies, architecture docs\n\u2022 *Incidents* - check PagerDuty alerts and investigate issues\n\u2022 *Tickets* - search Jira, get ticket details, CVE status\n\nWhat's going on? Just describe the issue and I'll investigate.",
+    "was_truncated": null,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "vague_requests",
+    "name": "Partial Info",
+    "prompt": "prod is down",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "pagerduty_active_incidents",
+      "get_recent_errors",
+      "list_alarms",
+      "search_logs",
+      "get_cloudfront_metrics",
+      "search_logs",
+      "search_devops_history"
+    ],
+    "response": "*CRITICAL ALERT* - I'm seeing multiple active high-priority incidents affecting production:\n\n*Active Critical Issues:*\n\u2022 *Broker Tables [PROD]* - Multiple sustained high latency and write volume alerts (triggered ~1 hour ago)\n  - Grant Starkman is assigned\n  - 6+ incidents all related to broker webhook performance\n\u2022 *Cast QA Uptime Tests* - Failing repeatedly (acknowledged by Krish Sagili)\n\u2022 *ACH File Processing* - Missing expected files (acknowledged)\n\n*What I couldn't find:*\n\u2022 No 500 errors in cast-core prod logs in the last hour\n\u2022 CloudFront distributions appear operational (40+ distributions listed)\n\u2022 No recent specific \"prod down\" patterns in DevOps history\n\n*Current Status:*\nThe broker table issues are the most concerning - they handle webhook processing which could impact payment flows. The repeated Cast uptime test failures suggest frontend issues.\n\nWhat specific services or symptoms are you seeing? Are users reporting payment failures, site timeouts, or API errors?",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "monitoring",
+    "name": "CloudWatch Alarms",
+    "prompt": "Are there any CloudWatch alarms firing right now?",
+    "tool_used": "list_alarms",
+    "all_tools_used": [
+      "list_alarms"
+    ],
+    "response": "Yes, there are *5 CloudWatch alarms currently firing*:\n\n*ECS Services (Active):*\n\u2022 *mrrobot-mcp-server* - CPU utilization alarm (0% CPU, threshold 63%)\n\u2022 *mrrobot-streamlit* - CPU & memory utilization alarms (0% CPU/memory, thresholds 63%/72%)\n\n*DynamoDB (Stale):*\n\u2022 *halloween-chat-development* - Read/write capacity alarms from October (likely outdated)\n\nThe ECS alarms are target tracking alarms that fire when resources are *underutilized* - they're part of auto-scaling and indicate the services might scale down. This is normal behavior when services have low load.\n\nThe DynamoDB alarms are from October and appear to be for a development table that's no longer active.\n\n*No critical service outages indicated* - these are all low-utilization scaling alarms.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "monitoring",
+    "name": "ECS Metrics",
+    "prompt": "What's the CPU usage on mrrobot-mcp-server?",
+    "tool_used": "get_ecs_metrics",
+    "all_tools_used": [
+      "get_ecs_metrics"
+    ],
+    "response": "*Current mrrobot-mcp-server metrics (last hour):*\n\n*CPU Usage:*\n\u2022 Current: *0.67%* average (normal baseline)\n\u2022 Recent spike: 44% peak around 00:42 UTC (likely deployment or restart)\n\u2022 Stable at ~0.67% for most periods\n\n*Memory Usage:*\n\u2022 Current: *14.3%* (down from 23% earlier)\n\u2022 Dropped significantly around 00:47 UTC \n\u2022 Memory usage appears to have stabilized lower\n\n*Status:* Service looks healthy - CPU is very low and memory usage decreased. The brief CPU spike earlier was likely normal operational activity.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "monitoring",
+    "name": "Recent Errors",
+    "prompt": "Show me recent errors across all services",
+    "tool_used": "list_alarms",
+    "all_tools_used": [
+      "get_recent_errors",
+      "search_logs",
+      "search_logs",
+      "list_alarms"
+    ],
+    "response": "*Recent Error Status:*\n\n\u2022 *No errors* found in production logs in the last 4 hours\n\u2022 *5 alarms active* - all are auto-scaling \"low threshold\" alarms (not actual errors):\n  - mrrobot-mcp-server: Low CPU utilization (good thing)\n  - mrrobot-streamlit: Low CPU/memory utilization (also good)\n  - halloween-chat-development: Old DynamoDB alarms from October\n\nThese alarms are triggered when services use *less* resources than expected (auto-scaling thresholds), not actual errors. The systems appear healthy - low resource usage typically means services are running efficiently.\n\nIf you're seeing specific issues, let me know what service or error you're experiencing and I can dig deeper.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "monitoring",
+    "name": "Service Health",
+    "prompt": "Is cast-core healthy in prod?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "investigate_issue",
+      "get_recent_errors",
+      "search_logs",
+      "get_pipeline_status",
+      "list_alarms",
+      "search_devops_history"
+    ],
+    "response": "*Cast-core prod health check:*\n\n*Issues found:*\n\u2022 *LaunchDarkly connection problems* - Multiple timeout warnings (300000ms timeouts)\n\u2022 *Missing feature flag* - \"termsAndConditions\" flag not found, using default values\n\u2022 No cast-core specific CloudWatch alarms in ALARM state\n\n*What this means:*\n\u2022 Service is running but has LaunchDarkly connectivity issues\n\u2022 Feature flag issues could affect functionality that depends on \"termsAndConditions\"\n\u2022 No critical infrastructure alerts\n\n*Recommendation:*\nThe LaunchDarkly timeouts suggest network connectivity issues or LaunchDarkly service problems. The missing \"termsAndConditions\" feature flag should be created in LaunchDarkly or the code updated to handle its absence.\n\nWant me to check specific functionality or look deeper into recent deployments?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "monitoring",
+    "name": "CloudFront Status",
+    "prompt": "Check if our CloudFront distributions are working",
+    "tool_used": "get_cloudfront_metrics",
+    "all_tools_used": [
+      "get_cloudfront_metrics",
+      "get_cloudfront_metrics",
+      "get_cloudfront_metrics",
+      "get_cloudfront_metrics"
+    ],
+    "response": "*CloudFront Health Status:*\n\n\ud83d\udea8 *CRITICAL ISSUES FOUND:*\n\n\u2022 *api.mrrobotpaydev.com* (E3EN56BBN7UFB6) - *CRITICAL*\n  - High 5xx error rate (100% max)\n  - High 4xx error rate (100% max)\n  - 6,871 requests in past 6 hours\n  - Average latency: 418ms\n\n\u2022 *dashboard.mrrobotpaydev.com* (E5X1UUIOM7I00) - *WARNING*\n  - 100% max 4xx error rate\n  - 425 requests in past 6 hours\n  - Origin latency: 0ms (possible origin issue)\n\n\u2022 *app.trycastdev.com* (E1G9GWJFO4JN55) - *WARNING*\n  - 100% max 4xx error rate\n  - 426 requests in past 6 hours\n  - Origin latency: 0ms (possible origin issue)\n\n*Key Findings:*\n\u2022 All distributions are deployed and enabled\n\u2022 API distribution is seeing both 4xx and 5xx errors\n\u2022 Frontend apps (dashboard, cast app) showing 4xx errors only\n\u2022 Zero origin latency suggests backend/origin server issues\n\nThe API CloudFront is in critical condition with high error rates, and the frontend distributions are also showing elevated 4xx errors. This indicates backend service issues rather than CDN problems.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "jira_pagerduty",
+    "name": "Open CVEs",
+    "prompt": "What CVE tickets do we have open?",
+    "tool_used": "jira_cve_tickets",
+    "all_tools_used": [
+      "jira_cve_tickets"
+    ],
+    "response": "Good news - we have *no active CVE tickets* currently open. \n\nThe query shows there are 4 security-related tickets, but they're all either closed or general security epics:\n\n\u2022 *DEVOPS-2678* - Session permissions work (Closed)\n\u2022 *DEVOPS-2673* - 2025 PCI Remediation (Backlog - general PCI work)  \n\u2022 *DEVOPS-2667* - 2025 PCI 4.0 (Backlog - general PCI work)\n\u2022 *DEVOPS-1713* - 2026 Security Improvements (Backlog - general security work)\n\nNo specific CVE vulnerabilities that need immediate attention.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "jira_pagerduty",
+    "name": "Active Incidents",
+    "prompt": "Are there any active PagerDuty incidents?",
+    "tool_used": "pagerduty_active_incidents",
+    "all_tools_used": [
+      "pagerduty_active_incidents"
+    ],
+    "response": "*Yes, 21 active incidents (triggered/acknowledged)*\n\n*High priority issues:*\n\u2022 *BROKER TABLES [PROD]* - Multiple critical alerts for sustained high latency and write volume\n\u2022 *Missing ACH Files* - Daily alerts (acknowledged by Kevin/Guillermo) \n\u2022 *SFTP ACH Alert* - Acknowledged by Kevin Lindsay\n\u2022 *QA Cast Uptime Test* - Failing test plan (acknowledged by Krish/Erin)\n\n*Low priority:*\n\u2022 CSP violations in various staging/dev environments\n\u2022 Conference room iPad disconnected\n\u2022 ETL Salesforce service down (devopslocal)\n\nThe most concerning is the BROKER TABLES production issues - multiple critical alerts for database latency and write volume assigned to Grant Starkman.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "jira_pagerduty",
+    "name": "Jira Search",
+    "prompt": "Find Jira tickets about authentication issues",
+    "tool_used": "jira_search",
+    "all_tools_used": [
+      "jira_search"
+    ],
+    "response": "Found 20 tickets related to authentication. Here are the key ones:\n\n*Authentication & Auth Issues:*\n\n\u2022 *DEVOPS-3373* - AWS service worker auth (Blocked, assigned to Kyle Harline)\n  \"Talk to aws support about the best way to do service worker auth\"\n\n\u2022 *DEVOPS-3142* - Increase Security On Verifications (Backlog, Kyle Harline) \n\n\u2022 *SFAX-1946* - Hourly prod login + payment form synthetic checks (Done)\n  Testing merchant and consumer authentication flows\n\n\u2022 *SFAX-1867* - Initial Admin Portal Access for Cast Support Reps (Done)\n  Setting up authentication for Cast support team\n\n*3DS Authentication Issues:*\n\n\u2022 *DURIN-1275* - Changes to 3DS in France (Done)\n\n\u2022 *IN-222* - Rain External 3DS not Recognized by CyberSource (Backlog)\n\n\u2022 *DURIN-720* - Enable additional external 3DS parameters for integrated users (Done)\n\n\u2022 *IN-182* - Bank declines with Elavon due to frictionless 3DS flow (Done)\n\n\u2022 *IN-165* - 3DS Failure on Redirect (Done)\n\nThe main active authentication issue is *DEVOPS-3373* which is blocked on AWS support guidance for service worker authentication.\n\nWould you like details on any specific ticket?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "jira_pagerduty",
+    "name": "Recent Incidents",
+    "prompt": "What PagerDuty incidents happened this week?",
+    "tool_used": "pagerduty_recent_incidents",
+    "all_tools_used": [
+      "pagerduty_recent_incidents"
+    ],
+    "response": "Here's this week's PagerDuty activity - *14 total incidents*:\n\n*Currently Active:*\n\u2022 *CSP Violation* - cast-app devopslocal (triggered 12/18, low urgency)\n\u2022 *QA Cast Uptime Test failing* - acknowledged by Krish (high urgency, 12/21)\n\n*Key Resolved Issues:*\n\u2022 *MrRobot Service 500 errors* - 12/19 (high urgency, resolved)\n\u2022 *Developer docs down* - happened twice: 12/20 and 12/23 (both resolved)\n\u2022 *Conference room iPads* - multiple disconnection/reconnection alerts (all resolved)\n\n*Notable Patterns:*\n\u2022 Documentation site went down twice this weekend\n\u2022 CSP violations in devops environment \n\u2022 IT infrastructure alerts (conference room controllers)\n\nThe QA test failure is still active and assigned to Krish. Want me to dig into any specific incident?",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "jira_pagerduty",
+    "name": "Ticket Details",
+    "prompt": "Get details on DEVOPS-500",
+    "tool_used": "jira_get_ticket",
+    "all_tools_used": [
+      "jira_get_ticket"
+    ],
+    "response": "The ticket DEVOPS-500 doesn't exist or isn't accessible. This could mean:\n\n\u2022 Ticket number is incorrect\n\u2022 It's in a different project (not DEVOPS)\n\u2022 You don't have permissions to view it\n\u2022 It was deleted/archived\n\nTry searching for similar tickets or double-check the ticket number. You can also use a broader search to find what you're looking for.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "bitbucket_specific",
+    "name": "Pipeline Status",
+    "prompt": "What's the pipeline status for cast-core-service?",
+    "tool_used": "get_pipeline_status",
+    "all_tools_used": [
+      "get_pipeline_status"
+    ],
+    "response": "I hit an error checking the pipeline status - the Bitbucket API is currently unavailable due to authentication issues. \n\nYou can check the cast-core-service pipeline status directly at:\n\u2022 <https://bitbucket.org/mrrobot-labs/cast-core-service/addon/pipelines/home|cast-core-service pipelines>\n\nA DevOps engineer will need to fix the API connection to restore pipeline monitoring through me.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "bitbucket_specific",
+    "name": "Open PRs",
+    "prompt": "Show me open PRs in mrrobot-auth-rest",
+    "tool_used": "list_open_prs",
+    "all_tools_used": [
+      "list_open_prs"
+    ],
+    "response": "I hit an error checking the Bitbucket API - getting a 401 unauthorized response. The API credentials need to be refreshed.\n\nYou can check the open PRs directly in Bitbucket:\nhttps://bitbucket.org/mrrobot-labs/mrrobot-auth-rest/pull-requests/\n\nA DevOps engineer will fix the API access issue.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "bitbucket_specific",
+    "name": "Build Failure",
+    "prompt": "Why did the last build fail on emvio-dashboard-app?",
+    "tool_used": "get_pipeline_status",
+    "all_tools_used": [
+      "get_pipeline_status"
+    ],
+    "response": "I hit an error checking the build status - the Bitbucket API is currently unavailable (401 error).\n\nYou can check the build status directly at:\nhttps://bitbucket.org/mrrobot-labs/emvio-dashboard-app/addon/pipelines/home\n\nOr if you have the specific pipeline number that failed, I can try to get more details once the API issue is resolved.\n\nA DevOps engineer will need to fix the Bitbucket API authentication to restore pipeline monitoring.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  },
+  {
+    "category": "bitbucket_specific",
+    "name": "Recent Deploys",
+    "prompt": "What was deployed to cast-core in the last 24 hours?",
+    "tool_used": "search_devops_history",
+    "all_tools_used": [
+      "get_pipeline_status",
+      "search_logs",
+      "search_logs",
+      "search_logs",
+      "aws_cli",
+      "aws_cli",
+      "aws_cli",
+      "search_devops_history"
+    ],
+    "response": "Based on what I've found, here's the situation with cast-core deployments in the last 24 hours:\n\n*No recent prod deployments detected*\n\u2022 Bitbucket API is currently unavailable, so I can't check pipeline history\n\u2022 No cast-core prod Lambda function found (only dev environment exists)\n\u2022 Logs show normal runtime activity but no deployment indicators\n\u2022 DevOps history shows recent staging deployments but no prod pushes\n\n*What I found:*\n\u2022 `mrrobot-cast-core-dev` was last updated Dec 23, 2025 at 04:54:17 (dev only)\n\u2022 Production cast-core may not be deployed as Lambda - could be ECS or other infrastructure\n\u2022 Recent DevOps discussions mention staging releases but no prod deployments\n\nThe Bitbucket API issue is blocking pipeline visibility. A DevOps engineer can check the actual deployment status and infrastructure setup for cast-core production.",
+    "was_truncated": true,
+    "hit_tool_limit": false,
+    "success": true,
+    "ecs_config": true
+  },
+  {
+    "category": "bitbucket_specific",
+    "name": "PR Details",
+    "prompt": "Get details on PR 717 in cast-core-service",
+    "tool_used": "get_pr_details",
+    "all_tools_used": [
+      "get_pr_details"
+    ],
+    "response": "I hit an error checking that - the Bitbucket API is currently unavailable (authentication issue). \n\nYou can access PR 717 directly in Bitbucket at:\n`https://bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/717`\n\nA DevOps engineer will need to fix the API access to get PR details through me again.",
+    "was_truncated": false,
+    "hit_tool_limit": false,
+    "success": false,
+    "ecs_config": true
+  }
+]

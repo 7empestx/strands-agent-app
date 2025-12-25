@@ -25,31 +25,30 @@ from mcp.server.transport_security import TransportSecuritySettings
 # Add project root to path for imports (go up from src/mcp_server to project root)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.lib import bitbucket
-from src.lib.atlassian import (
-    handle_add_user_to_group,
-    handle_create_group,
-    handle_delete_group,
-    handle_get_directories,
-    handle_grant_group_access,
-    handle_list_groups,
-    handle_list_users,
-    handle_remove_user,
-    handle_remove_user_from_group,
-    handle_restore_user,
-    handle_revoke_group_access,
-    handle_suspend_user,
-)
-from src.lib.cloudwatch import (
-    get_alarm_history,
-    get_ecs_service_metrics,
-    get_lambda_metrics,
-    get_metric_statistics,
-    list_alarms,
-    list_log_groups,
-    query_logs,
-)
+
+# Atlassian Admin API tools disabled - requires separate admin API key
+# from src.lib.atlassian import (
+#     handle_add_user_to_group,
+#     handle_create_group,
+#     handle_delete_group,
+#     handle_get_directories,
+#     handle_grant_group_access,
+#     handle_list_groups,
+#     handle_list_users,
+#     handle_remove_user,
+#     handle_remove_user_from_group,
+#     handle_restore_user,
+#     handle_revoke_group_access,
+#     handle_suspend_user,
+# )
+# CloudWatch removed - use Coralogix for all log analysis
 from src.lib.code_search import KB_ID, get_file_from_bitbucket, search_knowledge_base
 from src.lib.config_loader import get_service_registry, lookup_service
+from src.lib.confluence import handle_get_page, handle_get_page_by_title
+from src.lib.confluence import handle_get_recent_updates as confluence_get_recent_updates
+from src.lib.confluence import handle_list_spaces
+from src.lib.confluence import handle_search as confluence_search
+from src.lib.confluence import handle_search_by_label as confluence_search_by_label
 from src.lib.coralogix import (
     handle_discover_services,
     handle_get_recent_errors,
@@ -346,132 +345,71 @@ def coralogix_get_service_health(service_name: str = "all", environment: str = "
 
 
 # ============================================================================
-# ATLASSIAN TOOLS (User/Group Management)
+# ============================================================================
+# ATLASSIAN TOOLS (User/Group Management) - DISABLED
+# Requires separate admin API key from admin.atlassian.com
+# Uncomment when admin API key is configured
 # ============================================================================
 
-
-@mcp.tool()
-def atlassian_get_directories() -> dict:
-    """Get directories in the Atlassian organization."""
-    return handle_get_directories()
-
-
-@mcp.tool()
-def atlassian_list_users(limit: int = 100, cursor: str = None) -> dict:
-    """List users in the Atlassian organization directory.
-
-    Args:
-        limit: Max users to return
-        cursor: Pagination cursor
-    """
-    return handle_list_users(limit, cursor)
-
-
-@mcp.tool()
-def atlassian_suspend_user(account_id: str) -> dict:
-    """Suspend a user's access in the Atlassian directory. Use for offboarding.
-
-    Args:
-        account_id: User's Atlassian account ID
-    """
-    return handle_suspend_user(account_id)
-
-
-@mcp.tool()
-def atlassian_restore_user(account_id: str) -> dict:
-    """Restore a suspended user's access.
-
-    Args:
-        account_id: User's Atlassian account ID
-    """
-    return handle_restore_user(account_id)
-
-
-@mcp.tool()
-def atlassian_remove_user(account_id: str) -> dict:
-    """Completely remove a user from the Atlassian directory.
-
-    Args:
-        account_id: User's Atlassian account ID
-    """
-    return handle_remove_user(account_id)
-
-
-@mcp.tool()
-def atlassian_list_groups(limit: int = 100) -> dict:
-    """List all groups in the Atlassian organization.
-
-    Args:
-        limit: Max groups to return
-    """
-    return handle_list_groups(limit)
-
-
-@mcp.tool()
-def atlassian_create_group(name: str, description: str = "") -> dict:
-    """Create a new group in the Atlassian directory.
-
-    Args:
-        name: Group name
-        description: Group description
-    """
-    return handle_create_group(name, description)
-
-
-@mcp.tool()
-def atlassian_delete_group(group_id: str) -> dict:
-    """Delete a group from the Atlassian directory.
-
-    Args:
-        group_id: Group ID
-    """
-    return handle_delete_group(group_id)
-
-
-@mcp.tool()
-def atlassian_add_user_to_group(group_id: str, account_id: str) -> dict:
-    """Add a user to an Atlassian group. Use for onboarding.
-
-    Args:
-        group_id: Group ID
-        account_id: User's account ID
-    """
-    return handle_add_user_to_group(group_id, account_id)
-
-
-@mcp.tool()
-def atlassian_remove_user_from_group(group_id: str, account_id: str) -> dict:
-    """Remove a user from an Atlassian group. Use for offboarding.
-
-    Args:
-        group_id: Group ID
-        account_id: User's account ID
-    """
-    return handle_remove_user_from_group(group_id, account_id)
-
-
-@mcp.tool()
-def atlassian_grant_group_access(group_id: str, role: str, resource_id: str = None) -> dict:
-    """Grant product access to a group via role assignment.
-
-    Args:
-        group_id: Group ID
-        role: Role to grant
-        resource_id: Optional resource ID
-    """
-    return handle_grant_group_access(group_id, role, resource_id)
-
-
-@mcp.tool()
-def atlassian_revoke_group_access(group_id: str, role: str, resource_id: str = None) -> dict:
-    """Revoke product access from a group.
-
-    Args:
-        group_id: Group ID
-        role: Role to revoke
-        resource_id: Optional resource ID
-    """
-    return handle_revoke_group_access(group_id, role, resource_id)
+# @mcp.tool()
+# def atlassian_get_directories() -> dict:
+#     """Get directories in the Atlassian organization."""
+#     return handle_get_directories()
+#
+# @mcp.tool()
+# def atlassian_list_users(limit: int = 100, cursor: str = None) -> dict:
+#     """List users in the Atlassian organization directory."""
+#     return handle_list_users(limit, cursor)
+#
+# @mcp.tool()
+# def atlassian_suspend_user(account_id: str) -> dict:
+#     """Suspend a user's access in the Atlassian directory."""
+#     return handle_suspend_user(account_id)
+#
+# @mcp.tool()
+# def atlassian_restore_user(account_id: str) -> dict:
+#     """Restore a suspended user's access."""
+#     return handle_restore_user(account_id)
+#
+# @mcp.tool()
+# def atlassian_remove_user(account_id: str) -> dict:
+#     """Completely remove a user from the Atlassian directory."""
+#     return handle_remove_user(account_id)
+#
+# @mcp.tool()
+# def atlassian_list_groups(limit: int = 100) -> dict:
+#     """List all groups in the Atlassian organization."""
+#     return handle_list_groups(limit)
+#
+# @mcp.tool()
+# def atlassian_create_group(name: str, description: str = "") -> dict:
+#     """Create a new group in the Atlassian directory."""
+#     return handle_create_group(name, description)
+#
+# @mcp.tool()
+# def atlassian_delete_group(group_id: str) -> dict:
+#     """Delete a group from the Atlassian directory."""
+#     return handle_delete_group(group_id)
+#
+# @mcp.tool()
+# def atlassian_add_user_to_group(group_id: str, account_id: str) -> dict:
+#     """Add a user to an Atlassian group."""
+#     return handle_add_user_to_group(group_id, account_id)
+#
+# @mcp.tool()
+# def atlassian_remove_user_from_group(group_id: str, account_id: str) -> dict:
+#     """Remove a user from an Atlassian group."""
+#     return handle_remove_user_from_group(group_id, account_id)
+#
+# @mcp.tool()
+# def atlassian_grant_group_access(group_id: str, role: str, resource_id: str = None) -> dict:
+#     """Grant product access to a group via role assignment."""
+#     return handle_grant_group_access(group_id, role, resource_id)
+#
+# @mcp.tool()
+# def atlassian_revoke_group_access(group_id: str, role: str, resource_id: str = None) -> dict:
+#     """Revoke product access from a group."""
+#     return handle_revoke_group_access(group_id, role, resource_id)
 
 
 # ============================================================================
@@ -480,101 +418,6 @@ def atlassian_revoke_group_access(group_id: str, role: str, resource_id: str = N
 
 # Register Bitbucket tools
 bitbucket.register_tools(mcp)
-
-
-# ============================================================================
-# CLOUDWATCH TOOLS (Observability)
-# ============================================================================
-
-
-@mcp.tool()
-def cloudwatch_get_metrics(
-    namespace: str,
-    metric_name: str,
-    dimensions: list = None,
-    hours_back: int = 1,
-) -> dict:
-    """Get CloudWatch metric statistics.
-
-    Args:
-        namespace: CloudWatch namespace (e.g., 'AWS/ECS', 'AWS/Lambda', 'AWS/RDS')
-        metric_name: Metric name (e.g., 'CPUUtilization', 'Invocations')
-        dimensions: List of dimension dicts [{"Name": "...", "Value": "..."}]
-        hours_back: Hours of data to retrieve
-    """
-    return get_metric_statistics(namespace, metric_name, dimensions, hours_back=hours_back)
-
-
-@mcp.tool()
-def cloudwatch_list_alarms(state_value: str = None, alarm_prefix: str = None) -> dict:
-    """List CloudWatch alarms, optionally filtered by state.
-
-    Args:
-        state_value: Filter by state ('OK', 'ALARM', 'INSUFFICIENT_DATA')
-        alarm_prefix: Filter by alarm name prefix
-    """
-    return list_alarms(state_value, alarm_prefix)
-
-
-@mcp.tool()
-def cloudwatch_get_alarm_history(alarm_name: str, hours_back: int = 24) -> dict:
-    """Get state change history for a CloudWatch alarm.
-
-    Args:
-        alarm_name: Name of the alarm
-        hours_back: Hours of history to retrieve
-    """
-    return get_alarm_history(alarm_name, hours_back)
-
-
-@mcp.tool()
-def cloudwatch_list_log_groups(prefix: str = None, limit: int = 50) -> dict:
-    """List CloudWatch Log Groups.
-
-    Args:
-        prefix: Filter by log group name prefix (e.g., '/aws/lambda/', '/ecs/')
-        limit: Maximum log groups to return
-    """
-    return list_log_groups(prefix, limit)
-
-
-@mcp.tool()
-def cloudwatch_query_logs(
-    log_group: str,
-    query: str = "fields @timestamp, @message | sort @timestamp desc | limit 50",
-    hours_back: int = 1,
-) -> dict:
-    """Run a CloudWatch Logs Insights query.
-
-    Args:
-        log_group: Log group name
-        query: Logs Insights query (default: last 50 messages)
-        hours_back: Hours of logs to search
-    """
-    return query_logs(log_group, query, hours_back)
-
-
-@mcp.tool()
-def cloudwatch_ecs_metrics(cluster_name: str, service_name: str, hours_back: int = 1) -> dict:
-    """Get ECS service CPU and memory utilization.
-
-    Args:
-        cluster_name: ECS cluster name (e.g., 'mrrobot-ai-core')
-        service_name: ECS service name (e.g., 'mrrobot-mcp-server')
-        hours_back: Hours of data to retrieve
-    """
-    return get_ecs_service_metrics(cluster_name, service_name, hours_back)
-
-
-@mcp.tool()
-def cloudwatch_lambda_metrics(function_name: str, hours_back: int = 1) -> dict:
-    """Get Lambda function metrics (invocations, errors, duration).
-
-    Args:
-        function_name: Lambda function name
-        hours_back: Hours of data to retrieve
-    """
-    return get_lambda_metrics(function_name, hours_back)
 
 
 # ============================================================================
@@ -644,10 +487,97 @@ def jira_tickets_by_label(label: str, status: str = None, max_results: int = 20)
 
 
 # ============================================================================
+# CONFLUENCE TOOLS
+# ============================================================================
+
+
+@mcp.tool()
+def confluence_search_docs(query: str, space_key: str = None, limit: int = 10) -> dict:
+    """Search Confluence documentation using natural language.
+
+    Use for finding HR policies, runbooks, architecture docs, onboarding guides,
+    team processes, and company documentation.
+
+    Examples:
+    - "PTO policy" - finds paid time off documentation
+    - "onboarding checklist" - finds new hire guides
+    - "deployment runbook" - finds ops procedures
+    - "payment processing architecture" - finds technical docs
+
+    Args:
+        query: Natural language search query
+        space_key: Limit to specific space (e.g., 'HR', 'DEV', 'OPS') - optional
+        limit: Maximum results (default: 10)
+    """
+    return confluence_search(query, space_key, limit)
+
+
+@mcp.tool()
+def confluence_get_page(page_id: str, include_body: bool = True) -> dict:
+    """Get a specific Confluence page by its ID.
+
+    Args:
+        page_id: Confluence page ID
+        include_body: Whether to include full page content (default: True)
+    """
+    return handle_get_page(page_id, include_body)
+
+
+@mcp.tool()
+def confluence_get_page_by_title(title: str, space_key: str) -> dict:
+    """Get a Confluence page by its exact title.
+
+    Args:
+        title: Exact page title
+        space_key: Space key where the page lives (e.g., 'HR', 'DEV')
+    """
+    return handle_get_page_by_title(title, space_key)
+
+
+@mcp.tool()
+def confluence_list_spaces(limit: int = 50) -> dict:
+    """List all available Confluence spaces.
+
+    Returns space keys, names, and descriptions.
+
+    Args:
+        limit: Maximum spaces to return (default: 50)
+    """
+    return handle_list_spaces(limit)
+
+
+@mcp.tool()
+def confluence_recent_updates(space_key: str = None, limit: int = 15) -> dict:
+    """Get recently updated Confluence pages.
+
+    Useful for seeing what documentation has changed recently.
+
+    Args:
+        space_key: Limit to specific space (optional)
+        limit: Maximum results (default: 15)
+    """
+    return confluence_get_recent_updates(space_key, limit)
+
+
+@mcp.tool()
+def confluence_pages_by_label(label: str, space_key: str = None, limit: int = 20) -> dict:
+    """Find Confluence pages with a specific label.
+
+    Common labels: 'runbook', 'architecture', 'policy', 'onboarding', 'how-to'
+
+    Args:
+        label: Label to search for
+        space_key: Limit to specific space (optional)
+        limit: Maximum results (default: 20)
+    """
+    return confluence_search_by_label(label, space_key, limit)
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
-VERSION = "2.3.0"  # Bumped for Jira tools
+VERSION = "2.4.0"  # Bumped for Confluence tools
 START_TIME = datetime.now(timezone.utc)
 
 

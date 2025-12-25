@@ -503,6 +503,8 @@ def handle_get_recent_errors(
     response = _make_request(query, hours_back, limit)
     logs = _parse_response(response)
 
+    from src.lib.utils.time_utils import format_relative_time
+
     errors_by_service = {}
     for log in logs:
         log_group = log.get("logGroup", "unknown")
@@ -511,10 +513,13 @@ def handle_get_recent_errors(
 
         if service not in errors_by_service:
             errors_by_service[service] = []
+
+        timestamp = log.get("timestamp")
         errors_by_service[service].append(
             {
                 "message": log.get("message", ""),
-                "timestamp": log.get("timestamp"),
+                "timestamp": timestamp,
+                "timestamp_relative": format_relative_time(timestamp) if timestamp else None,
                 "logGroup": log_group,
             }
         )

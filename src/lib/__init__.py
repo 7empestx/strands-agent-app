@@ -2,6 +2,8 @@
 
 Tools are defined in separate modules and registered with FastMCP
 via @mcp.tool() decorators in server.py.
+
+Note: CloudWatch removed - use Coralogix for all log analysis.
 """
 
 from .atlassian import (
@@ -17,15 +19,6 @@ from .atlassian import (
     handle_restore_user,
     handle_revoke_group_access,
     handle_suspend_user,
-)
-from .cloudwatch import (
-    get_alarm_history,
-    get_ecs_service_metrics,
-    get_lambda_metrics,
-    get_metric_statistics,
-    list_alarms,
-    list_log_groups,
-    query_logs,
 )
 
 # Export handler functions for use in server.py
@@ -66,12 +59,4 @@ __all__ = [
     "handle_remove_user_from_group",
     "handle_grant_group_access",
     "handle_revoke_group_access",
-    # CloudWatch
-    "get_metric_statistics",
-    "list_alarms",
-    "get_alarm_history",
-    "list_log_groups",
-    "query_logs",
-    "get_ecs_service_metrics",
-    "get_lambda_metrics",
 ]

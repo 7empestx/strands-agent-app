@@ -2,10 +2,10 @@
 
 This module defines all available tools for the Clippy Slack bot.
 Tools are organized by category and include:
-- Logging & Monitoring (Coralogix, CloudWatch)
+- Logging & Monitoring (Coralogix)
 - Deployments & CI/CD (Bitbucket Pipelines, PRs)
 - Issue Tracking (Jira, PagerDuty)
-- Infrastructure (AWS CLI, ECS)
+- Infrastructure (AWS CLI)
 - Code Search (Knowledge Base)
 """
 
@@ -56,9 +56,22 @@ def _param(
 LOGGING_TOOLS = [
     _tool(
         name="search_logs",
-        description="Search application logs in Coralogix. Use for troubleshooting errors, investigating issues, or finding specific log patterns.",
+        description="""Search application logs in Coralogix. PRIMARY tool for all log searches.
+
+CRITICAL: Always include environment (prod/staging/dev) in query!
+
+Examples:
+- "errors in cast-core prod" -> searches prod cast-core for errors
+- "504 timeout emvio-dashboard staging" -> searches staging for 504s
+- "ECONNREFUSED payment-service prod last 2 hours" -> connection errors
+- "authentication failed mrrobot-auth prod" -> auth failures
+
+BAD (missing environment):
+- "errors in cast-core" -> will ask user which environment
+
+Use hours_back to control time range (default: 4 hours).""",
         properties={
-            "query": _param("Natural language search (e.g., 'errors in cast-core prod', 'timeout issues')"),
+            "query": _param("Search with service AND environment (e.g., 'errors in cast-core prod')"),
             "hours_back": _param("Hours to search back", "integer", default=4),
             "limit": _param("Max results", "integer", default=50),
         },
@@ -66,35 +79,17 @@ LOGGING_TOOLS = [
     ),
     _tool(
         name="get_recent_errors",
-        description="Get recent errors across services. Use for 'what's broken?', alert triage, or health checks.",
+        description="""Get recent errors grouped by service. Use for:
+- "What's broken right now?"
+- Alert triage / health overview
+- "Any errors in the last hour?"
+
+Returns error counts per service with sample messages.
+Optionally filter by service name and environment.""",
         properties={
-            "service": _param("Service name (e.g., 'cast-core') or 'all'"),
+            "service": _param("Service name (e.g., 'cast-core') or 'all' for overview"),
             "hours_back": _param("Hours to check", "integer", default=4),
-        },
-    ),
-    _tool(
-        name="search_cloudwatch_logs",
-        description="Search AWS CloudWatch logs. Use when user says 'check CloudWatch' or for Lambda logs.",
-        properties={
-            "service": _param("Service name (e.g., 'mrrobot-cast-core-prod')"),
-            "query": _param("Search term (e.g., '504', 'error', 'timeout')"),
-            "hours_back": _param("Hours to search", "integer", default=4),
-        },
-        required=["service"],
-    ),
-    _tool(
-        name="list_alarms",
-        description="List CloudWatch alarms. Use for monitoring/alerting questions.",
-        properties={
-            "state": _param("Filter: 'ALARM', 'OK', or 'INSUFFICIENT_DATA'", enum=["ALARM", "OK", "INSUFFICIENT_DATA"]),
-        },
-    ),
-    _tool(
-        name="get_ecs_metrics",
-        description="Get ECS service CPU/memory metrics.",
-        properties={
-            "cluster": _param("ECS cluster name", default="mrrobot-ai-core"),
-            "service": _param("ECS service name", default="mrrobot-mcp-server"),
+            "environment": _param("Filter by environment", enum=["prod", "staging", "dev", "all"]),
         },
     ),
 ]
@@ -106,16 +101,35 @@ LOGGING_TOOLS = [
 DEPLOYMENT_TOOLS = [
     _tool(
         name="get_pipeline_status",
-        description="Check recent deployments/pipelines. Use for 'what changed?', 'did it deploy?', build status.",
+        description="""Check recent CI/CD pipeline/build status for a repository.
+
+Use when:
+- "Did the deploy go through?"
+- "Any failed builds?"
+- Correlating errors with recent deploys
+
+Example workflow:
+1. User reports errors starting 30 min ago
+2. Check get_pipeline_status -> see deploy 35 min ago
+3. Likely cause: recent deploy
+
+NOTE: Shows build status, not deployment status. A passed build means tests passed.""",
         properties={
-            "repo": _param("Repository name (e.g., 'emvio-dashboard-app', 'cast-core')"),
-            "limit": _param("Number of pipelines", "integer", default=5),
+            "repo": _param("Repository name (e.g., 'emvio-dashboard-app', 'cast-core-service')"),
+            "limit": _param("Number of recent pipelines", "integer", default=5),
         },
         required=["repo"],
     ),
     _tool(
         name="get_pipeline_details",
-        description="Get details about a specific build including failure logs. Use when user shares pipeline URL or asks why build failed.",
+        description="""Get detailed info about a specific pipeline/build including failure logs.
+
+Use when:
+- User shares a pipeline URL
+- "Why did build #123 fail?"
+- Need to see actual error from failed build
+
+Extract from URL: bitbucket.org/mrrobot-labs/REPO/pipelines/results/NUMBER""",
         properties={
             "repo": _param("Repository name"),
             "pipeline_id": _param("Pipeline/build number", "integer"),
@@ -124,16 +138,27 @@ DEPLOYMENT_TOOLS = [
     ),
     _tool(
         name="list_open_prs",
-        description="List open pull requests for a repository.",
+        description="""List open pull requests for a repository.
+
+Use for:
+- "What PRs need review?"
+- "Any open PRs for cast-core?"
+- Getting PR overview before diving into details""",
         properties={
-            "repo": _param("Repository name (e.g., 'cast-core')"),
+            "repo": _param("Repository name (e.g., 'cast-core-service')"),
             "limit": _param("Max PRs to return", "integer", default=5),
         },
         required=["repo"],
     ),
     _tool(
         name="get_pr_details",
-        description="Get PR details. ALWAYS use when given a Bitbucket PR URL. Extract repo and pr_id from: bitbucket.org/mrrobot-labs/REPO/pull-requests/ID",
+        description="""Get PR details including diff, comments, reviewers, status.
+
+ALWAYS use when given a Bitbucket PR URL!
+
+URL format: bitbucket.org/mrrobot-labs/REPO/pull-requests/ID
+Example: bitbucket.org/mrrobot-labs/cast-core-service/pull-requests/456
+-> repo="cast-core-service", pr_id=456""",
         properties={
             "repo": _param("Repository name from URL"),
             "pr_id": _param("PR ID number from URL", "integer"),
@@ -170,6 +195,44 @@ JIRA_TOOLS = [
             "issue_key": _param("Ticket key (e.g., 'DEVOPS-123')"),
         },
         required=["issue_key"],
+    ),
+]
+
+# =============================================================================
+# CONFLUENCE TOOLS
+# =============================================================================
+
+CONFLUENCE_TOOLS = [
+    _tool(
+        name="search_confluence",
+        description="""Search Confluence documentation for HR policies, runbooks, architecture docs, onboarding guides, and company info.
+Examples: 'PTO policy', 'deployment runbook', 'onboarding checklist', 'expense report process'""",
+        properties={
+            "query": _param("Natural language search query"),
+            "space_key": _param("Limit to space (e.g., 'HR', 'DEV', 'OPS') - optional"),
+            "limit": _param("Max results", "integer", default=10),
+        },
+        required=["query"],
+    ),
+    _tool(
+        name="get_confluence_page",
+        description="Get full content of a specific Confluence page by ID.",
+        properties={
+            "page_id": _param("Confluence page ID"),
+        },
+        required=["page_id"],
+    ),
+    _tool(
+        name="list_confluence_spaces",
+        description="List all available Confluence spaces. Use to discover what documentation exists.",
+    ),
+    _tool(
+        name="recent_confluence_updates",
+        description="Get recently updated Confluence pages. Use for 'what docs changed recently?'",
+        properties={
+            "space_key": _param("Limit to space (optional)"),
+            "limit": _param("Max results", "integer", default=15),
+        },
     ),
 ]
 
@@ -214,11 +277,15 @@ PAGERDUTY_TOOLS = [
 INFRASTRUCTURE_TOOLS = [
     _tool(
         name="aws_cli",
-        description="""Run read-only AWS CLI commands. Examples:
-- Load balancers: "elbv2 describe-load-balancers"
-- ECS: "ecs describe-services --cluster mrrobot-ai-core --services my-service"
-- Security groups: "ec2 describe-security-groups --group-ids sg-xxx"
-DO NOT include 'aws' prefix.""",
+        description="""Run read-only AWS CLI commands. DO NOT include 'aws' prefix.
+
+Examples:
+- "elbv2 describe-load-balancers" - list load balancers
+- "ecs describe-services --cluster mrrobot-ai-core --services mrrobot-mcp-server" - ECS service info
+- "ec2 describe-security-groups --group-ids sg-xxx" - security group rules
+- "lambda get-function --function-name my-function" - Lambda config
+
+BLOCKED commands: delete, terminate, create, put, get-secret-value""",
         properties={
             "command": _param("AWS CLI command without 'aws' prefix"),
             "region": _param("AWS region", default="us-east-1"),
@@ -227,28 +294,49 @@ DO NOT include 'aws' prefix.""",
     ),
     _tool(
         name="search_code",
-        description="Semantic search across 254 MrRobot repos. Use for finding implementations, configs, understanding code.",
+        description="""Semantic search across 254 MrRobot repositories.
+
+Use for:
+- "How does authentication work?" -> search "authentication flow"
+- "Where is CORS configured?" -> search "CORS configuration"
+- "Find webhook handling code" -> search "webhook handler"
+
+Returns file paths, code snippets, and repo names.
+Follow up with get_file_content for full files.""",
         properties={
-            "query": _param("What to search (e.g., 'CSP configuration', 'auth middleware')"),
+            "query": _param("What to search (e.g., 'JWT validation', 'database connection')"),
             "num_results": _param("Number of results", "integer", default=5),
         },
         required=["query"],
     ),
     _tool(
         name="get_service_info",
-        description="Look up service type (frontend/backend), tech stack, dependencies. Use FIRST when unsure about a service.",
+        description="""Look up service metadata from the registry (129 services).
+
+Returns:
+- Type: frontend/backend/library
+- Tech stack: Node.js, Lambda, React, etc.
+- Full name and aliases
+- Troubleshooting suggestions
+
+Use FIRST when unsure about a service to know if it's frontend (check deploys first) or backend (check logs first).""",
         properties={
-            "service_name": _param("Service/repo name (e.g., 'emvio-dashboard-app')"),
+            "service_name": _param("Service name or alias (e.g., 'cast', 'dashboard', 'emvio-gateway')"),
         },
         required=["service_name"],
     ),
     _tool(
         name="search_devops_history",
-        description="""Search past DevOps Slack conversations for similar issues/solutions.
-PROACTIVELY USE when troubleshooting to find if we've seen this before.
-Examples: "504 cast", "SFTP setup", "deployment failed".""",
+        description="""Search past DevOps Slack conversations for similar issues.
+
+PROACTIVELY USE when troubleshooting! Examples:
+- "504 cast-core" - find past 504 discussions
+- "SFTP connection" - find SFTP setup help
+- "deployment rollback" - find rollback procedures
+
+Returns: past conversations with solutions that worked.""",
         properties={
-            "query": _param("Search terms (error types, service names, issues)"),
+            "query": _param("Error message, service name, or issue description"),
         },
         required=["query"],
     ),
@@ -261,13 +349,29 @@ Examples: "504 cast", "SFTP setup", "deployment failed".""",
 INVESTIGATION_TOOLS = [
     _tool(
         name="investigate_issue",
-        description="Run thorough multi-step investigation. Use for 'something is broken', 'help debug', 'why is X not working'. Checks logs, deploys, alarms automatically.",
+        description="""Run thorough multi-step autonomous investigation.
+
+Use when:
+- "Cast-core is broken in prod"
+- "Help debug this issue"
+- "Why is X not working?"
+- Complex issues needing multiple tool calls
+
+The agent will automatically:
+1. Search logs for errors
+2. Check recent deploys
+3. Correlate timing
+4. Report findings with recommendations
+
+ALWAYS specify environment to avoid searching wrong env.""",
         properties={
-            "service": _param("Service to investigate (e.g., 'cast-core')"),
-            "environment": _param("Environment", enum=["prod", "staging", "dev", "sandbox"]),
+            "service": _param("Service to investigate (e.g., 'cast-core', 'emvio-dashboard')"),
+            "environment": _param(
+                "REQUIRED: prod, staging, dev, or sandbox", enum=["prod", "staging", "dev", "sandbox"]
+            ),
             "description": _param("What the user is seeing / when it started"),
         },
-        required=["service"],
+        required=["service", "environment"],
     ),
 ]
 
@@ -294,6 +398,7 @@ CLIPPY_TOOLS = (
     LOGGING_TOOLS
     + DEPLOYMENT_TOOLS
     + JIRA_TOOLS
+    + CONFLUENCE_TOOLS
     + PAGERDUTY_TOOLS
     + INFRASTRUCTURE_TOOLS
     + INVESTIGATION_TOOLS
@@ -310,6 +415,7 @@ def get_tools_by_category() -> dict:
         "Logging & Monitoring": LOGGING_TOOLS,
         "Deployments & CI/CD": DEPLOYMENT_TOOLS,
         "Jira": JIRA_TOOLS,
+        "Confluence": CONFLUENCE_TOOLS,
         "PagerDuty": PAGERDUTY_TOOLS,
         "Infrastructure & Code": INFRASTRUCTURE_TOOLS,
         "Investigation": INVESTIGATION_TOOLS,

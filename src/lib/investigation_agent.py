@@ -16,9 +16,8 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 
 from src.lib.bitbucket import get_pipeline_status
-from src.lib.cloudwatch import get_ecs_service_metrics, list_alarms
 
-# Import our existing MCP tools
+# Import our existing MCP tools - CloudWatch removed, using Coralogix
 from src.lib.coralogix import handle_get_recent_errors, handle_search_logs
 
 # ============================================================================
@@ -69,32 +68,7 @@ def get_error_summary(service: str = "all", hours_back: int = 4, environment: st
     return handle_get_recent_errors(service, hours_back=hours_back, limit=50, environment=environment)
 
 
-@tool
-def check_alarms(state: str = None) -> dict:
-    """Check CloudWatch alarms for any issues.
-
-    Args:
-        state: Filter by state - 'ALARM', 'OK', or None for all
-
-    Returns:
-        dict with alarms list
-    """
-    return list_alarms(state_value=state)
-
-
-@tool
-def check_ecs_health(cluster: str = "mrrobot-ai-core", service: str = "mrrobot-mcp-server") -> dict:
-    """Check ECS service health metrics (CPU, memory).
-
-    Args:
-        cluster: ECS cluster name
-        service: ECS service name
-
-    Returns:
-        dict with CPU and memory metrics
-    """
-    return get_ecs_service_metrics(cluster, service)
-
+# Note: CloudWatch alarms and ECS metrics removed - use Coralogix for all monitoring
 
 # ============================================================================
 # INVESTIGATION AGENT
@@ -112,9 +86,8 @@ CRITICAL: STAY FOCUSED ON THE SPECIFIED ENVIRONMENT
 When investigating an issue:
 
 1. **Gather Evidence**
-   - Search logs for errors in the SPECIFIED service/environment ONLY
+   - Search Coralogix logs for errors in the SPECIFIED service/environment ONLY
    - Check recent deployments that might have caused the issue
-   - Look for CloudWatch alarms that might be related
 
 2. **Analyze Patterns**
    - Look for error patterns (repeated errors, error spikes)
@@ -124,18 +97,17 @@ When investigating an issue:
 3. **Provide Clear Output**
    Format your findings as:
 
-   ## 🔍 Investigation Summary
+   ## Investigation Summary
    [One sentence summary of what you found IN THE SPECIFIED ENVIRONMENT]
 
-   ## 📋 Evidence Found
+   ## Evidence Found
    - Key errors discovered (environment: [env])
    - Relevant deployment info
-   - Alarm status
 
-   ## 💡 Root Cause Hypothesis
+   ## Root Cause Hypothesis
    [Your best guess at what's causing the issue]
 
-   ## 🔧 Recommended Actions
+   ## Recommended Actions
    1. [First action]
    2. [Second action]
    3. [Third action]
@@ -156,8 +128,6 @@ def create_investigation_agent() -> Agent:
             search_logs,
             check_recent_deploys,
             get_error_summary,
-            check_alarms,
-            check_ecs_health,
         ],
         system_prompt=INVESTIGATION_SYSTEM_PROMPT,
     )
@@ -202,8 +172,7 @@ def investigate_issue(service: str, environment: str = None, description: str = 
 Please:
 1. Search for recent errors in {service}{env_context} (include environment in your search query)
 2. Check recent deployments for {service}
-3. Look for any active alarms
-4. Analyze what you find and provide recommendations
+3. Analyze what you find and provide recommendations
 
 IMPORTANT: Only report findings for the specified environment. If no environment was specified, ask the user which environment to check.
 """
