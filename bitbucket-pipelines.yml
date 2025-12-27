@@ -51,18 +51,14 @@ definitions:
           - export AWS_ACCESS_KEY_ID=$AWS_DEV_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET
           - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
-          - echo "Building Streamlit image..."
-          - docker build -f Dockerfile.streamlit -t $REGISTRY/mrrobot-streamlit:latest -t $REGISTRY/mrrobot-streamlit:$BITBUCKET_COMMIT .
-          - echo "Building MCP Server image..."
-          - docker build -f Dockerfile.mcp -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
+          - echo "Building MCP Server image (includes React dashboard)..."
+          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN=$NPM_TOKEN -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
           - echo "Verifying Flask is in MCP image..."
           - docker run --rm $REGISTRY/mrrobot-mcp-server:latest pip list | grep -i flask || (echo "ERROR Flask not found!" && exit 1)
-          - echo "Pushing images to ECR..."
-          - docker push $REGISTRY/mrrobot-streamlit:latest
-          - docker push $REGISTRY/mrrobot-streamlit:$BITBUCKET_COMMIT
+          - echo "Pushing image to ECR..."
           - docker push $REGISTRY/mrrobot-mcp-server:latest
           - docker push $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT
-          - echo "Docker images pushed successfully!"
+          - echo "Docker image pushed successfully!"
 
     - step: &deploy-ecs
         name: "Deploy to ECS Fargate"
@@ -73,14 +69,12 @@ definitions:
           - export CLUSTER_NAME="mrrobot-ai-core"
           - export AWS_ACCESS_KEY_ID=$AWS_DEV_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET
-          - echo "Updating Streamlit service..."
-          - aws ecs update-service --cluster $CLUSTER_NAME --service mrrobot-streamlit --force-new-deployment --region $AWS_REGION > /dev/null
           - echo "Updating MCP Server service..."
           - aws ecs update-service --cluster $CLUSTER_NAME --service mrrobot-mcp-server --force-new-deployment --region $AWS_REGION > /dev/null
-          - echo "ECS services updated! Waiting for deployment to stabilize..."
-          - aws ecs wait services-stable --cluster $CLUSTER_NAME --services mrrobot-streamlit mrrobot-mcp-server --region $AWS_REGION || echo "Warning - Services may still be deploying"
+          - echo "ECS service updated! Waiting for deployment to stabilize..."
+          - aws ecs wait services-stable --cluster $CLUSTER_NAME --services mrrobot-mcp-server --region $AWS_REGION || echo "Warning - Service may still be deploying"
           - echo "ECS deployment complete!"
-          - echo "Streamlit URL - http://ai-agent.mrrobot.dev"
+          - echo "Dashboard URL - https://ai-agent.mrrobot.dev"
           - echo "MCP Server URL - https://mcp.mrrobot.dev/sse"
 
 options:

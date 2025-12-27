@@ -5,13 +5,17 @@ Stores feedback in S3 for later analysis.
 """
 
 import json
+import os
 from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
 
-# S3 bucket for feedback storage
-FEEDBACK_BUCKET = "mrrobot-code-kb-dev-720154970215"
+# S3 bucket for feedback storage - environment-aware
+_ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
+_ACCOUNT_IDS = {"dev": "720154970215", "prod": "246295362269"}
+_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "720154970215")
+FEEDBACK_BUCKET = f"mrrobot-code-kb-{_ENVIRONMENT}-{_account_id}"
 FEEDBACK_PREFIX = "clippy-feedback/"
 
 # In-memory cache of recent messages for feedback correlation

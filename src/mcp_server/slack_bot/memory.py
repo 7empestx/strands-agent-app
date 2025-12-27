@@ -5,14 +5,18 @@ Helps Clippy learn from past issues to provide better responses.
 """
 
 import json
+import os
 import time
 from datetime import datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError
 
-# S3 bucket for memory storage
-MEMORY_BUCKET = "mrrobot-code-kb-dev-720154970215"
+# S3 bucket for memory storage - environment-aware
+_ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
+_ACCOUNT_IDS = {"dev": "720154970215", "prod": "246295362269"}
+_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "720154970215")
+MEMORY_BUCKET = f"mrrobot-code-kb-{_ENVIRONMENT}-{_account_id}"
 MEMORY_PREFIX = "clippy-memory/"
 
 # In-memory cache with TTL

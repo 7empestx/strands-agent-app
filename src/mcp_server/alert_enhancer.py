@@ -98,31 +98,59 @@ def enhance_alert(alarm_data: dict) -> dict:
             description_parts.append(f"Reason: {reason}")
         description = ". ".join(description_parts)
 
-        # 3. Run the investigation agent (Claude-powered autonomous investigation)
-        print(f"[AlertEnhancer] Running investigation agent for {service_name} in {environment}...")
-        investigation_result = investigate_issue(
-            service=service_name,
-            environment=environment,
-            description=description,
-            max_steps=8,  # Limit steps for faster response
-        )
+        # 3. Try the investigation agent (Claude-powered autonomous investigation)
+        investigation_result = None
+        report = ""
+        try:
+            print(f"[AlertEnhancer] Running investigation agent for {service_name} in {environment}...")
+            investigation_result = investigate_issue(
+                service=service_name,
+                environment=environment,
+                description=description,
+                max_steps=8,  # Limit steps for faster response
+            )
+            report = investigation_result.get("report", "")
+            print(f"[AlertEnhancer] Investigation complete. Report length: {len(report)} chars")
+        except Exception as agent_error:
+            print(f"[AlertEnhancer] Investigation agent failed: {agent_error}")
+            # Continue with fallback analysis
 
-        # 4. Parse the investigation report
-        report = investigation_result.get("report", "")
-        print(f"[AlertEnhancer] Investigation complete. Report length: {len(report)} chars")
-
-        # 5. Also search codebase for relevant files (fast KB lookup)
+        # 4. Search codebase for relevant files (fast KB lookup)
         code_results = _search_relevant_code(service_name, error_code, alarm_name)
 
-        # 6. Structure the results for Slack/PagerDuty
-        analysis = _parse_investigation_report(
-            report=report,
-            service_name=service_name,
-            service_info=service_info,
-            error_code=error_code,
-            severity=severity,
-            code_results=code_results,
+        # 5. If investigation agent succeeded and returned a good report, parse it
+        # Otherwise fall back to rule-based analysis
+        investigation_failed = (
+            investigation_result is None
+            or investigation_result.get("status") == "error"
+            or "error" in report.lower()[:100]
+            or len(report) < 100
         )
+
+        if investigation_failed:
+            print("[AlertEnhancer] Using fallback rule-based analysis")
+            # Get logs for rule-based analysis
+            logs_result = _get_recent_logs(service_name, error_code, hours_back=1)
+            analysis = _generate_rule_based_analysis(
+                service_name=service_name,
+                service_info=service_info,
+                error_code=error_code,
+                severity=severity,
+                alarm_name=alarm_name,
+                reason=reason,
+                logs_result=logs_result,
+                code_results=code_results,
+            )
+        else:
+            # 6. Structure the investigation results for Slack/PagerDuty
+            analysis = _parse_investigation_report(
+                report=report,
+                service_name=service_name,
+                service_info=service_info,
+                error_code=error_code,
+                severity=severity,
+                code_results=code_results,
+            )
 
         return {
             "status": "success",
@@ -322,7 +350,7 @@ def _get_recent_deployments(service_name: str) -> list[dict]:
     return []
 
 
-def _generate_analysis(
+def _generate_rule_based_analysis(
     service_name: str,
     service_info: dict | None,
     error_code: str | None,
@@ -331,9 +359,11 @@ def _generate_analysis(
     reason: str,
     logs_result: dict,
     code_results: dict,
-    deployments: list[dict],
+    deployments: list[dict] = None,
 ) -> dict:
-    """Generate comprehensive AI analysis from gathered data."""
+    """Generate rule-based analysis when investigation agent is unavailable."""
+    if deployments is None:
+        deployments = []
 
     # Build summary
     summary_parts = []
