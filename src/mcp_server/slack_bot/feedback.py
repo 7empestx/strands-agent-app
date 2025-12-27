@@ -45,8 +45,6 @@ def store_message_for_feedback(
         response_preview: First 500 chars of response
         duration_ms: How long the response took
     """
-    global _recent_messages
-
     _recent_messages[message_ts] = {
         "channel": channel,
         "user_query": user_query[:500],
