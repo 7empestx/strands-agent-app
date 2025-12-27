@@ -1,4 +1,33 @@
-# Dockerfile for MCP Server
+# Dockerfile for MCP Server with Dashboard
+# Multi-stage build: Node.js for React, Python for MCP server
+
+# ============================================================================
+# Stage 1: Build React Dashboard
+# ============================================================================
+FROM node:20-slim AS dashboard-builder
+
+WORKDIR /dashboard
+
+# Copy package files
+COPY web-dashboard/package*.json ./
+
+# Copy npmrc for private registry auth (passed as build arg)
+ARG NPM_TOKEN
+RUN echo "@mrrobot:registry=https://mrrobot.jfrog.io/artifactory/api/npm/mrrobot-npm/" > ~/.npmrc && \
+    echo "//mrrobot.jfrog.io/artifactory/api/npm/mrrobot-npm/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+
+# Install dependencies
+RUN npm install
+
+# Copy dashboard source
+COPY web-dashboard/ ./
+
+# Build the React app
+RUN npm run build
+
+# ============================================================================
+# Stage 2: Python MCP Server
+# ============================================================================
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -17,6 +46,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
+
+# Copy built dashboard from stage 1
+COPY --from=dashboard-builder /dashboard/dist /app/web-dashboard/dist
 
 # Expose port
 EXPOSE 8080

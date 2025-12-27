@@ -61,6 +61,8 @@ from src.lib.jira import get_issue_comments as jira_get_issue_comments
 from src.lib.jira import get_issues_by_label as jira_get_issues_by_label
 from src.lib.jira import get_open_cve_issues as jira_get_open_cve_issues
 from src.lib.jira import handle_search_jira
+from src.lib.pagerduty import extract_service_name_from_incident, handle_active_incidents, handle_incident_details
+from src.mcp_server.alert_enhancer import enhance_alert
 
 # Create FastMCP server with custom domain allowed for DNS rebinding protection
 # See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
@@ -577,8 +579,160 @@ def confluence_pages_by_label(label: str, space_key: str = None, limit: int = 20
 # MAIN ENTRY POINT
 # ============================================================================
 
-VERSION = "2.4.0"  # Bumped for Confluence tools
+VERSION = "2.5.0"  # Bumped for Dashboard API
 START_TIME = datetime.now(timezone.utc)
+
+
+# ============================================================================
+# AI Analysis Helper Functions (for Dashboard API)
+# ============================================================================
+
+
+def _generate_incident_analysis(incident: dict, service_name: str) -> dict:
+    """Generate a quick AI analysis for an incident (used in list view).
+
+    This is a lightweight analysis based on incident title patterns.
+    For full analysis with code search, use _generate_detailed_analysis.
+    """
+    title = incident.get("title", "").lower()
+    urgency = incident.get("urgency", "low")
+
+    # Pattern-based quick analysis
+    summary = ""
+    suggested_fix = ""
+    code_location = None
+
+    # CSP/CORS errors
+    if "csp" in title or "cors" in title or "cross-origin" in title:
+        summary = (
+            "Content Security Policy or CORS configuration issue. Browser blocking requests due to missing headers."
+        )
+        suggested_fix = "Check CORS configuration in API Gateway or S3 bucket policy. Add appropriate AllowedOrigins."
+        code_location = f"https://bitbucket.org/mrrobot-labs/{service_name}/src/master/"
+
+    # Timeout errors
+    elif "timeout" in title or "504" in title or "gateway timeout" in title:
+        summary = "Request timeout - backend taking too long to respond. Could be slow database queries or external API delays."
+        suggested_fix = (
+            "Check for slow database queries, increase timeout limits, or add pagination for large data sets."
+        )
+
+    # Memory/CPU alerts
+    elif "memory" in title or "cpu" in title or "utilization" in title:
+        summary = "Resource utilization alert. Service may need scaling or has a memory/CPU leak."
+        suggested_fix = (
+            "Review recent deployments for memory leaks. Consider horizontal scaling or container resource limits."
+        )
+
+    # Database/latency issues
+    elif "latency" in title or "slow" in title or "database" in title:
+        summary = "Performance degradation detected. Slow queries or increased load affecting response times."
+        suggested_fix = "Check database indexes, review recent query changes, consider adding caching layer."
+
+    # 5xx errors
+    elif "500" in title or "502" in title or "503" in title or "5xx" in title:
+        summary = "Server error indicating application or infrastructure issue."
+        suggested_fix = "Check application logs for stack traces. Review recent deployments."
+
+    # Authentication errors
+    elif "auth" in title or "401" in title or "403" in title or "token" in title:
+        summary = "Authentication or authorization failure. Token may be expired or permissions misconfigured."
+        suggested_fix = "Check API token validity and permissions. Review IAM policies if AWS-related."
+
+    # Default
+    else:
+        summary = f"Alert on {service_name}: {incident.get('title', 'Unknown issue')}"
+        suggested_fix = "Check application logs and recent deployments for this service."
+
+    return {
+        "summary": summary,
+        "suggested_fix": suggested_fix,
+        "code_location": code_location,
+        "service_identified": service_name,
+        "urgency_assessment": "immediate" if urgency == "high" else "monitor",
+    }
+
+
+def _generate_detailed_analysis(incident: dict, service_name: str, code_results: dict, logs: dict) -> dict:
+    """Generate a detailed AI analysis with code search results and logs."""
+    # Start with basic analysis
+    basic = _generate_incident_analysis(incident, service_name)
+
+    # Enhance with code search results
+    related_files = []
+    if code_results and "results" in code_results:
+        for result in code_results.get("results", [])[:3]:
+            related_files.append(
+                {
+                    "file": result.get("file", ""),
+                    "repo": result.get("repo", ""),
+                    "relevance": result.get("relevance", ""),
+                    "url": result.get("bitbucket_url", ""),
+                }
+            )
+
+    # Extract error patterns from logs
+    error_patterns = []
+    log_list = logs.get("logs", logs.get("errors", []))
+    if isinstance(log_list, list):
+        for log_entry in log_list[:5]:
+            if isinstance(log_entry, dict):
+                msg = log_entry.get("message", log_entry.get("error", ""))
+                if msg:
+                    error_patterns.append(msg[:200])
+            elif isinstance(log_entry, str):
+                error_patterns.append(log_entry[:200])
+
+    return {
+        **basic,
+        "related_files": related_files,
+        "error_patterns": error_patterns,
+        "logs_found": len(log_list) if isinstance(log_list, list) else 0,
+    }
+
+
+def _generate_code_fix_analysis(incident: dict, service_name: str, code_results: dict) -> dict:
+    """Generate detailed code fix suggestions based on knowledge base search."""
+    basic = _generate_incident_analysis(incident, service_name)
+
+    # Build suggested fixes based on code search results
+    suggested_fixes = [basic.get("suggested_fix", "")]
+
+    affected_code = None
+    if code_results and "results" in code_results:
+        results = code_results.get("results", [])
+        if results:
+            top_result = results[0]
+            affected_code = {
+                "file": f"{top_result.get('repo', '')}/{top_result.get('file', '')}",
+                "url": top_result.get("bitbucket_url", ""),
+                "snippet": top_result.get("content", "")[:500],
+                "relevance": top_result.get("relevance", ""),
+            }
+
+            # Add more specific fixes based on file type
+            file_ext = top_result.get("file_type", "")
+            if file_ext in ["js", "ts", "jsx", "tsx"]:
+                suggested_fixes.append("Review error handling in async functions")
+                suggested_fixes.append("Check for unhandled promise rejections")
+            elif file_ext in ["py"]:
+                suggested_fixes.append("Review exception handling and logging")
+                suggested_fixes.append("Check for connection pool exhaustion")
+            elif file_ext in ["yml", "yaml"]:
+                suggested_fixes.append("Review infrastructure configuration")
+                suggested_fixes.append("Check environment-specific settings")
+
+    # Find similar past issues (placeholder - would query historical data)
+    similar_issues = []
+
+    return {
+        "summary": basic.get("summary", ""),
+        "root_cause": f"Likely issue in {service_name} - {basic.get('summary', '')}",
+        "affected_code": affected_code,
+        "suggested_fixes": list(dict.fromkeys(suggested_fixes)),  # Remove duplicates
+        "similar_issues": similar_issues,
+        "service": service_name,
+    }
 
 
 def get_tool_count() -> int:
@@ -591,10 +745,25 @@ def get_tool_count() -> int:
 
 def run_http_server(host: str, port: int):
     """Run MCP server with HTTP transport and health endpoints."""
+    import asyncio
+
     import uvicorn
     from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.middleware.cors import CORSMiddleware
     from starlette.responses import JSONResponse
-    from starlette.routing import Mount, Route
+    from starlette.routing import Mount, Route, WebSocketRoute
+
+    # Import auth and chatbot modules
+    from src.mcp_server.auth import (
+        AuthMiddleware,
+        handle_callback,
+        handle_login,
+        handle_logout,
+        handle_user_info,
+        is_auth_configured,
+    )
+    from src.mcp_server.chatbot import handle_chat_websocket
 
     # Health check endpoint
     async def health(request):
@@ -622,10 +791,177 @@ def run_http_server(host: str, port: int):
                     "/health": "Health check",
                     "/mcp": "MCP protocol (streamable-http)",
                     "/sse": "MCP protocol (SSE)",
+                    "/api/alerts": "Dashboard alerts API",
                 },
                 "tools": get_tool_count(),
             }
         )
+
+    # ========================================================================
+    # Dashboard REST API endpoints
+    # ========================================================================
+
+    async def api_alerts_active(request):
+        """Get active PagerDuty incidents with AI analysis."""
+        try:
+            # Run PagerDuty call in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            incidents_data = await loop.run_in_executor(None, handle_active_incidents)
+
+            if "error" in incidents_data:
+                return JSONResponse({"error": incidents_data["error"]}, status_code=500)
+
+            # For each incident, generate AI analysis
+            incidents_with_analysis = []
+            for incident in incidents_data.get("incidents", []):
+                # Extract service name for code search
+                service_name = extract_service_name_from_incident(incident)
+
+                # Generate quick AI analysis based on incident title
+                analysis = await loop.run_in_executor(
+                    None,
+                    lambda i=incident, s=service_name: _generate_incident_analysis(i, s),
+                )
+
+                incidents_with_analysis.append(
+                    {
+                        "incident": incident,
+                        "analysis": analysis,
+                    }
+                )
+
+            return JSONResponse(
+                {
+                    "total": len(incidents_with_analysis),
+                    "incidents": incidents_with_analysis,
+                }
+            )
+        except Exception as e:
+            print(f"[API] Error in /api/alerts/active: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    async def api_alert_details(request):
+        """Get detailed incident info with full analysis."""
+        incident_id = request.path_params["incident_id"]
+        try:
+            loop = asyncio.get_event_loop()
+            incident = await loop.run_in_executor(None, lambda: handle_incident_details(incident_id))
+
+            if "error" in incident:
+                return JSONResponse({"error": incident["error"]}, status_code=404)
+
+            # Get service name and run full analysis
+            service_name = extract_service_name_from_incident(incident)
+
+            # Search for related code
+            code_results = await loop.run_in_executor(
+                None,
+                lambda: search_knowledge_base(f"{incident.get('title', '')} {service_name}", num_results=5),
+            )
+
+            # Get recent errors from Coralogix
+            logs = await loop.run_in_executor(
+                None,
+                lambda: handle_get_recent_errors(service_name, hours_back=4, limit=20),
+            )
+
+            # Generate detailed analysis
+            analysis = await loop.run_in_executor(
+                None,
+                lambda: _generate_detailed_analysis(incident, service_name, code_results, logs),
+            )
+
+            return JSONResponse(
+                {
+                    "incident": incident,
+                    "analysis": analysis,
+                    "related_code": code_results.get("results", [])[:3],
+                    "recent_logs": logs.get("logs", logs.get("errors", []))[:10],
+                }
+            )
+        except Exception as e:
+            print(f"[API] Error in /api/alerts/{incident_id}: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    async def api_analyze_incident(request):
+        """Trigger AI analysis for an incident (POST)."""
+        incident_id = request.path_params["incident_id"]
+        try:
+            body = await request.json()
+            include_code_fix = body.get("include_code_fix", True)
+
+            loop = asyncio.get_event_loop()
+            incident = await loop.run_in_executor(None, lambda: handle_incident_details(incident_id))
+
+            if "error" in incident:
+                return JSONResponse({"error": incident["error"]}, status_code=404)
+
+            service_name = extract_service_name_from_incident(incident)
+
+            # Search codebase for relevant code
+            code_results = None
+            if include_code_fix:
+                code_results = await loop.run_in_executor(
+                    None,
+                    lambda: search_knowledge_base(f"{incident.get('title', '')} error fix", num_results=10),
+                )
+
+            # Generate AI analysis with code fix suggestions
+            analysis = await loop.run_in_executor(
+                None,
+                lambda: _generate_code_fix_analysis(incident, service_name, code_results),
+            )
+
+            return JSONResponse(
+                {
+                    "incident_id": incident_id,
+                    "analysis": analysis,
+                }
+            )
+        except Exception as e:
+            print(f"[API] Error in POST /api/alerts/{incident_id}/analyze: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    async def api_enhance_alert(request):
+        """
+        Enhance a CloudWatch alarm with AI-powered analysis.
+
+        POST /api/enhance-alert
+        Body: {
+            "alarm_name": "CAST [PROD] - EWriteBackPayment",
+            "service": "mrrobot-cast-core",
+            "error_code": "EWriteBackPayment",  # optional
+            "severity": "Critical",              # optional
+            "reason": "Threshold Crossed...",    # optional
+            "log_group": "/aws/lambda/...",      # optional
+            "timestamp": "2025-12-26T18:00:00Z", # optional
+            "environment": "prod"                # optional
+        }
+
+        Returns AI analysis with root cause, affected code, suggested fixes, etc.
+        """
+        try:
+            body = await request.json()
+
+            # Validate required fields
+            if not body.get("service") and not body.get("alarm_name"):
+                return JSONResponse(
+                    {"status": "error", "error": "Missing required field: 'service' or 'alarm_name'"},
+                    status_code=400,
+                )
+
+            # Run enhancement in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: enhance_alert(body))
+
+            return JSONResponse(result)
+
+        except Exception as e:
+            print(f"[API] Error in POST /api/enhance-alert: {e}")
+            return JSONResponse(
+                {"status": "error", "error": str(e)},
+                status_code=500,
+            )
 
     # Get the MCP ASGI apps
     # Note: sse_app() creates routes at /sse and /messages/ internally
@@ -634,18 +970,71 @@ def run_http_server(host: str, port: int):
     mcp_http_app = mcp.streamable_http_app()
     mcp_sse_app = mcp.sse_app()
 
-    # Create combined Starlette app with health routes + MCP
-    # Mount SSE app at root (it has its own /sse and /messages/ routes)
-    # Mount MCP app at /mcp
-    app = Starlette(
-        routes=[
-            Route("/health", health, methods=["GET"]),
-            # Mount MCP HTTP transport at /mcp
-            Mount("/mcp", app=mcp_http_app),
-            # Mount SSE app at root (provides /sse and /messages/ routes)
-            Mount("/", app=mcp_sse_app),
-        ],
-    )
+    # CORS middleware for dashboard
+    allowed_origins = [
+        "https://ai-agent.mrrobot.dev",
+        "https://ai-agent.nex.io",
+        "https://mcp.mrrobot.dev",
+        "https://mcp.nex.io",
+        "http://localhost:3000",
+        "http://localhost:5173",  # Vite dev server
+    ]
+    middleware = [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=allowed_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ]
+
+    # Add auth middleware if configured
+    if is_auth_configured():
+        middleware.append(Middleware(AuthMiddleware))
+        print("[MCP] Azure AD authentication enabled")
+    else:
+        print("[MCP] Azure AD not configured - running without authentication")
+
+    # Check if dashboard static files exist (built React app)
+    dashboard_dir = os.path.join(os.path.dirname(__file__), "..", "..", "web-dashboard", "dist")
+    has_dashboard = os.path.exists(dashboard_dir)
+    if has_dashboard:
+        from starlette.staticfiles import StaticFiles
+
+        print(f"[MCP] Dashboard static files found at {dashboard_dir}")
+    else:
+        print(f"[MCP] Dashboard not found at {dashboard_dir} - API-only mode")
+
+    # Build routes list
+    routes = [
+        Route("/health", health, methods=["GET"]),
+        # Auth routes
+        Route("/auth/login", handle_login, methods=["GET"]),
+        Route("/auth/callback", handle_callback, methods=["GET"]),
+        Route("/auth/logout", handle_logout, methods=["GET", "POST"]),
+        Route("/api/user", handle_user_info, methods=["GET"]),
+        # Chatbot WebSocket
+        WebSocketRoute("/api/chat", handle_chat_websocket),
+        # Dashboard REST API routes
+        Route("/api/alerts/active", api_alerts_active, methods=["GET"]),
+        Route("/api/alerts/{incident_id}", api_alert_details, methods=["GET"]),
+        Route("/api/alerts/{incident_id}/analyze", api_analyze_incident, methods=["POST"]),
+        # Alert enhancement API (for external services like cloudwatchAlarmNotifier)
+        Route("/api/enhance-alert", api_enhance_alert, methods=["POST"]),
+        # Mount MCP protocol endpoints
+        Mount("/mcp", app=mcp_http_app),
+        Mount("/sse", app=mcp_sse_app),
+    ]
+
+    # Serve dashboard at root if available, otherwise mount SSE at root
+    if has_dashboard:
+        routes.append(Mount("/", app=StaticFiles(directory=dashboard_dir, html=True), name="dashboard"))
+    else:
+        routes.append(Mount("/", app=mcp_sse_app))
+
+    # Create combined Starlette app
+    app = Starlette(routes=routes, middleware=middleware)
 
     print(f"[MCP] MrRobot MCP Server v{VERSION}")
     print(f"[MCP] Tools registered: {get_tool_count()}")

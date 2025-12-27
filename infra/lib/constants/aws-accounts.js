@@ -15,7 +15,37 @@
 
 const ACCOUNTS = {
   dev: '720154970215',
-  // prod: '123456789012',  // Add when needed
+  prod: '246295362269',
+};
+
+// VPC IDs per environment
+const VPCS = {
+  dev: 'vpc-5c8c1725',   // mrrobot-nonpci-vpc-dev (10.1.0.0/16)
+  prod: 'vpc-1630aa6f',  // mrrobot-nonpci-vpc-prod (10.3.0.0/16)
+};
+
+// Route53 Hosted Zones per environment
+const HOSTED_ZONES = {
+  dev: {
+    zoneName: 'mrrobot.dev',
+    hostedZoneId: 'Z00099541PMCE1WUL76PK',
+  },
+  prod: {
+    zoneName: 'nex.io',
+    hostedZoneId: 'Z00877603802KT7RM0LE9',
+  },
+};
+
+// DNS subdomains for services (same across environments, just different domains)
+const DNS_SUBDOMAINS = {
+  dev: {
+    mcp: 'mcp',           // mcp.mrrobot.dev
+    dashboard: 'ai-agent', // ai-agent.mrrobot.dev
+  },
+  prod: {
+    mcp: 'mcp',           // mcp.nex.io
+    dashboard: 'ai-agent', // ai-agent.nex.io
+  },
 };
 
 const REGIONS = {
@@ -66,6 +96,9 @@ function getEc2Env(environment) {
 module.exports = {
   ACCOUNTS,
   REGIONS,
+  VPCS,
+  HOSTED_ZONES,
+  DNS_SUBDOMAINS,
   getEnv,
   getKbEnv,
   getEc2Env,

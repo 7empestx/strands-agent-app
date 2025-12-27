@@ -66,7 +66,7 @@ def _fetch_pipeline_log(endpoint: str) -> str:
         print(f"[Bitbucket] Fetching log: {endpoint}")
         start = time.time()
         auth_kwargs = _get_auth_kwargs(token)
-        response = requests.get(url, **auth_kwargs, timeout=10)
+        response = requests.get(url, **auth_kwargs, timeout=(5, 8))
         elapsed = time.time() - start
         print(f"[Bitbucket] Log response: {response.status_code} in {elapsed:.1f}s")
 
@@ -91,7 +91,7 @@ def _make_bitbucket_request(endpoint: str, params: dict = None) -> dict:
         print(f"[Bitbucket] Requesting: {endpoint}")
         start = time.time()
         auth_kwargs = _get_auth_kwargs(token)
-        response = requests.get(url, **auth_kwargs, params=params, timeout=10)
+        response = requests.get(url, **auth_kwargs, params=params, timeout=(5, 8))
 
         elapsed = time.time() - start
         print(f"[Bitbucket] Response: {response.status_code} in {elapsed:.1f}s")

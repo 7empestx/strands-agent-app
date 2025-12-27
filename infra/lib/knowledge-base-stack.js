@@ -50,9 +50,9 @@ class KnowledgeBaseStack extends cdk.Stack {
     // IAM Role for Bedrock Knowledge Base
     // ========================================================================
     const bedrockKbRole = new iam.Role(this, 'BedrockKBRole', {
-      roleName: `${projectName}-bedrock-kb-role`,
+      roleName: `${projectName}-${environment}-bedrock-kb-role`,
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
-      description: 'Role for Bedrock Knowledge Base to access S3 and OpenSearch',
+      description: `Role for Bedrock Knowledge Base to access S3 and OpenSearch (${environment})`,
     });
 
     // ========================================================================
@@ -61,13 +61,13 @@ class KnowledgeBaseStack extends cdk.Stack {
 
     // Encryption policy (required before creating collection)
     const encryptionPolicy = new opensearchserverless.CfnSecurityPolicy(this, 'EncryptionPolicy', {
-      name: `${projectName}-encryption`,
+      name: `${projectName}-${environment}-enc`,
       type: 'encryption',
-      description: `Encryption policy for ${projectName}`,
+      description: `Encryption policy for ${projectName} (${environment})`,
       policy: JSON.stringify({
         Rules: [
           {
-            Resource: [`collection/${projectName}-vectors`],
+            Resource: [`collection/${projectName}-${environment}-vectors`],
             ResourceType: 'collection',
           },
         ],
@@ -77,14 +77,14 @@ class KnowledgeBaseStack extends cdk.Stack {
 
     // Network policy (required before creating collection)
     const networkPolicy = new opensearchserverless.CfnSecurityPolicy(this, 'NetworkPolicy', {
-      name: `${projectName}-network`,
+      name: `${projectName}-${environment}-net`,
       type: 'network',
-      description: `Network policy for ${projectName}`,
+      description: `Network policy for ${projectName} (${environment})`,
       policy: JSON.stringify([
         {
           Rules: [
             {
-              Resource: [`collection/${projectName}-vectors`],
+              Resource: [`collection/${projectName}-${environment}-vectors`],
               ResourceType: 'collection',
             },
           ],
@@ -93,16 +93,22 @@ class KnowledgeBaseStack extends cdk.Stack {
       ]),
     });
 
+    // SSO role patterns per environment (for manual index creation)
+    const ssoRolePatterns = {
+      dev: `arn:aws:sts::${this.account}:assumed-role/AWSReservedSSO_dev_DevopsAdmin_81d454ff0550d313/*`,
+      prod: `arn:aws:sts::${this.account}:assumed-role/AWSReservedSSO_prod_DevopsAdmin_3f32883e19494337/*`,
+    };
+
     // Data access policy - includes Bedrock role for index operations
     const dataAccessPolicy = new opensearchserverless.CfnAccessPolicy(this, 'DataAccessPolicy', {
-      name: `${projectName}-data`,
+      name: `${projectName}-${environment}-data`,
       type: 'data',
-      description: `Data access policy for ${projectName}`,
+      description: `Data access policy for ${projectName} (${environment})`,
       policy: JSON.stringify([
         {
           Rules: [
             {
-              Resource: [`collection/${projectName}-vectors`],
+              Resource: [`collection/${projectName}-${environment}-vectors`],
               ResourceType: 'collection',
               Permission: [
                 'aoss:CreateCollectionItems',
@@ -112,7 +118,7 @@ class KnowledgeBaseStack extends cdk.Stack {
               ],
             },
             {
-              Resource: [`index/${projectName}-vectors/*`],
+              Resource: [`index/${projectName}-${environment}-vectors/*`],
               ResourceType: 'index',
               Permission: [
                 'aoss:CreateIndex',
@@ -127,7 +133,7 @@ class KnowledgeBaseStack extends cdk.Stack {
           Principal: [
             bedrockKbRole.roleArn,
             // SSO DevOps Admin role for manual index creation (assumed-role format for AOSS)
-            `arn:aws:sts::${this.account}:assumed-role/AWSReservedSSO_dev_DevopsAdmin_81d454ff0550d313/*`,
+            ssoRolePatterns[environment] || `arn:aws:iam::${this.account}:root`,
             // Fallback: account root
             `arn:aws:iam::${this.account}:root`,
           ],
@@ -137,9 +143,9 @@ class KnowledgeBaseStack extends cdk.Stack {
 
     // OpenSearch Serverless Collection
     const vectorCollection = new opensearchserverless.CfnCollection(this, 'VectorCollection', {
-      name: `${projectName}-vectors`,
+      name: `${projectName}-${environment}-vectors`,
       type: 'VECTORSEARCH',
-      description: `Vector store for ${projectName} code embeddings`,
+      description: `Vector store for ${projectName} code embeddings (${environment})`,
     });
 
     // Add dependencies
@@ -191,8 +197,11 @@ class KnowledgeBaseStack extends cdk.Stack {
       description: 'OpenSearch Serverless collection ARN',
     });
 
+    // AWS profile for commands based on environment
+    const awsProfile = environment === 'prod' ? 'prod' : 'dev';
+
     new cdk.CfnOutput(this, 'IndexCreationCommand', {
-      value: `AWS_PROFILE=dev python scripts/create-opensearch-index.py --endpoint ${vectorCollection.attrCollectionEndpoint} --region ${this.region}`,
+      value: `AWS_PROFILE=${awsProfile} python scripts/create-opensearch-index.py --endpoint ${vectorCollection.attrCollectionEndpoint} --region ${this.region}`,
       description: 'Command to create the OpenSearch index after collection is active',
     });
 
@@ -201,8 +210,8 @@ class KnowledgeBaseStack extends cdk.Stack {
     // ========================================================================
     if (!skipKb) {
       const knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'CodeKnowledgeBase', {
-        name: `${projectName}-knowledge-base`,
-        description: 'Knowledge base for MrRobot code repositories',
+        name: `${projectName}-${environment}-knowledge-base`,
+        description: `Knowledge base for MrRobot code repositories (${environment})`,
         roleArn: bedrockKbRole.roleArn,
         knowledgeBaseConfiguration: {
           type: 'VECTOR',
@@ -231,7 +240,7 @@ class KnowledgeBaseStack extends cdk.Stack {
       // Bedrock Data Source - Code Repos (S3)
       // ========================================================================
       const codeDataSource = new bedrock.CfnDataSource(this, 'CodeDataSource', {
-        name: `${projectName}-code-source`,
+        name: `${projectName}-${environment}-code-source`,
         knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
         dataDeletionPolicy: 'RETAIN',
         dataSourceConfiguration: {
@@ -257,7 +266,7 @@ class KnowledgeBaseStack extends cdk.Stack {
       // Bedrock Data Source - Slack History (S3)
       // ========================================================================
       const slackDataSource = new bedrock.CfnDataSource(this, 'SlackDataSource', {
-        name: `${projectName}-slack-history`,
+        name: `${projectName}-${environment}-slack-history`,
         knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
         dataDeletionPolicy: 'RETAIN',
         dataSourceConfiguration: {
@@ -282,19 +291,19 @@ class KnowledgeBaseStack extends cdk.Stack {
       new cdk.CfnOutput(this, 'KnowledgeBaseId', {
         value: knowledgeBase.attrKnowledgeBaseId,
         description: 'Bedrock Knowledge Base ID',
-        exportName: `${projectName}-kb-id`,
+        exportName: `${projectName}-${environment}-kb-id`,
       });
 
       new cdk.CfnOutput(this, 'CodeDataSourceId', {
         value: codeDataSource.attrDataSourceId,
         description: 'Bedrock Data Source ID for code repos',
-        exportName: `${projectName}-code-ds-id`,
+        exportName: `${projectName}-${environment}-code-ds-id`,
       });
 
       new cdk.CfnOutput(this, 'SlackDataSourceId', {
         value: slackDataSource.attrDataSourceId,
         description: 'Bedrock Data Source ID for Slack history',
-        exportName: `${projectName}-slack-ds-id`,
+        exportName: `${projectName}-${environment}-slack-ds-id`,
       });
 
       // Export for easy env var setup

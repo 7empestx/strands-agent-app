@@ -9,6 +9,14 @@ import os
 
 from .config import SECRETS_NAME
 
+# Load .env file if it exists (for local development)
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, skip
+
 # Cache for secrets
 _secrets_cache = None
 

@@ -6,17 +6,40 @@ const { getKbEnv, getEc2Env } = require('../lib/constants/aws-accounts');
 
 const app = new cdk.App();
 
-// ECS Fargate stack for Streamlit + MCP Server + Slack Bot
+// ========================================================================
+// DEV Environment Stacks
+// ========================================================================
+
+// ECS Fargate stack for Streamlit + MCP Server + Slack Bot (dev)
 new StrandsAgentECSStack(app, 'StrandsAgentECSStack', {
   env: getEc2Env('dev'),
-  description: 'Strands Agent App - Streamlit + MCP Server on ECS Fargate'
+  environment: 'dev',
+  description: 'Strands Agent App - Streamlit + MCP Server on ECS Fargate (dev)'
 });
 
-// Knowledge Base stack for code search (us-east-1)
+// Knowledge Base stack for code search (dev)
 new KnowledgeBaseStack(app, 'CodeKnowledgeBaseStack', {
   env: getKbEnv('dev'),
   environment: 'dev',
-  description: 'Bedrock Knowledge Base for MrRobot code repositories'
+  description: 'Bedrock Knowledge Base for MrRobot code repositories (dev)'
+});
+
+// ========================================================================
+// PROD Environment Stacks
+// ========================================================================
+
+// ECS Fargate stack for Streamlit + MCP Server + Slack Bot (prod)
+new StrandsAgentECSStack(app, 'StrandsAgentECSStackProd', {
+  env: getEc2Env('prod'),
+  environment: 'prod',
+  description: 'Strands Agent App - Streamlit + MCP Server on ECS Fargate (prod)'
+});
+
+// Knowledge Base stack for code search (prod)
+new KnowledgeBaseStack(app, 'CodeKnowledgeBaseStackProd', {
+  env: getKbEnv('prod'),
+  environment: 'prod',
+  description: 'Bedrock Knowledge Base for MrRobot code repositories (prod)'
 });
 
 app.synth();

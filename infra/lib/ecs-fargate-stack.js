@@ -11,18 +11,27 @@ const acm = require('aws-cdk-lib/aws-certificatemanager');
 const dynamodb = require('aws-cdk-lib/aws-dynamodb');
 const secretsmanager = require('aws-cdk-lib/aws-secretsmanager');
 const { addOfficeIngressRules } = require('./constants/office-ips');
-
-// DNS Configuration
-const DNS_DOMAIN = 'mrrobot.dev';
-const DNS_HOSTED_ZONE_ID = 'Z00099541PMCE1WUL76PK';
+const { VPCS, HOSTED_ZONES, DNS_SUBDOMAINS } = require('./constants/aws-accounts');
 
 class StrandsAgentECSStack extends cdk.Stack {
   constructor(scope, id, props) {
     super(scope, id, props);
 
-    // VPC - use existing nonpci VPC in us-east-1
+    // Get environment from props (defaults to 'dev')
+    const environment = props?.environment || 'dev';
+
+    // Environment-specific configuration
+    const vpcId = VPCS[environment];
+    const hostedZoneConfig = HOSTED_ZONES[environment];
+    const dnsSubdomains = DNS_SUBDOMAINS[environment];
+
+    if (!vpcId || !hostedZoneConfig) {
+      throw new Error(`Missing configuration for environment: ${environment}`);
+    }
+
+    // VPC - use existing nonpci VPC
     const vpc = ec2.Vpc.fromLookup(this, 'NonPciVPC', {
-      vpcId: 'vpc-5c8c1725'  // mrrobot-nonpci VPC in dev
+      vpcId: vpcId
     });
 
     // ========================================================================
@@ -132,6 +141,9 @@ class StrandsAgentECSStack extends cdk.Stack {
       resources: ['*']
     }));
 
+    // S3 bucket name for this environment
+    const s3BucketName = `mrrobot-code-kb-${environment}-${this.account}`;
+
     // S3 permissions for Clippy config (system prompt, service registry)
     taskRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -140,8 +152,8 @@ class StrandsAgentECSStack extends cdk.Stack {
         's3:ListBucket'
       ],
       resources: [
-        'arn:aws:s3:::mrrobot-code-kb-dev-720154970215',
-        'arn:aws:s3:::mrrobot-code-kb-dev-720154970215/clippy-config/*'
+        `arn:aws:s3:::${s3BucketName}`,
+        `arn:aws:s3:::${s3BucketName}/clippy-config/*`
       ]
     }));
 
@@ -149,7 +161,7 @@ class StrandsAgentECSStack extends cdk.Stack {
     // DynamoDB - Feedback Table
     // ========================================================================
     const feedbackTable = new dynamodb.Table(this, 'FeedbackTable', {
-      tableName: 'mrrobot-ai-feedback',
+      tableName: `mrrobot-ai-feedback-${environment}`,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -165,7 +177,7 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     const cluster = new ecs.Cluster(this, 'MrRobotCluster', {
       vpc,
-      clusterName: 'mrrobot-ai-core',
+      clusterName: `mrrobot-ai-core-${environment}`,
       containerInsights: true,
       defaultCloudMapNamespace: {
         name: 'mrrobot.local'
@@ -179,20 +191,25 @@ class StrandsAgentECSStack extends cdk.Stack {
       vpc,
       internetFacing: true,
       securityGroup: albSecurityGroup,
-      loadBalancerName: 'mrrobot-alb'
+      loadBalancerName: `mrrobot-ai-alb-${environment}`,
+      // Select public subnets for internet-facing ALB (one per AZ)
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC,
+        onePerAz: true
+      }
     });
 
     // ========================================================================
     // CloudWatch Log Groups
     // ========================================================================
     const streamlitLogGroup = new logs.LogGroup(this, 'StreamlitLogGroup', {
-      logGroupName: '/ecs/mrrobot-streamlit',
+      logGroupName: `/ecs/mrrobot-streamlit-${environment}`,
       retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
 
     const mcpLogGroup = new logs.LogGroup(this, 'McpLogGroup', {
-      logGroupName: '/ecs/mrrobot-mcp-server',
+      logGroupName: `/ecs/mrrobot-mcp-server-${environment}`,
       retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
@@ -292,7 +309,7 @@ class StrandsAgentECSStack extends cdk.Stack {
       port: 8501,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targetType: elbv2.TargetType.IP,
-      targetGroupName: 'mrrobot-streamlit',
+      targetGroupName: `mrrobot-streamlit-${environment}`,
       healthCheck: {
         path: '/',
         interval: cdk.Duration.seconds(30),
@@ -307,7 +324,7 @@ class StrandsAgentECSStack extends cdk.Stack {
       port: 8080,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targetType: elbv2.TargetType.IP,
-      targetGroupName: 'mrrobot-mcp-server',
+      targetGroupName: `mrrobot-mcp-server-${environment}`,
       healthCheck: {
         path: '/health',
         interval: cdk.Duration.seconds(30),
@@ -320,18 +337,22 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ACM Certificate for HTTPS
     // ========================================================================
-    // Import existing wildcard certificate (created via AWS CLI)
-    // Covers *.mrrobot.dev and mrrobot.dev
-    const wildcardCertificate = acm.Certificate.fromCertificateArn(
-      this,
-      'WildcardCertificate',
-      'arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d'
-    );
+    // Create certificate for the environment's domain with DNS validation
+    const certificate = new acm.Certificate(this, 'Certificate', {
+      domainName: `*.${hostedZoneConfig.zoneName}`,
+      subjectAlternativeNames: [hostedZoneConfig.zoneName],
+      validation: acm.CertificateValidation.fromDns(
+        route53.HostedZone.fromHostedZoneAttributes(this, 'ValidationZone', {
+          hostedZoneId: hostedZoneConfig.hostedZoneId,
+          zoneName: hostedZoneConfig.zoneName,
+        })
+      ),
+    });
 
     // Import Route53 hosted zone for DNS records
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'MrRobotDevZone', {
-      hostedZoneId: DNS_HOSTED_ZONE_ID,
-      zoneName: DNS_DOMAIN,
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+      hostedZoneId: hostedZoneConfig.hostedZoneId,
+      zoneName: hostedZoneConfig.zoneName,
     });
 
     // ========================================================================
@@ -352,36 +373,40 @@ class StrandsAgentECSStack extends cdk.Stack {
     const httpsListener = alb.addListener('HttpsListener', {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
-      certificates: [wildcardCertificate],
+      certificates: [certificate],
       defaultTargetGroups: [streamlitTargetGroup]  // Default to Streamlit
     });
 
-    // Route mcp.mrrobot.dev to MCP server (HTTPS)
+    // Route MCP subdomain to MCP server (HTTPS)
+    const mcpHostname = `${dnsSubdomains.mcp}.${hostedZoneConfig.zoneName}`;
     httpsListener.addTargetGroups('McpHostRuleHttps', {
       conditions: [
-        elbv2.ListenerCondition.hostHeaders(['mcp.mrrobot.dev'])
+        elbv2.ListenerCondition.hostHeaders([mcpHostname])
       ],
       targetGroups: [mcpTargetGroup],
       priority: 1
     });
 
-    // Route ai-agent.mrrobot.dev to Streamlit (HTTPS)
-    httpsListener.addTargetGroups('StreamlitHostRuleHttps', {
+    // Route dashboard subdomain to MCP server (React Dashboard) (HTTPS)
+    const dashboardHostname = `${dnsSubdomains.dashboard}.${hostedZoneConfig.zoneName}`;
+    httpsListener.addTargetGroups('DashboardHostRuleHttps', {
       conditions: [
-        elbv2.ListenerCondition.hostHeaders(['ai-agent.mrrobot.dev'])
+        elbv2.ListenerCondition.hostHeaders([dashboardHostname])
       ],
-      targetGroups: [streamlitTargetGroup],
+      targetGroups: [mcpTargetGroup],
       priority: 2
     });
 
     // ========================================================================
     // ECS Services
     // ========================================================================
+    // DEPRECATED: Streamlit service - set to 0 tasks
+    // React Dashboard is now served from MCP server
     const streamlitService = new ecs.FargateService(this, 'StreamlitService', {
       cluster,
       taskDefinition: streamlitTaskDefinition,
-      desiredCount: 2,
-      serviceName: 'mrrobot-streamlit',
+      desiredCount: 0,  // Deprecated - dashboard now served from MCP server
+      serviceName: `mrrobot-streamlit-${environment}`,
       assignPublicIp: false,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
@@ -395,10 +420,10 @@ class StrandsAgentECSStack extends cdk.Stack {
     // Attach target group
     streamlitService.attachToApplicationTargetGroup(streamlitTargetGroup);
 
-    // Auto-scaling for Streamlit
+    // Auto-scaling for Streamlit (disabled - service deprecated)
     const streamlitScaling = streamlitService.autoScaleTaskCount({
-      minCapacity: 2,
-      maxCapacity: 4
+      minCapacity: 0,
+      maxCapacity: 0
     });
 
     streamlitScaling.scaleOnCpuUtilization('StreamlitCpuScaling', {
@@ -413,7 +438,7 @@ class StrandsAgentECSStack extends cdk.Stack {
       cluster,
       taskDefinition: mcpTaskDefinition,
       desiredCount: 2,
-      serviceName: 'mrrobot-mcp-server',
+      serviceName: `mrrobot-mcp-server-${environment}`,
       assignPublicIp: false,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
@@ -441,19 +466,19 @@ class StrandsAgentECSStack extends cdk.Stack {
     // Route53 DNS Records
     // ========================================================================
 
-    // A record for Streamlit (via ALB)
-    new route53.ARecord(this, 'StreamlitDnsRecord', {
+    // A record for Dashboard (via ALB)
+    new route53.ARecord(this, 'DashboardDnsRecord', {
       zone: hostedZone,
-      recordName: 'ai-agent',
+      recordName: dnsSubdomains.dashboard,
       target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
       ttl: cdk.Duration.minutes(5),
-      comment: 'Streamlit AI Agent UI (via ALB)'
+      comment: 'AI Agent Dashboard UI (via ALB)'
     });
 
-    // A record for MCP server (via ALB with path routing)
+    // A record for MCP server (via ALB with host routing)
     new route53.ARecord(this, 'McpDnsRecord', {
       zone: hostedZone,
-      recordName: 'mcp',
+      recordName: dnsSubdomains.mcp,
       target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
       ttl: cdk.Duration.minutes(5),
       comment: 'MCP Server (via ALB)'
@@ -467,13 +492,13 @@ class StrandsAgentECSStack extends cdk.Stack {
       description: 'ALB DNS Name'
     });
 
-    new cdk.CfnOutput(this, 'StreamlitURL', {
-      value: `https://ai-agent.${DNS_DOMAIN}`,
-      description: 'Streamlit URL (HTTPS)'
+    new cdk.CfnOutput(this, 'DashboardURL', {
+      value: `https://${dashboardHostname}`,
+      description: 'Dashboard URL (HTTPS)'
     });
 
     new cdk.CfnOutput(this, 'MCPServerURL', {
-      value: `https://mcp.${DNS_DOMAIN}/sse`,
+      value: `https://${mcpHostname}/sse`,
       description: 'MCP Server URL (HTTPS)'
     });
 
@@ -490,6 +515,11 @@ class StrandsAgentECSStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ClusterName', {
       value: cluster.clusterName,
       description: 'ECS Cluster Name'
+    });
+
+    new cdk.CfnOutput(this, 'Environment', {
+      value: environment,
+      description: 'Deployment Environment'
     });
   }
 }

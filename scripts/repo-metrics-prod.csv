@@ -1,0 +1,104 @@
+Rank,Repo,Total Invocations (12mo),Function Count,Functions (sample)
+1,mrrobot-labs/mrrobot-logging-lambda,"1,177,967,118",3,"mrrobot-log-cleaner-lambda-ue1-prod, mrrobot-logging-lambda-ue1-prod, mrrobot-reingest-lambda-ue1-prod"
+2,mrrobot-labs/mrrobot-health-rest,"191,342,253",1,mrrobot-health-rest-prod
+3,emvio-trans,"183,145,976",37,"emvio-trans-production-searchTransactions, emvio-trans-production-dailyFraudApproval, emvio-trans-production-getMerchantTransactionSummary (+34 more)"
+4,emvio-pay,"72,283,590",69,"emvio-pay-production-brokerCardUpdates, emvio-pay-production-processECheckFromApi, emvio-pay-production-refundTransaction (+66 more)"
+5,mrrobot-labs/mrrobot-service-observability,"61,629,182",1,mrrobot-service-observability-rest-prod
+6,mrrobot-labs/mrrobot-csp-reports-rest,"60,351,296",1,mrrobot-csp-reports-rest-prod
+7,emvio-auth,"58,965,963",8,"emvio-auth-production-deleteSessionsForUsers, emvio-auth-production-deleteSessionsForUser, emvio-auth-production-authorizeReseller (+5 more)"
+8,mrrobot-labs/coralogix-terraform,"58,093,035",5,"Coralogix-CloudTrail-xaCeVj, Coralogix-CloudWatch-3UWf6v, Coralogix-S3-aObMaO (+2 more)"
+9,etl-gateway,"44,887,743",12,"etl-gateway-production-getResellers, etl-gateway-production-credentialsTester, etl-gateway-production-brokerGatewayTransactionFetch (+9 more)"
+10,mrrobot-labs/mrrobot-auth-rest,"26,801,866",2,"mrrobot-auth-rest-prod, mrrobot-auth-rest-jwt-secret-rotator-prod"
+11,mrrobot-labs/payment-nmi-connector,"26,660,026",2,"payment-nmiAuto-connector-prod, payment-nmi-connector-prod"
+12,mrrobot-labs/payment-usaepay-connector,"26,019,496",1,payment-usaepay-connector-prod
+13,emvio-chargeback,"21,522,419",17,"emvio-chargeback-production-brokerChargebackCreate, emvio-chargeback-production-getDisputes, emvio-chargeback-production-createChargebackExportBroker (+14 more)"
+14,emvio-webhook-service,"21,356,157",18,"emvio-webhook-service-production-getWebhook, emvio-webhook-service-production-resendWebhooks, emvio-webhook-service-production-deleteWebhookUrls (+15 more)"
+15,emvio-merchant,"20,251,774",27,"emvio-merchant-production-cacheMerchantGateways, emvio-merchant-production-getMerchantSuper, emvio-merchant-production-getMerchantsByIdsService (+24 more)"
+16,emvio-user,"18,129,308",62,"emvio-user-production-checkMerchantsBillable, emvio-user-production-getUser, emvio-user-production-reinviteEmvioUser (+59 more)"
+17,mrrobot-labs/cast-core-service,"17,234,683",6,"mrrobot-cast-send-reminder-sms-prod, mrrobot-cast-core-prod, mrrobot-cast-email-event-notifications-prod (+3 more)"
+18,mrrobot-labs/mrrobot-sds-rest,"16,764,614",1,mrrobot-sds-rest-prod
+19,mrrobot-labs/mrrobot-otp-rest,"16,733,904",1,mrrobot-otp-rest-prod
+20,mrrobot-labs/mrrobot-messaging-rest,"16,434,509",1,mrrobot-messaging-rest-prod
+21,mrrobot-labs/emvio-underwriting-service,"16,226,565",3,"mrrobot-underwriting-broker-brokerKycSiteScan-prod, mrrobot-prevet-process-prod, mrrobot-underwriting-rest-prod"
+22,mrrobot-labs/mrrobot-risk-rest,"16,137,788",1,mrrobot-risk-rest-prod
+23,mrrobot-labs/mrrobot-ai-rest,"16,090,952",1,mrrobot-ai-rest-prod
+24,emvio-card,"14,356,402",19,"emvio-card-production-importCardsFromCSV, emvio-card-production-purgeCards, emvio-card-production-databaseUpdates (+16 more)"
+25,mrrobot-labs/mrrobot-partner-portal-service,"10,325,081",1,mrrobot-partner-portal-service-prod
+26,etl-auto-parse,"5,678,521",17,"etl-auto-parse-production-getFdrMd027Declines, etl-auto-parse-production-checkTsysParsing, etl-auto-parse-production-getTsysAchData (+14 more)"
+27,emvio-payout,"5,569,692",49,"emvio-payout-production-getPayout, emvio-payout-production-getPayoutAccount, emvio-payout-production-getPayouts (+46 more)"
+28,mrrobot-labs/payment-zeamster-connector,"3,703,016",1,payment-zeamster-connector-prod
+29,emvio-apm,"3,645,041",31,"emvio-apm-production-getAsyncTraceStatus, emvio-apm-production-getMerchantSuper, emvio-apm-production-saveApm (+28 more)"
+30,mrrobot-labs/cast-support-portal-service,"3,563,296",2,"mrrobot-cast-support-portal-rest-prod, mrrobot-cast-support-portal-users-stream-prod"
+31,emvio-export,"2,786,622",7,"emvio-export-production-checkForFailures, emvio-export-production-getExportLink, emvio-export-production-checkForReadyExports (+4 more)"
+32,emvio-fraud-service,"2,613,047",9,"emvio-fraud-service-production-getMerchantsWithKountCredentials, emvio-fraud-service-production-updateKountBroker, emvio-fraud-service-production-updateKountDeclinesBroker (+6 more)"
+33,mrrobot-labs/payment-paymentos-connector,"2,565,775",2,"payment-paymentsosIyzico-connector-prod, payment-paymentsosAsiaPacific-connector-prod"
+34,mrrobot-account-updater,"2,195,117",11,"mrrobot-account-updater-production-sanitizeCardsForImportHttp, mrrobot-account-updater-production-brokerProcessTokenexDetokenize, mrrobot-account-updater-production-brokerProcessAUOFilesFromTsys (+8 more)"
+35,emvio-reserve-service,"2,061,131",10,"emvio-reserve-service-production-fdrNorthReserves, emvio-reserve-service-production-getReservesSummary, emvio-reserve-service-production-reserveSanityCheck (+7 more)"
+36,emvio-usage,"2,014,441",9,"emvio-usage-production-merchantMaxCounts, emvio-usage-production-hourlyUsage, emvio-usage-production-brokerUsageHandle (+6 more)"
+37,emvio-processor-onboarding,"1,659,813",13,"emvio-processor-onboarding-production-createFakeApplications, emvio-processor-onboarding-production-brokerApplicationsCreate, emvio-processor-onboarding-produ0845867dd37cc019a3ba3f8918d41973 (+10 more)"
+38,emvio-settings,"1,627,117",4,"emvio-settings-production-getUserSettings, emvio-settings-production-postUserSettingsSuper, emvio-settings-production-postUserSettings (+1 more)"
+39,cforce-service,"1,514,801",63,"cforce-service-production-getMerchantWebAddress, cforce-service-production-sendResellerNotification, cforce-service-production-addMerchantFees (+60 more)"
+40,emvio-payment-recovery,"1,438,875",11,"emvio-payment-recovery-production-getRetries, emvio-payment-recovery-production-brokerRetryData, emvio-payment-recovery-production-bulkEnableDisableRetries (+8 more)"
+41,etl-chargeback-script,"1,409,590",9,"etl-chargeback-script-production-createDiscoverUpdatesShotgun, etl-chargeback-script-production-fetchChargebackDataBroker, etl-chargeback-script-production-auditTsysChargebacksPostParse (+6 more)"
+42,mrrobot-labs/payment-cybersource-connector,"1,311,172",1,payment-cybersource-connector-prod
+43,etl-fdr-north-parsing-script,"1,236,037",7,"etl-fdr-north-parsing-script-production-checkReports, etl-fdr-north-parsing-script-production-sendAchsToMrRobot, etl-fdr-north-parsing-script-production-createDailyDetailInt (+4 more)"
+44,mrrobot-labs/payment-checkout-connector,"1,124,365",1,payment-checkoutNas-connector-prod
+45,mrrobot-labs/payment-aci-connector,"967,094",3,"payment-aciAuto-connector-prod, payment-aciPlanet-connector-prod, payment-aciPlanetMcp-connector-prod"
+46,emvio-subscription,"857,527",10,"emvio-subscription-production-updateSubscription, emvio-subscription-production-getSubscription, emvio-subscription-production-runManualSubscriptionsByDate (+7 more)"
+47,emvio-ach,"757,873",4,"emvio-ach-production-getAchSummary, emvio-ach-production-databaseUpdates, emvio-ach-production-achSanityCheck (+1 more)"
+48,emvio-batch-service,"704,617",4,"emvio-batch-service-production-getBatch, emvio-batch-service-production-brokerBatchCreate, emvio-batch-service-production-getBatches (+1 more)"
+49,emvio-billing,"616,481",7,"emvio-billing-production-getUserCostSchedule, emvio-billing-production-brokerBillingHandle, emvio-billing-production-getAccountFeeSchedules (+4 more)"
+50,mrrobot-labs/payment-authorize-connector,"608,228",1,payment-authorize-connector-prod
+51,mrrobot-labs/payment-openpay-connector,"585,327",1,payment-openpay-connector-prod
+52,emvio-changelog-service,"577,630",2,"emvio-changelog-service-production-getChangelogs, emvio-changelog-service-production-brokerChangelogCreate"
+53,mrrobot-labs/payment-mrrobot-connector,"562,414",3,"payment-mrrobotAsync-connector-prod, payment-mrrobot-connector-prod, payment-mrrobotAuto-connector-prod"
+54,online-application-service,"523,542",14,"online-application-service-production-getMerchantApplications, online-application-service-production-createApplication, online-application-service-production-createMerchantApplication (+11 more)"
+55,mrrobot-labs/payment-propay-connector,"415,261",2,"payment-proPay-connector-prod, payment-proPayCanada-connector-prod"
+56,mrrobot-labs/payment-stripe-connector,"405,214",1,payment-stripe-connector-prod
+57,emvio-email-service,"280,216",4,"emvio-email-service-production-feedback, emvio-email-service-production-sendEmailFromSns, emvio-email-service-production-handleCognitoEmails (+1 more)"
+58,cforce-auth,"180,961",11,"cforce-auth-production-refreshToken, cforce-auth-production-authenticate, cforce-auth-production-changePassword (+8 more)"
+59,mrrobot-labs/payment-red-dot-connector,"159,657",1,payment-red-dot-connector-prod
+60,mrrobot-labs/bastion-ec2-ami,"113,066",2,"mrrobot-self-hosted-runner-autoscaler-prod, mrrobot-self-hosted-runner-autoscaler-pci-prod"
+61,etl-merchant-script,"104,578",2,"etl-merchant-script-production-migrateMerchantInfo, etl-merchant-script-production-migrateMerchantByIdSuper"
+62,etl-audit-script,"103,686",1,etl-audit-script-production-getBucketAudit
+63,emvio-monitoring,"103,685",1,emvio-monitoring-production-checkBrokerCounts
+64,mrrobot-s3-filescanner-ue1,"78,655",2,"mrrobot-s3-filescanner-ue1-prod-prod-custom-resource-existing-s3, mrrobot-s3-filescanner-ue1-prod"
+65,emvio-report,"71,173",5,"emvio-report-production-getStatements, emvio-report-production-databaseUpdates, emvio-report-production-getStatement (+2 more)"
+66,etl-fdr-post-parse,"70,398",2,"etl-fdr-post-parse-production-postParser, etl-fdr-post-parse-production-updateSyntheticMerchantStatus"
+67,mrrobot-labs/mrrobot-get-tsys-raw-files,"66,018",2,"mrrobot-get-tsys-raw-files-directory-listing-prod, mrrobot-get-tsys-raw-files-start-transfers-prod"
+68,aws-utility,"53,016",7,"aws-utility-production-checkLambdaRetry, aws-utility-production-checkLambdaTriggers, aws-utility-production-dynamoBackupCleanup (+4 more)"
+69,etl-fdr-ndf-service,"43,564",3,"etl-fdr-ndf-service-production-getDailyFDR-NDF, etl-fdr-ndf-service-production-brokerNextDayFunding, etl-fdr-ndf-service-production-transferNdfToCbcal"
+70,apm-citcon-provider,"40,685",2,"apm-citcon-provider-production-runCitconPaypal, apm-citcon-provider-production-runCitconAfterpay"
+71,mrrobot-labs/mrrobot-connector-hub,"40,483",1,mrrobot-connector-hub-rest-prod
+72,etl-fdr-parse,"39,409",3,"etl-fdr-parse-production-databaseUpdates, etl-fdr-parse-production-fdrFileListener, etl-fdr-parse-production-checkReports"
+73,etl-pci-compliance-script,"38,956",2,"etl-pci-compliance-script-production-remaskRawFiles, etl-pci-compliance-script-production-getTsysRawFiles"
+74,emvio-binary,"38,383",2,"emvio-binary-production-getDispute, emvio-binary-production-getStatement"
+75,etl-pci-fdr-get-reports,"34,639",3,"etl-pci-fdr-get-reports-production-rerunReports, etl-pci-fdr-get-reports-production-getFDRMassMonthlyReport, etl-pci-fdr-get-reports-production-getReports"
+76,cforce-email-service,"33,937",1,cforce-email-service-production-sendEmailFromSns
+77,apm-openpay-provider,"22,142",1,apm-openpay-provider-production-runCodi
+78,etl-batch-script,"15,165",3,"etl-batch-script-production-getFdrBatches, etl-batch-script-production-getTsysBatches, etl-batch-script-production-getFdrNorthBatches"
+79,mrrobot-labs/cast-quickbooks-service,"11,577",1,mrrobot-cast-integration-quickbooks-prod
+80,etl-legacy,"11,267",3,"etl-legacy-production-ofacXML, etl-legacy-production-updateBatches, etl-legacy-production-updateOpenBatches"
+81,mrrobot-labs/mrrobot-threatintel-automation,"10,129",1,mrrobot-threatintel-automation-prod
+82,emvio-residuals,"3,884",4,"emvio-residuals-production-databaseUpdates, emvio-residuals-production-createFakeResiduals, emvio-residuals-production-getResidualSummary (+1 more)"
+83,mrrobot-labs/cast-housecallpro-service,"2,928",1,mrrobot-cast-integration-housecallpro-prod
+84,emvio-search,"2,800",1,emvio-search-production-searchAll
+85,mrrobot-labs/mrrobot-cloudwatch-logs-hook,"1,342",2,"mrrobot-cloudwatch-logs-hook-prod, mrrobot-cloudwatch-logs-hook-cron-prod"
+86,mrrobot-labs/mrrobot-cloudfront-logs-hook,892,1,mrrobot-cloudfront-logs-hook-cron-prod
+87,mrrobot-labs/lambda-ec2-bastion,659,1,mrrobot-lambda-ec2-bastion-prod
+88,mrrobot-labs/mrrobot-confluence-sgupdater,516,1,mrrobot-confluence-sgupdater-prod
+89,mrrobot-labs/mrrobot-key-rotation,361,1,mrrobot-key-rotation-prod
+90,emvio-mock-payout,360,5,"emvio-mock-payout-production-processSpendbackRefund, emvio-mock-payout-production-createRecipient, emvio-mock-payout-production-updateTransferStatus (+2 more)"
+91,mrrobot-labs/mrrobot-log-group-cron,345,1,mrrobot-log-group-cron-prod
+92,mrrobot-labs/mrrobot-vpc-terraform,80,1,mrrobot-vpn-tunnel-updater-prod
+93,mrrobot-labs/sumo-terraform,59,1,mrrobot-sumo-key-rotation-prod
+94,mrrobot-labs/mrrobot-lambda-checker,36,1,mrrobot-lambda-checker-cron-prod
+95,mrrobot-labs/pci-azure-ad-last-login,36,1,mrrobot-pci-azure-ad-last-login-prod
+96,secretsmanager-db-key-rotation,16,4,"mrrobot-sm-dbrotatorsu-nonpci-prod, mrrobot-sm-dbrotatorsu-pci-prod, mrrobot-sm-dbrotatormu-pci-prod (+1 more)"
+97,mrrobot-labs/mrrobot-s3-limit-alert,12,1,mrrobot-s3-limit-alert-cron-prod
+98,mrrobot-labs/mrrobot-sg-checker,12,1,mrrobot-sg-checker-cron-prod
+99,apm-checkout-provider,0,1,apm-checkout-provider-production-runSofort
+100,apm-speed-provider,0,1,apm-speed-provider-production-runSpeed
+101,mrrobot-labs/apple-verification-lambda,0,1,mrrobot-lambda-apple-verify
+102,mrrobot-labs/exchange-rate,0,1,mrrobot-data-exchange-rate-ue1-prod
+103,mrrobot-labs/payment-trustmytravel-connector,0,1,payment-trustMyTravel-connector-prod

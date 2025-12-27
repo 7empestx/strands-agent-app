@@ -3,6 +3,9 @@
 # Usage: ./scripts/deploy-to-ecs.sh [--full]
 # --full: Full deployment (CDK deploy + image push + service update)
 # Without flag: Only pushes images and updates services (faster for code changes)
+#
+# NOTE: Streamlit has been deprecated. The React dashboard is now served
+# from the MCP server at the root URL (ai-agent.mrrobot.dev).
 
 set -e
 
@@ -10,7 +13,6 @@ set -e
 AWS_REGION="us-east-1"
 AWS_PROFILE="${AWS_PROFILE:-dev}"
 CLUSTER_NAME="mrrobot-ai-core"
-STREAMLIT_SERVICE="mrrobot-streamlit"
 MCP_SERVICE="mrrobot-mcp-server"
 LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -18,7 +20,6 @@ LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile "$AWS_PROFILE")
 REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-STREAMLIT_IMAGE_URI="${REGISTRY}/mrrobot-streamlit:latest"
 MCP_IMAGE_URI="${REGISTRY}/mrrobot-mcp-server:latest"
 
 echo "=========================================================================="
@@ -29,71 +30,54 @@ echo "Region: $AWS_REGION"
 echo "Profile: $AWS_PROFILE"
 echo "Cluster: $CLUSTER_NAME"
 echo ""
+echo "Deploying: MCP Server + React Dashboard (combined)"
 echo "Note: Building native arm64 images (Fargate Graviton)"
-echo "      No cross-compilation needed!"
 echo ""
 
 # =========================================================================
 # Step 1: Authenticate with ECR
 # =========================================================================
-echo "[1/5] Authenticating with ECR..."
+echo "[1/4] Authenticating with ECR..."
 aws ecr get-login-password --region "$AWS_REGION" --profile "$AWS_PROFILE" | \
   docker login --username AWS --password-stdin "$REGISTRY"
 echo "✓ ECR authentication successful"
 echo ""
 
 # =========================================================================
-# Step 2: Build Streamlit image
+# Step 2: Build MCP Server + Dashboard image
 # =========================================================================
-echo "[2/5] Building Streamlit Docker image..."
-docker build \
-  -f "$LOCAL_DIR/Dockerfile.streamlit" \
-  -t mrrobot-streamlit:latest \
-  -t "$STREAMLIT_IMAGE_URI" \
-  "$LOCAL_DIR"
-echo "✓ Streamlit image built"
-echo ""
+echo "[2/4] Building MCP Server + Dashboard Docker image..."
+echo "      (This includes React dashboard build)"
 
-# =========================================================================
-# Step 3: Build MCP Server image
-# =========================================================================
-echo "[3/5] Building MCP Server Docker image..."
+# Extract NPM token for private registry (@mrrobot packages)
+NPM_TOKEN=$(grep -o '_authToken=[^[:space:]]*' ~/.npmrc | head -1 | cut -d'=' -f2)
+if [ -z "$NPM_TOKEN" ]; then
+  echo "Warning: NPM_TOKEN not found in ~/.npmrc - private packages may fail to install"
+fi
+
 docker build \
   -f "$LOCAL_DIR/Dockerfile.mcp" \
+  --build-arg NPM_TOKEN="$NPM_TOKEN" \
   -t mrrobot-mcp-server:latest \
   -t "$MCP_IMAGE_URI" \
   "$LOCAL_DIR"
-echo "✓ MCP Server image built"
+echo "✓ MCP Server image built (with dashboard)"
 echo ""
 
 # =========================================================================
-# Step 4: Push images to ECR
+# Step 3: Push image to ECR
 # =========================================================================
-echo "[4/5] Pushing images to ECR..."
-echo "  → Pushing Streamlit..."
-docker push "$STREAMLIT_IMAGE_URI"
-echo "  → Pushing MCP Server..."
+echo "[3/4] Pushing image to ECR..."
 docker push "$MCP_IMAGE_URI"
-echo "✓ Images pushed to ECR"
+echo "✓ Image pushed to ECR"
 echo ""
 
 # =========================================================================
-# Step 5: Update ECS services
+# Step 4: Update ECS service
 # =========================================================================
-echo "[5/5] Updating ECS services..."
+echo "[4/4] Updating ECS service..."
 
-# Force new deployment for Streamlit (desired count = 1 to avoid duplicate tasks)
-echo "  → Updating Streamlit service..."
-aws ecs update-service \
-  --cluster "$CLUSTER_NAME" \
-  --service "$STREAMLIT_SERVICE" \
-  --desired-count 1 \
-  --force-new-deployment \
-  --region "$AWS_REGION" \
-  --profile "$AWS_PROFILE" \
-  > /dev/null
-
-# Force new deployment for MCP Server (desired count = 1 to avoid duplicate tasks)
+# Force new deployment for MCP Server
 echo "  → Updating MCP Server service..."
 aws ecs update-service \
   --cluster "$CLUSTER_NAME" \
@@ -104,18 +88,18 @@ aws ecs update-service \
   --profile "$AWS_PROFILE" \
   > /dev/null
 
-echo "✓ ECS services updated (desired count: 1 per service)"
+echo "✓ ECS service updated"
 echo ""
 
 # =========================================================================
-# Step 6: Wait for user verification
+# Step 5: Wait for deployment
 # =========================================================================
-echo "[6/7] Waiting for ECS tasks to stabilize..."
+echo "[5/6] Waiting for ECS task to stabilize..."
 echo ""
 echo "Current task count:"
 aws ecs describe-services \
   --cluster "$CLUSTER_NAME" \
-  --services "$STREAMLIT_SERVICE" "$MCP_SERVICE" \
+  --services "$MCP_SERVICE" \
   --region "$AWS_REGION" \
   --profile "$AWS_PROFILE" \
   --query 'services[*].{Service:serviceName,Desired:desiredCount,Running:runningCount,Pending:pendingCount}' \
@@ -130,14 +114,6 @@ echo ""
 MAX_WAIT=180
 WAITED=0
 while [ $WAITED -lt $MAX_WAIT ]; do
-  STREAMLIT_RUNNING=$(aws ecs describe-services \
-    --cluster "$CLUSTER_NAME" \
-    --services "$STREAMLIT_SERVICE" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE" \
-    --query 'services[0].runningCount' \
-    --output text 2>/dev/null)
-
   MCP_RUNNING=$(aws ecs describe-services \
     --cluster "$CLUSTER_NAME" \
     --services "$MCP_SERVICE" \
@@ -146,38 +122,26 @@ while [ $WAITED -lt $MAX_WAIT ]; do
     --query 'services[0].runningCount' \
     --output text 2>/dev/null)
 
-  if [ "$STREAMLIT_RUNNING" == "1" ] && [ "$MCP_RUNNING" == "1" ]; then
-    echo "✓ Both services stabilized at 1 task each"
+  if [ "$MCP_RUNNING" == "1" ]; then
+    echo "✓ Service stabilized at 1 task"
     break
   fi
 
-  echo "  ... waiting (${WAITED}s) - streamlit: ${STREAMLIT_RUNNING}, mcp: ${MCP_RUNNING}"
+  echo "  ... waiting (${WAITED}s) - running: ${MCP_RUNNING}"
   sleep 10
   WAITED=$((WAITED + 10))
 done
 
 if [ $WAITED -ge $MAX_WAIT ]; then
-  echo "⚠ Timeout waiting for tasks to stabilize. Please check ECS console."
+  echo "⚠ Timeout waiting for task to stabilize. Please check ECS console."
 fi
 
 echo ""
-echo "Final task count:"
-aws ecs describe-services \
-  --cluster "$CLUSTER_NAME" \
-  --services "$STREAMLIT_SERVICE" "$MCP_SERVICE" \
-  --region "$AWS_REGION" \
-  --profile "$AWS_PROFILE" \
-  --query 'services[*].{Service:serviceName,Desired:desiredCount,Running:runningCount,Pending:pendingCount}' \
-  --output table
-
-echo ""
-read -p "Press Enter to continue once you've verified the tasks in AWS Console, or Ctrl+C to abort... "
-echo ""
 
 # =========================================================================
-# Step 7: Verify deployment
+# Step 6: Verify deployment
 # =========================================================================
-echo "[7/7] Verifying deployment..."
+echo "[6/6] Verifying deployment..."
 
 # Get the digest we just pushed
 PUSHED_DIGEST=$(aws ecr describe-images \
@@ -190,7 +154,7 @@ PUSHED_DIGEST=$(aws ecr describe-images \
 echo "  → Pushed image digest: ${PUSHED_DIGEST:0:20}..."
 
 # Wait for ECS to start new tasks with the new image
-echo "  → Waiting for ECS to deploy new tasks (up to 120s)..."
+echo "  → Waiting for ECS to deploy new task (up to 120s)..."
 MAX_WAIT=120
 WAITED=0
 while [ $WAITED -lt $MAX_WAIT ]; do
@@ -224,7 +188,7 @@ while [ $WAITED -lt $MAX_WAIT ]; do
 done
 
 if [ $WAITED -ge $MAX_WAIT ]; then
-  echo "  ⚠ Timeout waiting for new tasks. Check ECS console."
+  echo "  ⚠ Timeout waiting for new task. Check ECS console."
   echo "    Pushed:  $PUSHED_DIGEST"
   echo "    Running: $RUNNING_DIGEST"
 fi
@@ -238,15 +202,14 @@ echo "==========================================================================
 echo "Deployment Complete!"
 echo "=========================================================================="
 echo ""
-echo "Streamlit URL: http://ai-agent.mrrobot.dev:8501"
+echo "Dashboard URL: https://ai-agent.mrrobot.dev"
 echo "MCP Server URL: https://mcp.mrrobot.dev/sse"
 echo ""
 echo "Pushed image:  ${PUSHED_DIGEST:0:30}..."
 echo "Running image: ${RUNNING_DIGEST:0:30}..."
 echo ""
 echo "To view logs:"
-echo "  Streamlit: aws logs tail /ecs/mrrobot-streamlit --follow --region $AWS_REGION --profile $AWS_PROFILE"
-echo "  MCP:       aws logs tail /ecs/mrrobot-mcp-server --follow --region $AWS_REGION --profile $AWS_PROFILE"
+echo "  aws logs tail /ecs/mrrobot-mcp-server --follow --region $AWS_REGION --profile $AWS_PROFILE"
 echo ""
 
 # =========================================================================
