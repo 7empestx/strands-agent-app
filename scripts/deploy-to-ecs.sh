@@ -12,8 +12,10 @@ set -e
 # Configuration
 AWS_REGION="us-east-1"
 AWS_PROFILE="${AWS_PROFILE:-dev}"
-CLUSTER_NAME="mrrobot-ai-core"
-MCP_SERVICE="mrrobot-mcp-server"
+# Determine environment suffix from AWS_PROFILE
+ENV_SUFFIX="${AWS_PROFILE:-dev}"
+CLUSTER_NAME="mrrobot-ai-core-${ENV_SUFFIX}"
+MCP_SERVICE="mrrobot-mcp-server-${ENV_SUFFIX}"
 LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Get AWS account ID

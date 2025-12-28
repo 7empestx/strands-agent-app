@@ -120,11 +120,13 @@ def enhance_alert(alarm_data: dict) -> dict:
 
         # 5. If investigation agent succeeded and returned a good report, parse it
         # Otherwise fall back to rule-based analysis
+        # Ensure report is a string for comparison
+        report_str = str(report) if not isinstance(report, str) else report
         investigation_failed = (
             investigation_result is None
             or investigation_result.get("status") == "error"
-            or "error" in report.lower()[:100]
-            or len(report) < 100
+            or "error" in report_str.lower()[:100]
+            or len(report_str) < 100
         )
 
         if investigation_failed:
@@ -144,7 +146,7 @@ def enhance_alert(alarm_data: dict) -> dict:
         else:
             # 6. Structure the investigation results for Slack/PagerDuty
             analysis = _parse_investigation_report(
-                report=report,
+                report=report_str,
                 service_name=service_name,
                 service_info=service_info,
                 error_code=error_code,

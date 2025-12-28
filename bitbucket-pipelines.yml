@@ -52,7 +52,23 @@ definitions:
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET
           - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
           - echo "Building MCP Server image (includes React dashboard)..."
-          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN=$NPM_TOKEN -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
+          # Try multiple NPM token variables (different repos use different names)
+          - |
+            if [ -n "$NPM_DEVOPS_AUTH_TOKEN" ]; then
+              export JFROG_TOKEN="$NPM_DEVOPS_AUTH_TOKEN"
+              echo "Using NPM_DEVOPS_AUTH_TOKEN"
+            elif [ -n "$NPM_AUTH_TOKEN" ]; then
+              export JFROG_TOKEN="$NPM_AUTH_TOKEN"
+              echo "Using NPM_AUTH_TOKEN"
+            elif [ -n "$NPM_TOKEN" ]; then
+              export JFROG_TOKEN="$NPM_TOKEN"
+              echo "Using NPM_TOKEN"
+            else
+              echo "ERROR: No NPM token found!"
+              exit 1
+            fi
+            echo "Token length: ${#JFROG_TOKEN}"
+          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN="$JFROG_TOKEN" -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
           - echo "Verifying Flask is in MCP image..."
           - docker run --rm $REGISTRY/mrrobot-mcp-server:latest pip list | grep -i flask || (echo "ERROR Flask not found!" && exit 1)
           - echo "Pushing image to ECR..."

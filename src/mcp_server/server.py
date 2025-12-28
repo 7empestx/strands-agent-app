@@ -1056,8 +1056,10 @@ def main():
     args = parser.parse_args()
 
     # Optionally start Slack bot in background
+    # Check ENABLE_SLACK env var (set by CDK - only 'true' in dev)
+    enable_slack = os.environ.get("ENABLE_SLACK", "true").lower() == "true"
     slack_bot = None
-    if args.slack:
+    if args.slack and enable_slack:
         try:
             from slack_bot import SlackBot
 
@@ -1071,6 +1073,8 @@ def main():
             print(f"[Slack] Could not import slack_bot: {e}")
         except Exception as e:
             print(f"[Slack] Error starting bot: {e}")
+    elif args.slack and not enable_slack:
+        print("[Slack] Bot disabled via ENABLE_SLACK env var")
 
     if args.http:
         run_http_server(args.host, args.port)

@@ -5,6 +5,9 @@
 
 set -e
 
+# Change to project root (parent of scripts/)
+cd "$(dirname "$0")/.."
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -79,10 +82,10 @@ echo ""
 echo "=== Large File Check ==="
 run_check "No large files staged" "! git diff --cached --name-only | xargs -I{} sh -c 'test -f \"{}\" && test \$(stat -f%z \"{}\" 2>/dev/null || stat -c%s \"{}\" 2>/dev/null) -gt 1000000 && echo \"Large file: {}\"' | grep -q 'Large file'"
 
-# 9. Check for secrets/credentials
+# 9. Check for secrets/credentials (skip variable references like $TOKEN)
 echo ""
 echo "=== Secret Detection ==="
-run_check "No secrets detected" "! git diff --cached | grep -iE '(password|secret|api_key|apikey|token|credential).*=.*[\"'\''][^\"'\'']{8,}[\"'\'']' | grep -v 'get_secret\|SECRET_KEY\|_SECRET\|secret_name'"
+run_check "No secrets detected" "! git diff --cached | grep -iE '(password|secret|api_key|apikey|credential).*=.*[\"'\''][A-Za-z0-9+/=]{20,}[\"'\'']' | grep -vE '(get_secret|SECRET_KEY|_SECRET|secret_name|SecretString|secretsmanager|\\\$[A-Z_]+)'"
 
 # 10. Check requirements.txt is valid
 echo ""

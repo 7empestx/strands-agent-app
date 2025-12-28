@@ -10,6 +10,8 @@ const route53targets = require('aws-cdk-lib/aws-route53-targets');
 const acm = require('aws-cdk-lib/aws-certificatemanager');
 const dynamodb = require('aws-cdk-lib/aws-dynamodb');
 const secretsmanager = require('aws-cdk-lib/aws-secretsmanager');
+const events = require('aws-cdk-lib/aws-events');
+const eventsTargets = require('aws-cdk-lib/aws-events-targets');
 const { addOfficeIngressRules } = require('./constants/office-ips');
 const { VPCS, HOSTED_ZONES, DNS_SUBDOMAINS } = require('./constants/aws-accounts');
 
@@ -158,16 +160,10 @@ class StrandsAgentECSStack extends cdk.Stack {
     }));
 
     // ========================================================================
-    // DynamoDB - Feedback Table
+    // DynamoDB - Feedback Table (import existing)
     // ========================================================================
-    const feedbackTable = new dynamodb.Table(this, 'FeedbackTable', {
-      tableName: `mrrobot-ai-feedback-${environment}`,
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
-    });
+    const feedbackTableName = `mrrobot-ai-feedback-${environment}`;
+    const feedbackTable = dynamodb.Table.fromTableName(this, 'FeedbackTable', feedbackTableName);
 
     // Grant permissions to task role
     feedbackTable.grantReadWriteData(taskRole);
@@ -280,7 +276,9 @@ class StrandsAgentECSStack extends cdk.Stack {
       }),
       environment: {
         'AWS_REGION': 'us-east-1',
-        'CODE_KB_ID': 'SAJJWYFTNG'
+        'CODE_KB_ID': 'SAJJWYFTNG',
+        'ENVIRONMENT': environment,
+        'ENABLE_SLACK': environment === 'dev' ? 'true' : 'false',
       },
       secrets: {
         // Bitbucket API credentials
@@ -337,17 +335,12 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ACM Certificate for HTTPS
     // ========================================================================
-    // Create certificate for the environment's domain with DNS validation
-    const certificate = new acm.Certificate(this, 'Certificate', {
-      domainName: `*.${hostedZoneConfig.zoneName}`,
-      subjectAlternativeNames: [hostedZoneConfig.zoneName],
-      validation: acm.CertificateValidation.fromDns(
-        route53.HostedZone.fromHostedZoneAttributes(this, 'ValidationZone', {
-          hostedZoneId: hostedZoneConfig.hostedZoneId,
-          zoneName: hostedZoneConfig.zoneName,
-        })
-      ),
-    });
+    // Import existing wildcard certificate (already validated)
+    // Dev: arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d
+    const certificateArn = environment === 'dev'
+      ? 'arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d'
+      : `arn:aws:acm:us-east-1:${this.account}:certificate/REPLACE_WITH_PROD_CERT`;
+    const certificate = acm.Certificate.fromCertificateArn(this, 'Certificate', certificateArn);
 
     // Import Route53 hosted zone for DNS records
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
@@ -463,26 +456,87 @@ class StrandsAgentECSStack extends cdk.Stack {
     });
 
     // ========================================================================
+    // Daily Digest Scheduled Task (dev only)
+    // ========================================================================
+    if (environment === 'dev') {
+      // Log group for daily digest
+      const digestLogGroup = new logs.LogGroup(this, 'DigestLogGroup', {
+        logGroupName: `/ecs/mrrobot-daily-digest-${environment}`,
+        retention: logs.RetentionDays.TWO_WEEKS,
+        removalPolicy: cdk.RemovalPolicy.DESTROY
+      });
+
+      // Task definition for daily digest
+      const digestTaskDefinition = new ecs.FargateTaskDefinition(this, 'DigestTask', {
+        memoryLimitMiB: 512,
+        cpu: 256,
+        taskRole,
+        executionRole: taskExecutionRole,
+        family: 'mrrobot-daily-digest',
+        runtimePlatform: {
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX
+        }
+      });
+
+      // Use the same MCP server image (has all dependencies)
+      digestTaskDefinition.addContainer('DigestContainer', {
+        image: ecs.ContainerImage.fromEcrRepository(mcpServerRepo, 'latest'),
+        containerName: 'daily-digest',
+        command: ['python', 'src/scheduled/daily_digest.py'],
+        logging: ecs.LogDriver.awsLogs({
+          logGroup: digestLogGroup,
+          streamPrefix: 'ecs',
+        }),
+        environment: {
+          'AWS_REGION': 'us-east-1',
+          'ENVIRONMENT': environment,
+          'SLACK_CHANNEL': '#devops',
+        },
+        secrets: {
+          'CORALOGIX_AGENT_KEY': ecs.Secret.fromSecretsManager(appSecrets, 'CORALOGIX_AGENT_KEY'),
+          'BITBUCKET_TOKEN': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_TOKEN'),
+          'BITBUCKET_AUTH_TYPE': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_AUTH_TYPE'),
+          'BITBUCKET_EMAIL': ecs.Secret.fromSecretsManager(appSecrets, 'BITBUCKET_EMAIL'),
+        }
+      });
+
+      // EventBridge rule to trigger daily at 9am EST (14:00 UTC)
+      const digestRule = new events.Rule(this, 'DigestScheduleRule', {
+        ruleName: `mrrobot-daily-digest-${environment}`,
+        description: 'Triggers daily DevOps digest at 9am EST weekdays',
+        schedule: events.Schedule.cron({
+          minute: '0',
+          hour: '14',  // 9am EST = 14:00 UTC
+          weekDay: 'MON-FRI',
+        }),
+        enabled: true,
+      });
+
+      // Add ECS task as target
+      digestRule.addTarget(new eventsTargets.EcsTask({
+        cluster,
+        taskDefinition: digestTaskDefinition,
+        taskCount: 1,
+        subnetSelection: {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+        },
+        securityGroups: [ecsSecurityGroup],
+      }));
+
+      new cdk.CfnOutput(this, 'DigestScheduleRuleArn', {
+        value: digestRule.ruleArn,
+        description: 'Daily Digest EventBridge Rule ARN'
+      });
+    }
+
+    // ========================================================================
     // Route53 DNS Records
     // ========================================================================
-
-    // A record for Dashboard (via ALB)
-    new route53.ARecord(this, 'DashboardDnsRecord', {
-      zone: hostedZone,
-      recordName: dnsSubdomains.dashboard,
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
-      ttl: cdk.Duration.minutes(5),
-      comment: 'AI Agent Dashboard UI (via ALB)'
-    });
-
-    // A record for MCP server (via ALB with host routing)
-    new route53.ARecord(this, 'McpDnsRecord', {
-      zone: hostedZone,
-      recordName: dnsSubdomains.mcp,
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
-      ttl: cdk.Duration.minutes(5),
-      comment: 'MCP Server (via ALB)'
-    });
+    // NOTE: DNS records are managed outside CDK (already exist in Route53)
+    // ai-agent.mrrobot.dev -> ALB
+    // mcp.mrrobot.dev -> ALB
+    // If you need to recreate them, uncomment the code below
 
     // ========================================================================
     // Outputs
