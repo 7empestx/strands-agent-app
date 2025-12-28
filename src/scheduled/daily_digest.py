@@ -48,7 +48,12 @@ def get_slack_token():
         return _slack_token_cache
 
     try:
-        secrets = boto3.client("secretsmanager", region_name="us-east-1")
+        from botocore.config import Config
+
+        config = Config(connect_timeout=5, read_timeout=10)
+        print("[Digest] Creating Secrets Manager client...")
+        secrets = boto3.client("secretsmanager", region_name="us-east-1", config=config)
+        print("[Digest] Fetching secret...")
         secret = secrets.get_secret_value(SecretId="mrrobot-ai-core/secrets")
         secret_dict = json.loads(secret["SecretString"])
         _slack_token_cache = secret_dict.get("SLACK_BOT_TOKEN")
