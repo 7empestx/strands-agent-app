@@ -491,7 +491,7 @@ class StrandsAgentECSStack extends cdk.Stack {
         environment: {
           'AWS_REGION': 'us-east-1',
           'ENVIRONMENT': environment,
-          'SLACK_CHANNEL': '#devops',
+          'SLACK_CHANNEL': '#clippy-ai-dev',
         },
         secrets: {
           'CORALOGIX_AGENT_KEY': ecs.Secret.fromSecretsManager(appSecrets, 'CORALOGIX_AGENT_KEY'),

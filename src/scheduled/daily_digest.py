@@ -24,17 +24,20 @@ from src.lib.bitbucket import get_pipeline_status
 from src.lib.coralogix import handle_get_recent_errors
 
 # Configuration
-SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL", "#devops")
+SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL", "#clippy-ai-dev")
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
-# Key services to monitor
-KEY_SERVICES = [
-    "mrrobot-cast-core",
-    "mrrobot-auth-rest",
-    "mrrobot-payments-rest",
-    "mrrobot-messaging-rest",
-    "mrrobot-merchant-rest",
-]
+# Key services to monitor (service name -> Bitbucket repo name)
+KEY_SERVICES = {
+    "mrrobot-cast-core": "cast-core-service",
+    "mrrobot-auth-rest": "mrrobot-auth-rest",
+    "mrrobot-payment-service": "mrrobot-payment-service",
+    "mrrobot-messaging-rest": "mrrobot-messaging-rest",
+    "mrrobot-merchant-service": "merchant-service",
+    "mrrobot-risk-rest": "mrrobot-risk-rest",
+    "mrrobot-otp-rest": "mrrobot-otp-rest",
+    "mrrobot-health-rest": "mrrobot-health-rest",
+}
 
 
 # Cache for Slack token (fetched at startup to avoid clock skew issues)
@@ -100,13 +103,20 @@ def get_error_summary() -> dict:
                 service_name=service,
                 environment="prod",
                 hours_back=24,
-                limit=100,
+                limit=50,  # Get enough to see variety of errors
             )
             error_count = result.get("total_errors", 0)
             if error_count > 0:
+                # Extract top errors from errors_by_service structure
+                top_errors = []
+                for svc_name, svc_data in result.get("errors_by_service", {}).items():
+                    for err in svc_data.get("recent_errors", [])[:5]:
+                        msg = err.get("message", "")[:200]
+                        top_errors.append(msg)
+
                 errors_by_service[service] = {
                     "count": error_count,
-                    "top_errors": result.get("errors", [])[:3],
+                    "top_errors": top_errors[:5],  # Top 5 unique errors
                 }
         except Exception as e:
             print(f"[Digest] Error getting errors for {service}: {e}")
@@ -118,22 +128,8 @@ def get_deployment_summary() -> list:
     """Get recent deployments in the last 24 hours."""
     deployments = []
 
-    for service in KEY_SERVICES:
+    for service, repo_name in KEY_SERVICES.items():
         try:
-            # Extract repo name from service name
-            if "cast-core" in service:
-                repo_name = "cast-core-service"
-            elif "auth-rest" in service:
-                repo_name = "mrrobot-auth-rest"
-            elif "payments-rest" in service:
-                repo_name = "mrrobot-payment-service"  # Note: singular 'payment'
-            elif "messaging-rest" in service:
-                repo_name = "mrrobot-messaging-rest"
-            elif "merchant-rest" in service:
-                repo_name = "merchant-service"  # Note: no 'mrrobot-' prefix
-            else:
-                repo_name = service.replace("mrrobot-", "") + "-service"
-
             result = get_pipeline_status(repo_name, limit=5)
 
             # Filter to last 24 hours and successful deployments
@@ -181,20 +177,36 @@ def format_digest() -> tuple[str, list]:
 
     # Error Summary
     if errors:
-        error_lines = []
         total_errors = sum(e["count"] for e in errors.values())
-        for service, data in sorted(errors.items(), key=lambda x: -x[1]["count"]):
-            error_lines.append(f"• *{service}*: {data['count']} errors")
-
         blocks.append(
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*Errors (last 24h)*: {total_errors} total\n" + "\n".join(error_lines[:5]),
+                    "text": f"*Errors (last 24h)*: {total_errors} total",
                 },
             }
         )
+
+        # Show each service with errors and sample error messages
+        for service, data in sorted(errors.items(), key=lambda x: -x[1]["count"])[:5]:
+            service_short = service.replace("mrrobot-", "")
+            error_text = f"*{service_short}*: {data['count']} errors"
+
+            # Add sample error messages (truncated)
+            top_errors = data.get("top_errors", [])
+            if top_errors:
+                # Get unique error prefixes (first 80 chars)
+                unique_errors = list(dict.fromkeys([e[:80] for e in top_errors if e]))[:2]
+                for err in unique_errors:
+                    error_text += f"\n  `{err}...`"
+
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": error_text},
+                }
+            )
     else:
         blocks.append(
             {"type": "section", "text": {"type": "mrkdwn", "text": "*Errors*: No errors in key services (last 24h)"}}

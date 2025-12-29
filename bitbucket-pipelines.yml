@@ -10,11 +10,14 @@ definitions:
   caches:
     pre-commit: ~/.cache/pre-commit
     pip: ~/.cache/pip
-    node: ~/.npm
 
   services:
     docker:
       memory: 2048
+
+  scripts:
+    - script: &install-aws-cli
+        - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
 
   steps:
     - step: &pre-commit
@@ -38,12 +41,11 @@ definitions:
           - pip install flake8 pytest
           - flake8 .
 
-    - step: &build-docker-images-dev
-        name: "Build & Push Docker Images (Dev)"
+    - step: &build-and-push-dev
+        name: "Build & Push (Dev)"
         services:
           - docker
         script:
-          - echo "Building Docker images for ECS Fargate (DEV)..."
           - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
           - export AWS_ACCOUNT_ID="720154970215"
@@ -51,58 +53,26 @@ definitions:
           - export AWS_ACCESS_KEY_ID=$AWS_DEV_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET
           - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
-          - echo "Building MCP Server image (includes React dashboard)..."
-          # Try multiple NPM token variables (different repos use different names)
-          - |
-            if [ -n "$JFROG_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$JFROG_TOKEN"
-              echo "Using JFROG_TOKEN"
-            elif [ -n "$NPM_DEVOPS_AUTH_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_DEVOPS_AUTH_TOKEN"
-              echo "Using NPM_DEVOPS_AUTH_TOKEN"
-            elif [ -n "$NPM_AUTH_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_AUTH_TOKEN"
-              echo "Using NPM_AUTH_TOKEN"
-            elif [ -n "$NPM_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_TOKEN"
-              echo "Using NPM_TOKEN"
-            else
-              echo "ERROR: No NPM token found!"
-              exit 1
-            fi
-            echo "Token length: ${#NPM_BUILD_TOKEN}"
-          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN="$NPM_BUILD_TOKEN" -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
-          - echo "Verifying Flask is in MCP image..."
-          - docker run --rm $REGISTRY/mrrobot-mcp-server:latest pip list | grep -i flask || (echo "ERROR Flask not found!" && exit 1)
-          - echo "Pushing image to ECR..."
+          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN="$JFROG_TOKEN" -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
           - docker push $REGISTRY/mrrobot-mcp-server:latest
           - docker push $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT
-          - echo "Docker image pushed successfully to DEV!"
 
-    - step: &deploy-ecs-dev
-        name: "Deploy to ECS (Dev)"
+    - step: &deploy-dev
+        name: "Deploy (Dev)"
         script:
-          - echo "Deploying to ECS Fargate (DEV)..."
           - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
-          - export CLUSTER_NAME="mrrobot-ai-core-dev"
-          - export SERVICE_NAME="mrrobot-mcp-server-dev"
           - export AWS_ACCESS_KEY_ID=$AWS_DEV_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET
-          - echo "Updating MCP Server service..."
-          - aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment --region $AWS_REGION > /dev/null
-          - echo "ECS service updated! Waiting for deployment to stabilize..."
-          - aws ecs wait services-stable --cluster $CLUSTER_NAME --services $SERVICE_NAME --region $AWS_REGION || echo "Warning - Service may still be deploying"
-          - echo "DEV deployment complete!"
-          - echo "Dashboard URL - https://ai-agent.mrrobot.dev"
-          - echo "MCP Server URL - https://mcp.mrrobot.dev/sse"
+          - aws ecs update-service --cluster mrrobot-ai-core-dev --service mrrobot-mcp-server-dev --force-new-deployment --region $AWS_REGION > /dev/null
+          - aws ecs wait services-stable --cluster mrrobot-ai-core-dev --services mrrobot-mcp-server-dev --region $AWS_REGION || echo "Warning - Service may still be deploying"
+          - echo "Dev deployment complete! https://ai-agent.mrrobot.dev"
 
-    - step: &build-docker-images-prod
-        name: "Build & Push Docker Images (Prod)"
+    - step: &build-and-push-prod
+        name: "Build & Push (Prod)"
         services:
           - docker
         script:
-          - echo "Building Docker images for ECS Fargate (PROD)..."
           - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
           - export AWS_ACCOUNT_ID="246295362269"
@@ -110,51 +80,20 @@ definitions:
           - export AWS_ACCESS_KEY_ID=$AWS_PROD_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_PROD_SECRET
           - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
-          - echo "Building MCP Server image (includes React dashboard)..."
-          # Try multiple NPM token variables (different repos use different names)
-          - |
-            if [ -n "$JFROG_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$JFROG_TOKEN"
-              echo "Using JFROG_TOKEN"
-            elif [ -n "$NPM_DEVOPS_AUTH_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_DEVOPS_AUTH_TOKEN"
-              echo "Using NPM_DEVOPS_AUTH_TOKEN"
-            elif [ -n "$NPM_AUTH_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_AUTH_TOKEN"
-              echo "Using NPM_AUTH_TOKEN"
-            elif [ -n "$NPM_TOKEN" ]; then
-              export NPM_BUILD_TOKEN="$NPM_TOKEN"
-              echo "Using NPM_TOKEN"
-            else
-              echo "ERROR: No NPM token found!"
-              exit 1
-            fi
-            echo "Token length: ${#NPM_BUILD_TOKEN}"
-          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN="$NPM_BUILD_TOKEN" -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
-          - echo "Verifying Flask is in MCP image..."
-          - docker run --rm $REGISTRY/mrrobot-mcp-server:latest pip list | grep -i flask || (echo "ERROR Flask not found!" && exit 1)
-          - echo "Pushing image to ECR..."
+          - docker build -f Dockerfile.mcp --build-arg NPM_TOKEN="$JFROG_TOKEN" -t $REGISTRY/mrrobot-mcp-server:latest -t $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT .
           - docker push $REGISTRY/mrrobot-mcp-server:latest
           - docker push $REGISTRY/mrrobot-mcp-server:$BITBUCKET_COMMIT
-          - echo "Docker image pushed successfully to PROD!"
 
-    - step: &deploy-ecs-prod
-        name: "Deploy to ECS (Prod)"
+    - step: &deploy-prod
+        name: "Deploy (Prod)"
         script:
-          - echo "Deploying to ECS Fargate (PROD)..."
           - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
-          - export CLUSTER_NAME="mrrobot-ai-core-prod"
-          - export SERVICE_NAME="mrrobot-mcp-server-prod"
           - export AWS_ACCESS_KEY_ID=$AWS_PROD_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_PROD_SECRET
-          - echo "Updating MCP Server service..."
-          - aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment --region $AWS_REGION > /dev/null
-          - echo "ECS service updated! Waiting for deployment to stabilize..."
-          - aws ecs wait services-stable --cluster $CLUSTER_NAME --services $SERVICE_NAME --region $AWS_REGION || echo "Warning - Service may still be deploying"
-          - echo "PROD deployment complete!"
-          - echo "Dashboard URL - https://ai-agent.nex.io"
-          - echo "MCP Server URL - https://mcp.nex.io/sse"
+          - aws ecs update-service --cluster mrrobot-ai-core-prod --service mrrobot-mcp-server-prod --force-new-deployment --region $AWS_REGION > /dev/null
+          - aws ecs wait services-stable --cluster mrrobot-ai-core-prod --services mrrobot-mcp-server-prod --region $AWS_REGION || echo "Warning - Service may still be deploying"
+          - echo "Prod deployment complete! https://ai-agent.nex.io"
 
 options:
   size: 2x
@@ -170,24 +109,16 @@ pipelines:
       - parallel:
           - step: *pre-commit
           - step: *python-lint
-      # Deploy to Dev
-      - step: *build-docker-images-dev
-      - step: *deploy-ecs-dev
-      # Deploy to Prod (after Dev succeeds)
-      - step: *build-docker-images-prod
-      - step: *deploy-ecs-prod
+      - step: *build-and-push-dev
+      - step: *deploy-dev
+      - step: *build-and-push-prod
+      - step: *deploy-prod
 
   custom:
     deploy-dev:
-      - step: *build-docker-images-dev
-      - step: *deploy-ecs-dev
+      - step: *build-and-push-dev
+      - step: *deploy-dev
 
     deploy-prod:
-      - step: *build-docker-images-prod
-      - step: *deploy-ecs-prod
-
-    deploy-all:
-      - step: *build-docker-images-dev
-      - step: *deploy-ecs-dev
-      - step: *build-docker-images-prod
-      - step: *deploy-ecs-prod
+      - step: *build-and-push-prod
+      - step: *deploy-prod
