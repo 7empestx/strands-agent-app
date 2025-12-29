@@ -93,21 +93,80 @@ def post_to_slack(message: str, blocks: list = None):
         return False
 
 
+def _get_error_count(service: str, environment: str, hours_back: int) -> int:
+    """Get actual error count using DataPrime count aggregation."""
+    from datetime import datetime, timedelta, timezone
+
+    import requests
+
+    try:
+        from src.lib.utils.secrets import get_secret
+
+        api_key = get_secret("CORALOGIX_AGENT_KEY")
+        if not api_key:
+            return 0
+
+        error_patterns = "(message ~ 'ERROR' || message ~ 'Error' || message ~ 'Exception' || message ~ 'FATAL')"
+        query = (
+            f"source logs | filter {error_patterns} && logGroup ~ '{service}' && logGroup ~ '-{environment}' | count"
+        )
+
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(hours=hours_back)
+
+        payload = {
+            "query": query,
+            "metadata": {
+                "startDate": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "endDate": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "tier": "TIER_FREQUENT_SEARCH",
+            },
+        }
+
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        response = requests.post(
+            "https://ng-api-http.cx498.coralogix.com/api/v1/dataprime/query",
+            headers=headers,
+            json=payload,
+            timeout=30,
+        )
+
+        if response.status_code == 200:
+            # Parse NDJSON response
+            for line in response.text.strip().split("\n"):
+                if line:
+                    data = json.loads(line)
+                    if "result" in data:
+                        for result in data["result"].get("results", []):
+                            user_data = result.get("userData", "{}")
+                            count_data = json.loads(user_data)
+                            return count_data.get("_count", 0)
+        return 0
+    except Exception as e:
+        print(f"[Digest] Error getting count for {service}: {e}")
+        return 0
+
+
 def get_error_summary() -> dict:
     """Get error summary for key services in the last 24 hours."""
     errors_by_service = {}
 
     for service in KEY_SERVICES:
         try:
-            result = handle_get_recent_errors(
-                service_name=service,
-                environment="prod",
-                hours_back=24,
-                limit=50,  # Get enough to see variety of errors
-            )
-            error_count = result.get("total_errors", 0)
+            # Get actual count using count aggregation
+            error_count = _get_error_count(service, "prod", 24)
+            print(f"[Digest] {service}: {error_count} errors")
+
             if error_count > 0:
-                # Extract top errors from errors_by_service structure
+                # Get sample errors for display (limit to 10)
+                result = handle_get_recent_errors(
+                    service_name=service,
+                    environment="prod",
+                    hours_back=24,
+                    limit=10,
+                )
+
+                # Extract sample error messages
                 top_errors = []
                 for svc_name, svc_data in result.get("errors_by_service", {}).items():
                     for err in svc_data.get("recent_errors", [])[:5]:
@@ -116,7 +175,7 @@ def get_error_summary() -> dict:
 
                 errors_by_service[service] = {
                     "count": error_count,
-                    "top_errors": top_errors[:5],  # Top 5 unique errors
+                    "top_errors": top_errors[:5],
                 }
         except Exception as e:
             print(f"[Digest] Error getting errors for {service}: {e}")

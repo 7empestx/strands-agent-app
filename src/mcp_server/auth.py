@@ -39,8 +39,80 @@ AUTHORITY_TEMPLATE = "https://login.microsoftonline.com/{tenant_id}"
 # MSAL scopes - use User.Read for basic profile (openid/profile are added automatically)
 SCOPES = ["User.Read"]
 
-# In-memory session store (for simplicity - could use Redis/DynamoDB for production)
-_sessions = {}
+# DynamoDB session store for OAuth state (handles multi-instance ECS deployments)
+_dynamodb_client = None
+
+
+def _get_dynamodb_client():
+    """Get or create DynamoDB client."""
+    global _dynamodb_client
+    if _dynamodb_client is None:
+        import boto3
+
+        _dynamodb_client = boto3.client("dynamodb", region_name="us-east-1")
+    return _dynamodb_client
+
+
+def _get_oauth_state_table() -> str:
+    """Get the DynamoDB table name for OAuth state."""
+    env = os.environ.get("ENVIRONMENT", "dev")
+    return f"mrrobot-ai-feedback-{env}"
+
+
+def _store_oauth_state(state_hash: str, data: dict) -> None:
+    """Store OAuth state in DynamoDB with 5 minute TTL."""
+    import time
+
+    client = _get_dynamodb_client()
+    ttl = int(time.time()) + 300  # 5 minutes
+    timestamp = datetime.now(timezone.utc).isoformat()
+    try:
+        client.put_item(
+            TableName=_get_oauth_state_table(),
+            Item={
+                "id": {"S": f"OAUTH_STATE#{state_hash}"},
+                "timestamp": {"S": timestamp},
+                "data": {"S": json.dumps(data)},
+                "ttl": {"N": str(ttl)},
+            },
+        )
+    except Exception as e:
+        print(f"[Auth] Failed to store OAuth state: {e}")
+
+
+def _get_oauth_state(state_hash: str) -> dict | None:
+    """Retrieve and delete OAuth state from DynamoDB (one-time use)."""
+    client = _get_dynamodb_client()
+    try:
+        # Query for items with this state hash (we don't know the exact timestamp)
+        response = client.query(
+            TableName=_get_oauth_state_table(),
+            KeyConditionExpression="id = :id",
+            ExpressionAttributeValues={
+                ":id": {"S": f"OAUTH_STATE#{state_hash}"},
+            },
+            Limit=1,
+        )
+        items = response.get("Items", [])
+        if not items:
+            return None
+
+        item = items[0]
+        timestamp = item["timestamp"]["S"]
+
+        # Delete it (one-time use)
+        client.delete_item(
+            TableName=_get_oauth_state_table(),
+            Key={
+                "id": {"S": f"OAUTH_STATE#{state_hash}"},
+                "timestamp": {"S": timestamp},
+            },
+        )
+
+        return json.loads(item["data"]["S"])
+    except Exception as e:
+        print(f"[Auth] Failed to get OAuth state: {e}")
+        return None
 
 
 def _get_config() -> dict:
@@ -136,12 +208,15 @@ async def handle_login(request: Request) -> RedirectResponse:
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
 
-    # Store state in session (in production, use Redis/DynamoDB)
+    # Store state in DynamoDB for multi-instance support
     state_hash = hashlib.sha256(state.encode()).hexdigest()
-    _sessions[state_hash] = {
-        "created": datetime.now(timezone.utc).isoformat(),
-        "redirect_after": request.query_params.get("redirect", "/"),
-    }
+    _store_oauth_state(
+        state_hash,
+        {
+            "created": datetime.now(timezone.utc).isoformat(),
+            "redirect_after": request.query_params.get("redirect", "/"),
+        },
+    )
 
     # Build Azure AD authorization URL directly (no network call needed)
     # Include openid and profile for ID token claims
@@ -182,9 +257,9 @@ async def handle_callback(request: Request) -> RedirectResponse:
     if not code or not state:
         return JSONResponse({"error": "Missing code or state"}, status_code=400)
 
-    # Verify state (CSRF protection)
+    # Verify state (CSRF protection) - retrieve from DynamoDB
     state_hash = hashlib.sha256(state.encode()).hexdigest()
-    session_data = _sessions.pop(state_hash, None)
+    session_data = _get_oauth_state(state_hash)
     if not session_data:
         return JSONResponse({"error": "Invalid state - possible CSRF attack"}, status_code=400)
 

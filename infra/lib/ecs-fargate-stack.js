@@ -39,7 +39,6 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ECR Repositories - use existing ones
     // ========================================================================
-    const streamlitRepo = ecr.Repository.fromRepositoryName(this, 'StreamlitRepo', 'mrrobot-streamlit');
     const mcpServerRepo = ecr.Repository.fromRepositoryName(this, 'McpServerRepo', 'mrrobot-mcp-server');
 
     // ========================================================================
@@ -64,12 +63,6 @@ class StrandsAgentECSStack extends cdk.Stack {
     });
 
     // ECS ingress - from ALB
-    ecsSecurityGroup.addIngressRule(
-      albSecurityGroup,
-      ec2.Port.tcp(8501),
-      'Allow Streamlit from ALB'
-    );
-
     ecsSecurityGroup.addIngressRule(
       albSecurityGroup,
       ec2.Port.tcp(8080),
@@ -198,49 +191,10 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // CloudWatch Log Groups
     // ========================================================================
-    const streamlitLogGroup = new logs.LogGroup(this, 'StreamlitLogGroup', {
-      logGroupName: `/ecs/mrrobot-streamlit-${environment}`,
-      retention: logs.RetentionDays.TWO_WEEKS,
-      removalPolicy: cdk.RemovalPolicy.DESTROY
-    });
-
     const mcpLogGroup = new logs.LogGroup(this, 'McpLogGroup', {
       logGroupName: `/ecs/mrrobot-mcp-server-${environment}`,
       retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY
-    });
-
-    // ========================================================================
-    // Streamlit Task Definition
-    // ========================================================================
-    const streamlitTaskDefinition = new ecs.FargateTaskDefinition(this, 'StreamlitTask', {
-      memoryLimitMiB: 1024,
-      cpu: 512,
-      taskRole,
-      executionRole: taskExecutionRole,
-      family: 'mrrobot-streamlit',
-      runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
-        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX
-      }
-    });
-
-    const streamlitContainer = streamlitTaskDefinition.addContainer('StreamlitContainer', {
-      image: ecs.ContainerImage.fromEcrRepository(streamlitRepo, 'latest'),
-      containerName: 'streamlit',
-      portMappings: [
-        {
-          containerPort: 8501,
-          protocol: ecs.Protocol.TCP
-        }
-      ],
-      logging: ecs.LogDriver.awsLogs({
-        logGroup: streamlitLogGroup,
-        streamPrefix: 'ecs',
-      }),
-      environment: {
-        'AWS_REGION': 'us-east-1'
-      }
     });
 
     // ========================================================================
@@ -302,21 +256,6 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // Target Groups
     // ========================================================================
-    const streamlitTargetGroup = new elbv2.ApplicationTargetGroup(this, 'StreamlitTargetGroup', {
-      vpc,
-      port: 8501,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targetType: elbv2.TargetType.IP,
-      targetGroupName: `mrrobot-streamlit-${environment}`,
-      healthCheck: {
-        path: '/',
-        interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(5),
-        healthyThresholdCount: 2,
-        unhealthyThresholdCount: 3
-      }
-    });
-
     const mcpTargetGroup = new elbv2.ApplicationTargetGroup(this, 'McpTargetGroup', {
       vpc,
       port: 8080,
@@ -362,12 +301,12 @@ class StrandsAgentECSStack extends cdk.Stack {
       })
     });
 
-    // HTTPS Listener - routes both MCP and Streamlit
+    // HTTPS Listener - routes to MCP server
     const httpsListener = alb.addListener('HttpsListener', {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       certificates: [certificate],
-      defaultTargetGroups: [streamlitTargetGroup]  // Default to Streamlit
+      defaultTargetGroups: [mcpTargetGroup]
     });
 
     // Route MCP subdomain to MCP server (HTTPS)
@@ -393,40 +332,6 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ========================================================================
     // ECS Services
     // ========================================================================
-    // DEPRECATED: Streamlit service - set to 0 tasks
-    // React Dashboard is now served from MCP server
-    const streamlitService = new ecs.FargateService(this, 'StreamlitService', {
-      cluster,
-      taskDefinition: streamlitTaskDefinition,
-      desiredCount: 0,  // Deprecated - dashboard now served from MCP server
-      serviceName: `mrrobot-streamlit-${environment}`,
-      assignPublicIp: false,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-      },
-      securityGroups: [ecsSecurityGroup],
-      circuitBreaker: {
-        rollback: true
-      }
-    });
-
-    // Attach target group
-    streamlitService.attachToApplicationTargetGroup(streamlitTargetGroup);
-
-    // Auto-scaling for Streamlit (disabled - service deprecated)
-    const streamlitScaling = streamlitService.autoScaleTaskCount({
-      minCapacity: 0,
-      maxCapacity: 0
-    });
-
-    streamlitScaling.scaleOnCpuUtilization('StreamlitCpuScaling', {
-      targetUtilizationPercent: 70
-    });
-
-    streamlitScaling.scaleOnMemoryUtilization('StreamlitMemoryScaling', {
-      targetUtilizationPercent: 80
-    });
-
     const mcpService = new ecs.FargateService(this, 'McpService', {
       cluster,
       taskDefinition: mcpTaskDefinition,
@@ -554,11 +459,6 @@ class StrandsAgentECSStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'MCPServerURL', {
       value: `https://${mcpHostname}/sse`,
       description: 'MCP Server URL (HTTPS)'
-    });
-
-    new cdk.CfnOutput(this, 'StreamlitRepoUri', {
-      value: streamlitRepo.repositoryUri,
-      description: 'Streamlit ECR Repository URI'
     });
 
     new cdk.CfnOutput(this, 'McpServerRepoUri', {
