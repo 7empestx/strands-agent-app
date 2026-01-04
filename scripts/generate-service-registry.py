@@ -20,7 +20,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 # S3 config
-S3_BUCKET = "mrrobot-code-kb-dev-720154970215"
+S3_BUCKET = "mrrobot-code-kb-dev-123456789012"
 S3_REPOS_PREFIX = "repos/"
 S3_CONFIG_KEY = "clippy-config/services.json"
 

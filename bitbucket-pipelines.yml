@@ -1,5 +1,5 @@
 # Bitbucket Pipelines for MrRobot AI Core
-# Deploys to ECS Fargate in dev account (720154970215)
+# Deploys to ECS Fargate in dev account (123456789012)
 
 image: atlassian/default-image:4
 
@@ -44,7 +44,7 @@ definitions:
         script:
           - curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install
           - export AWS_REGION="us-east-1"
-          - export AWS_ACCOUNT_ID="720154970215"
+          - export AWS_ACCOUNT_ID="123456789012"
           - export REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           - export AWS_ACCESS_KEY_ID=$AWS_DEV_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_DEV_SECRET

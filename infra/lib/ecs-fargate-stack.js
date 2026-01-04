@@ -275,9 +275,9 @@ class StrandsAgentECSStack extends cdk.Stack {
     // ACM Certificate for HTTPS
     // ========================================================================
     // Import existing wildcard certificate (already validated)
-    // Dev: arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d
+    // Dev: arn:aws:acm:us-east-1:123456789012:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d
     const certificateArn = environment === 'dev'
-      ? 'arn:aws:acm:us-east-1:720154970215:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d'
+      ? 'arn:aws:acm:us-east-1:123456789012:certificate/41d8ef46-ac6c-4b72-b15c-3152f978967d'
       : `arn:aws:acm:us-east-1:${this.account}:certificate/REPLACE_WITH_PROD_CERT`;
     const certificate = acm.Certificate.fromCertificateArn(this, 'Certificate', certificateArn);
 

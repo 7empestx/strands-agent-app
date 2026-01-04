@@ -14,8 +14,8 @@ from botocore.exceptions import ClientError
 
 # S3 bucket for memory storage - environment-aware
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
-_ACCOUNT_IDS = {"dev": "720154970215", "prod": "246295362269"}
-_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "720154970215")
+_ACCOUNT_IDS = {"dev": "123456789012", "prod": "246295362269"}
+_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "123456789012")
 MEMORY_BUCKET = f"mrrobot-code-kb-{_ENVIRONMENT}-{_account_id}"
 MEMORY_PREFIX = "clippy-memory/"
 

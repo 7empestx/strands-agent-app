@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""
+Clippy CLI - Ask the Strands DevOps agent questions from your terminal.
+
+Usage:
+    ./clippy "investigate JWT_AUTH_ERROR in auth-rest prod"
+    ./clippy "what errors are happening in cast-core staging"
+    ./clippy "check recent deploys for payment-service"
+
+The agent will use Coralogix logs, Bitbucket pipelines, and code search
+to investigate and provide a detailed report.
+"""
+
+import argparse
+import json
+import sys
+
+import requests
+
+# Default to dev environment
+DEFAULT_URL = "https://ai-agent.nexiodev.com/api/agent"
+PROD_URL = "https://ai-agent.nex.io/api/agent"
+LOCAL_URL = "http://localhost:8080/api/agent"
+
+# Streaming endpoints
+DEFAULT_STREAM_URL = "https://ai-agent.nexiodev.com/api/agent/stream"
+PROD_STREAM_URL = "https://ai-agent.nex.io/api/agent/stream"
+LOCAL_STREAM_URL = "http://localhost:8080/api/agent/stream"
+
+
+def ask_clippy_stream(prompt: str, url: str) -> str:
+    """Send a prompt to the Clippy agent and stream progress updates."""
+    try:
+        print(f"Asking Clippy: {prompt}")
+        print(f"Using endpoint: {url}")
+        print("-" * 60)
+
+        response = requests.post(
+            url,
+            json={"prompt": prompt},
+            stream=True,
+            headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+            timeout=180,
+        )
+
+        if response.status_code != 200:
+            return f"Error: HTTP {response.status_code}\n{response.text}"
+
+        final_report = None
+
+        # Process SSE stream
+        for line in response.iter_lines():
+            if not line:
+                continue
+
+            line = line.decode("utf-8")
+
+            # SSE format: "event: <type>\ndata: <json>"
+            if line.startswith("event:"):
+                event_type = line.split(":", 1)[1].strip()
+            elif line.startswith("data:"):
+                data_str = line.split(":", 1)[1].strip()
+                try:
+                    data = json.loads(data_str)
+
+                    if event_type == "status" or event_type == "progress":
+                        # Print progress updates
+                        print(data.get("message", ""))
+                    elif event_type == "complete":
+                        # Store final report
+                        final_report = data.get("report", "No report generated")
+
+                        # If report is a dict with Strands format, extract text
+                        if isinstance(final_report, dict) and "content" in final_report:
+                            content = final_report.get("content", [])
+                            if isinstance(content, list) and len(content) > 0:
+                                final_report = content[0].get("text", "No report text")
+
+                        print()  # Blank line before report
+                    elif event_type == "error":
+                        return f"Error: {data.get('error', 'Unknown error')}"
+
+                except json.JSONDecodeError:
+                    continue
+
+        return final_report or "No report generated"
+
+    except requests.exceptions.Timeout:
+        return "Error: Request timed out. The investigation may still be running."
+    except requests.exceptions.ConnectionError as e:
+        return f"Error: Could not connect to {url}\n{e}"
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def ask_clippy(prompt: str, url: str = DEFAULT_URL, timeout: int = 120) -> str:
+    """Send a prompt to the Clippy agent and return the response (non-streaming)."""
+    try:
+        print(f"Asking Clippy: {prompt}")
+        print(f"Using endpoint: {url}")
+        print("-" * 60)
+
+        response = requests.post(
+            url,
+            json={"prompt": prompt},
+            timeout=timeout,
+            headers={"Content-Type": "application/json"},
+        )
+
+        if response.status_code != 200:
+            return f"Error: HTTP {response.status_code}\n{response.text}"
+
+        data = response.json()
+
+        if data.get("status") == "error":
+            return f"Error: {data.get('error', 'Unknown error')}"
+
+        report = data.get("report", "No report generated")
+
+        # If report is a dict with Strands format (role/content), extract the text
+        if isinstance(report, dict) and "content" in report:
+            content = report.get("content", [])
+            if isinstance(content, list) and len(content) > 0:
+                return content[0].get("text", "No report text")
+
+        return report
+
+    except requests.exceptions.Timeout:
+        return f"Error: Request timed out after {timeout}s. The investigation may still be running."
+    except requests.exceptions.ConnectionError as e:
+        return f"Error: Could not connect to {url}\n{e}"
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Ask the Clippy DevOps agent questions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    ./clippy "investigate JWT_AUTH_ERROR in auth-rest prod"
+    ./clippy "what errors are happening in cast-core staging"
+    ./clippy --local "check health of messaging-rest dev"
+    ./clippy --prod "investigate 5xx errors in payment-service"
+        """,
+    )
+    parser.add_argument("prompt", nargs="?", help="The question or investigation request")
+    parser.add_argument("--local", action="store_true", help="Use local server (localhost:8080)")
+    parser.add_argument("--prod", action="store_true", help="Use production server")
+    parser.add_argument("--url", help="Custom API URL")
+    parser.add_argument("--stream", action="store_true", help="Use streaming mode with progress updates")
+    parser.add_argument("--no-stream", action="store_true", help="Disable streaming mode")
+    parser.add_argument("--timeout", type=int, default=120, help="Request timeout in seconds (default: 120)")
+
+    args = parser.parse_args()
+
+    # Determine if we should stream (default: yes, unless --no-stream specified)
+    use_streaming = not args.no_stream
+
+    # Determine URL
+    if args.url:
+        # Custom URL provided
+        if use_streaming and not args.url.endswith("/stream"):
+            stream_url = args.url + "/stream" if args.url.endswith("/agent") else args.url
+        else:
+            stream_url = args.url
+        url = args.url
+    elif args.local:
+        url = LOCAL_URL
+        stream_url = LOCAL_STREAM_URL
+    elif args.prod:
+        url = PROD_URL
+        stream_url = PROD_STREAM_URL
+    else:
+        url = DEFAULT_URL
+        stream_url = DEFAULT_STREAM_URL
+
+    # Get prompt from args or interactive mode
+    if args.prompt:
+        prompt = args.prompt
+    else:
+        print("Clippy CLI - DevOps Investigation Agent")
+        print("=" * 60)
+        print("Enter your question (or 'quit' to exit):\n")
+        try:
+            prompt = input("> ").strip()
+            if prompt.lower() in ["quit", "exit", "q"]:
+                print("Goodbye!")
+                sys.exit(0)
+        except (KeyboardInterrupt, EOFError):
+            print("\nGoodbye!")
+            sys.exit(0)
+
+    if not prompt:
+        print("Error: No prompt provided")
+        sys.exit(1)
+
+    # Ask Clippy
+    if use_streaming:
+        report = ask_clippy_stream(prompt, url=stream_url)
+    else:
+        report = ask_clippy(prompt, url=url, timeout=args.timeout)
+
+    print(report)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,17 +1,47 @@
 # MrRobot AI Core
 
-AI-powered DevOps platform with **Slack Bot (Clippy)**, **MCP Server**, and **Streamlit Dashboard** using **Strands SDK** + **Claude Sonnet 4 on Amazon Bedrock**.
+AI engineering assistant with **Slack Bot (Clippy)**, **MCP Server**, and **Investigation Agent** using **Strands SDK** + **Claude Sonnet 4 on Amazon Bedrock**.
+
+Autonomous multi-step investigations, code search across 254 repos, log analysis, and infrastructure monitoring.
 
 ## Features
 
+### Investigation Agent
+Autonomous AI that investigates production issues and suggests code fixes:
+
+```bash
+./clippy "check errors in auth-rest prod"
+```
+
+Agent autonomously:
+- Searches logs for error patterns
+- Checks recent deployments for correlation
+- Finds relevant code in 254 repositories
+- Suggests specific code changes with examples
+
+**Example output:**
+```
+## Code Analysis
+Found LaunchDarkly timeout configuration in src/services/featureFlags.js:23
+
+Current implementation:
+const client = new LaunchDarkly.init(sdkKey, { timeout: 5000 });
+
+Suggested fix:
+const client = new LaunchDarkly.init(sdkKey, {
+  timeout: 30000,
+  requestTimeout: 10000
+});
+```
+
 ### Slack Bot (Clippy)
-AI assistant in `#devops` Slack channel that can:
-- Search logs in Coralogix
-- Check pipeline/deploy status in Bitbucket
-- Review PRs and explain failures
-- Query AWS infrastructure (ALBs, WAF, ECS)
-- Check CloudWatch alarms
+AI assistant in Slack that can:
+- Run autonomous investigations (same as CLI above)
 - Search code across 254 repositories
+- Check pipeline/deploy status
+- Review PRs and explain failures
+- Query AWS infrastructure
+- Analyze logs and errors
 
 ### MCP Server (30+ Tools)
 Universal AI tool server for Cursor, Claude Code, and other MCP-compatible IDEs:
@@ -161,7 +191,7 @@ strands-agent-app/
 | **MCP Server** | https://mcp.mrrobot.dev/sse |
 | **Streamlit** | https://ai-agent.mrrobot.dev |
 | **Knowledge Base ID** | `SAJJWYFTNG` |
-| **AWS Account** | `720154970215` (dev) |
+| **AWS Account** | `123456789012` (dev) |
 | **Region** | `us-east-1` |
 
 ## Deployment

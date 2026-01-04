@@ -20,7 +20,7 @@ Clippy uses a **Claude Tool Use** architecture:
 
 ### 1.1 Improve System Prompt
 
-**Location:** `s3://mrrobot-code-kb-dev-720154970215/clippy-config/system_prompt.txt`
+**Location:** `s3://mrrobot-code-kb-dev-123456789012/clippy-config/system_prompt.txt`
 
 **Current Issues:**
 - Generic DevOps assistant prompt
@@ -448,9 +448,9 @@ To start improving Clippy AI immediately:
 
 1. **Update system prompt** (no code change):
    ```bash
-   aws s3 cp s3://mrrobot-code-kb-dev-720154970215/clippy-config/system_prompt.txt ./
+   aws s3 cp s3://mrrobot-code-kb-dev-123456789012/clippy-config/system_prompt.txt ./
    # Edit with investigation workflow guidance
-   aws s3 cp ./system_prompt.txt s3://mrrobot-code-kb-dev-720154970215/clippy-config/
+   aws s3 cp ./system_prompt.txt s3://mrrobot-code-kb-dev-123456789012/clippy-config/
    ```
 
 2. **Add few-shot examples** to `clippy_tools.py` tool descriptions

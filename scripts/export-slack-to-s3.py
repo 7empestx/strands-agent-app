@@ -22,7 +22,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Configuration
-S3_BUCKET = "mrrobot-code-kb-dev-720154970215"
+S3_BUCKET = "mrrobot-code-kb-dev-123456789012"
 S3_PREFIX = "slack-history"
 REGION = "us-east-1"
 

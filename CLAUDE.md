@@ -65,7 +65,7 @@ src/
 | MCP Server | `https://mcp.mrrobot.dev/sse` |
 | Streamlit | `https://ai-agent.mrrobot.dev` |
 | Knowledge Base ID | `SAJJWYFTNG` |
-| AWS Account | `720154970215` (dev) |
+| AWS Account | `123456789012` (dev) |
 | Region | `us-east-1` |
 
 ## Slack Bot (Clippy)
@@ -236,7 +236,7 @@ Uses API key for DataPrime queries.
 Clippy loads configuration from S3 (no redeploy needed to update):
 
 ```
-s3://mrrobot-code-kb-dev-720154970215/clippy-config/
+s3://mrrobot-code-kb-dev-123456789012/clippy-config/
 ├── services.json      # Service registry with aliases, types, tech stacks
 ├── env_mappings.json  # Environment name mappings (prod, staging, etc.)
 └── system_prompt.txt  # Clippy's system prompt
@@ -247,9 +247,9 @@ s3://mrrobot-code-kb-dev-720154970215/clippy-config/
 **To update:**
 ```bash
 # Download, edit, upload
-aws s3 cp s3://mrrobot-code-kb-dev-720154970215/clippy-config/services.json ./
+aws s3 cp s3://mrrobot-code-kb-dev-123456789012/clippy-config/services.json ./
 # ... edit ...
-aws s3 cp ./services.json s3://mrrobot-code-kb-dev-720154970215/clippy-config/
+aws s3 cp ./services.json s3://mrrobot-code-kb-dev-123456789012/clippy-config/
 ```
 
 **Auto-generate service registry:**
@@ -279,7 +279,7 @@ AWS_PROFILE=dev python scripts/generate-service-registry.py --upload
 
 ## TODO
 
-- [ ] **Cron Lambda for S3 Repo Sync** - Create a Lambda function (EventBridge scheduled) to automatically sync Bitbucket repos to S3 (`s3://mrrobot-code-kb-dev-720154970215/repos/`). Currently done manually via `scripts/sync-repos-to-s3.py`. Should run daily/weekly to keep Knowledge Base up-to-date.
+- [ ] **Cron Lambda for S3 Repo Sync** - Create a Lambda function (EventBridge scheduled) to automatically sync Bitbucket repos to S3 (`s3://mrrobot-code-kb-dev-123456789012/repos/`). Currently done manually via `scripts/sync-repos-to-s3.py`. Should run daily/weekly to keep Knowledge Base up-to-date.
 
 - [ ] **Cron Lambda for Service Registry** - After repo sync, run `scripts/generate-service-registry.py --upload` to regenerate the service registry from the updated S3 repos.
 

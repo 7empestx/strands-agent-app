@@ -16,10 +16,10 @@ from botocore.exceptions import ClientError
 # Format: mrrobot-code-kb-{env}-{account_id}
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 _ACCOUNT_IDS = {
-    "dev": "720154970215",
+    "dev": "123456789012",
     "prod": "246295362269",
 }
-_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "720154970215")
+_account_id = _ACCOUNT_IDS.get(_ENVIRONMENT, "123456789012")
 CONFIG_BUCKET = f"mrrobot-code-kb-{_ENVIRONMENT}-{_account_id}"
 CONFIG_PREFIX = "clippy-config/"
 
